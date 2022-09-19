@@ -1,0 +1,731 @@
+package main
+
+import (
+	"FenixClientServer/common_config"
+	"crypto/tls"
+	"fmt"
+	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/Client/fenixExecutionServerGuiGrpcApi/go_grpc_api"
+	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/Fenix/fenixExecutionServerGuiGrpcApi/go_grpc_api"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"log"
+	"os"
+	"time"
+)
+
+// ********************************************************************************************************************
+
+// SetConnectionToFenixTestDataSyncServer - Set upp connection and Dial to FenixTestDataSyncServer
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) SetConnectionToFenixTestDataSyncServer() {
+
+	var err error
+	var opts []grpc.DialOption
+
+	//When running on GCP then use credential otherwise not
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+		creds := credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		})
+
+		opts = []grpc.DialOption{
+			grpc.WithTransportCredentials(creds),
+		}
+	}
+
+	// Set up connection to FenixTestDataSyncServer
+	// When run on GCP, use credentials
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+		// Run on GCP
+		remoteFenixTestDataSyncServerConnection, err = grpc.Dial(fenixGuiTestCaseBuilderServer_address_to_dial, opts...)
+	} else {
+		// Run Local
+		remoteFenixTestDataSyncServerConnection, err = grpc.Dial(fenixGuiTestCaseBuilderServer_address_to_dial, grpc.WithInsecure())
+	}
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "50b59b1b-57ce-4c27-aa84-617f0cde3100",
+			"fenixGuiTestCaseBuilderServer_address_to_dial": fenixGuiTestCaseBuilderServer_address_to_dial,
+			"error message": err,
+		}).Error("Did not connect to FenixTestDataSyncServer via gRPC")
+		//os.Exit(0)
+	} else {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "0c650bbc-45d0-4029-bd25-4ced9925a059",
+			"fenixGuiTestCaseBuilderServer_address_to_dial": fenixGuiTestCaseBuilderServer_address_to_dial,
+		}).Info("gRPC connection OK to FenixTestDataSyncServer")
+
+		// Creates a new Clients
+		fenixGuiTestCaseBuilderServerClient = fenixExecutionServerGuiGrpcApi.NewFenixTestDataGrpcServicesClient(remoteFenixTestDataSyncServerConnection)
+
+	}
+}
+
+// ********************************************************************************************************************
+
+// Get the highest FenixProtoFileVersionEnumeration
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) getHighestFenixProtoFileVersion() int32 {
+
+	// Check if there already is a 'highestFenixProtoFileVersion' saved, if so use that one
+	if highestFenixProtoFileVersion != -1 {
+		return highestFenixProtoFileVersion
+	}
+
+	// Find the highest value for proto-file version
+	var maxValue int32
+	maxValue = 0
+
+	for _, v := range fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum_value {
+		if v > maxValue {
+			maxValue = v
+		}
+	}
+
+	highestFenixProtoFileVersion = maxValue
+
+	return highestFenixProtoFileVersion
+}
+
+// ********************************************************************************************************************
+// Get the highest ClientProtoFileVersionEnumeration
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) getHighestClientProtoFileVersion() int32 {
+
+	// Check if there already is a 'highestclientProtoFileVersion' saved, if so use that one
+	if highestClientProtoFileVersion != -1 {
+		return highestClientProtoFileVersion
+	}
+
+	// Find the highest value for proto-file version
+	var maxValue int32
+	maxValue = 0
+
+	for _, v := range fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum_value {
+		if v > maxValue {
+			maxValue = v
+		}
+	}
+
+	highestClientProtoFileVersion = maxValue
+
+	return highestClientProtoFileVersion
+}
+
+// ********************************************************************************************************************
+// Check if Calling 'system' (Fenix or Clients own methods) is using correct proto-file version
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) isCallerUsingCorrectProtoFileVersion(
+	usedProtoFileVersion fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum) (
+	clientUseCorrectProtoFileVersion bool,
+	protoFileExpected fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum,
+	protoFileUsed fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum) {
+
+	protoFileUsed = usedProtoFileVersion
+	protoFileExpected = fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum(
+		fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion())
+
+	// Check if correct proto files is used
+	if protoFileExpected == protoFileUsed {
+		clientUseCorrectProtoFileVersion = true
+	} else {
+		clientUseCorrectProtoFileVersion = true
+	}
+
+	//protoFileExpectedDescription := protoFileExpected.String()
+	//protoFileExpectedDescription := protoFileExpected.String()
+
+	return clientUseCorrectProtoFileVersion, protoFileExpected, protoFileUsed
+}
+
+// Generate the current MerkleTree for Testdata supported by the client
+func getCurrentTestDataMerkleTree() fenixExecutionServerGuiGrpcApi.MerkleTreeMessage {
+
+	var merkleTreeMessage fenixExecutionServerGuiGrpcApi.MerkleTreeMessage
+
+	return merkleTreeMessage
+}
+
+// ********************************************************************************************************************
+
+// RegisterTestDataClient  - Register the client at Fenix by calling Fenix's gPRC server
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) createTestDataHeaderMessage() *fenixExecutionServerGuiGrpcApi.TestDataHeadersMessage {
+
+	var testDataHeaderItemMessage *fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage
+	var testDataHeaderItemsMessage []*fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage
+	_, _, testDataHeaders := common_config.LoadAndProcessFile(testFile)
+
+	var testDataHeaderItemMessageHashArray []string
+
+	// Extract Header names, from sub set of testdata(1 row)
+	testDataSubSet := testDataHeaders.Subset(0)
+	headerData := testDataSubSet.Records()[0]
+
+	// Create variables to be sent to FenixTestDataSyncServer
+	for _, header := range headerData {
+		if header != "TestDataHash" {
+			var headerFilterValues []*fenixExecutionServerGuiGrpcApi.HeaderFilterValue
+			headerFilterValue := &fenixExecutionServerGuiGrpcApi.HeaderFilterValue{HeaderFilterValuesAsString: "value 1"}
+			headerFilterValues = append(headerFilterValues, headerFilterValue)
+			testDataHeaderItemMessage = &fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage{
+				TestDataHeaderItemMessageHash:       "XXX Is set below in the code XXX",
+				HeaderLabel:                         header,
+				HeaderShouldBeUsedForTestDataFilter: false,
+				HeaderIsMandatoryInTestDataFilter:   false,
+				HeaderSelectionType:                 fenixExecutionServerGuiGrpcApi.HeaderSelectionTypeEnum_HEADER_IS_SINGLE_SELECT,
+				HeaderFilterValues:                  headerFilterValues,
+			}
+			// Add hash value to 'TestDataHeaderItemMessageHash'
+			testDataHeaderItemMessageHash := common_config.CreateTestDataHeaderItemMessageHash(testDataHeaderItemMessage)
+			testDataHeaderItemMessage.TestDataHeaderItemMessageHash = testDataHeaderItemMessageHash
+
+			testDataHeaderItemsMessage = append(testDataHeaderItemsMessage, testDataHeaderItemMessage)
+			testDataHeaderItemMessageHashArray = append(testDataHeaderItemMessageHashArray, testDataHeaderItemMessageHash)
+
+		}
+
+	}
+
+	// Hash all 'testDataHeaderItemMessageHash' into a single hash
+	testDataHeaderItemMessageHash := common_config.HashValues(testDataHeaderItemMessageHashArray, false)
+
+	// Header message to be set to  TestDataSyncServer
+	testDataHeaderMessage := &fenixExecutionServerGuiGrpcApi.TestDataHeadersMessage{
+		TestDataClientUuid:      fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
+		TestDataHeaderItemsHash: testDataHeaderItemMessageHash,
+		TestDataHeaderItems:     testDataHeaderItemsMessage,
+		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
+			fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
+	}
+
+	return testDataHeaderMessage
+
+}
+
+// ********************************************************************************************************************
+
+// RegisterTestDataClient  - Register the client at Fenix by calling Fenix's gPRC server
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) RegisterTestDataClient() {
+
+	var ctx context.Context
+	var returnMessageAckNack bool
+
+	// Set up variables to be sent to FenixTestDataSyncServer
+	TestDataClientInformationMessage := fenixExecutionServerGuiGrpcApi.TestDataClientInformationMessage{
+		TestDataClientUuid:           fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
+		TestDomainUuid:               fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_DomainUuid,
+		TestDomainName:               fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_DomainName,
+		TestDataClientIpAddress:      common_config.ClientTestDataSyncServerAddress,
+		TestDataClientPort:           string(rune(common_config.ClientTestDataSyncServerPort)),
+		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
+	}
+
+	// Set up connection to Server
+	fenixGuiTestCaseBuilderServerObject.SetConnectionToFenixTestDataSyncServer()
+
+	// Do gRPC-call
+	//ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer func() {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "813bf6cb-40ab-4431-aaf4-109c13474482",
+		}).Error("Running Defer Cancel function")
+		cancel()
+	}()
+
+	// Only add access token when run on GCP
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+
+		// Add Access token
+		ctx, returnMessageAckNack, _ = fenixGuiTestCaseBuilderServerObject.generateGCPAccessToken(ctx)
+		if returnMessageAckNack == false {
+			return
+		}
+
+	}
+	returnMessage, err := fenixGuiTestCaseBuilderServerClient.RegisterTestDataClient(ctx, &TestDataClientInformationMessage)
+
+	// Shouldn't happen
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":    "6b080a23-4e06-4d16-8295-a67ba7115a56",
+			"error": err,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'RegisterTestDataClient'")
+
+	} else if returnMessage.AckNack == false {
+		// FenixTestDataSyncServer couldn't handle gPRC call
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "44671efb-e24d-450a-acba-006cc248d058",
+			"Message from FenixTestDataSyncServerObject": returnMessage.Comments,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'RegisterTestDataClient'")
+	}
+
+}
+
+// ********************************************************************************************************************
+
+// SendMerkleHash - Send the client's MerkleHash to Fenix by calling Fenix's gPRC server
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) SendMerkleHash() {
+
+	var ctx context.Context
+	var returnMessageAckNack bool
+
+	merkleRootHash, _, _ := common_config.LoadAndProcessFile(testFile)
+	merkleFilterPathHash := common_config.HashSingleValue(fenixGuiTestCaseBuilderServerObject.merkleFilterPath)
+
+	// Set up variables to be sent to FenixTestDataSyncServer
+	merkleHashMessage := fenixExecutionServerGuiGrpcApi.MerkleHashMessage{
+		TestDataClientUuid: fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
+		MerkleHash:         merkleRootHash,
+		MerkleFilter:       fenixGuiTestCaseBuilderServerObject.merkleFilterPath,
+		MerkleFilterHash:   merkleFilterPathHash,
+		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
+			fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
+	}
+
+	// Set up connection to Server
+	fenixGuiTestCaseBuilderServerObject.SetConnectionToFenixTestDataSyncServer()
+
+	// Do gRPC-call
+	//ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer func() {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "a09dda2c-90f4-49d7-b674-b85380b1382c",
+		}).Error("Running Defer Cancel function")
+		cancel()
+	}()
+
+	// Only add access token when run on GCP
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+
+		// Add Access token
+		ctx, returnMessageAckNack, _ = fenixGuiTestCaseBuilderServerObject.generateGCPAccessToken(ctx)
+		if returnMessageAckNack == false {
+			return
+		}
+	}
+
+	returnMessage, err := fenixGuiTestCaseBuilderServerClient.SendMerkleHash(ctx, &merkleHashMessage)
+
+	// Shouldn't happen
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":    "69a62788-b798-471a-bb8d-7fa1cec0f485",
+			"error": err,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendMerkleHash'")
+
+	} else if returnMessage.AckNack == false {
+		// FenixTestDataSyncServer couldn't handle gPRC call
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "fb923a55-136e-481e-9c30-d7d7019e17e3",
+			"Message from FenixTestDataSyncServerObject": returnMessage.Comments,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendMerkleHash'")
+	} else {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":         "a9b9578e-4bc7-4ef5-91b6-67a8191a0af5",
+			"MerkleHash": merkleRootHash,
+		}).Debug("Sent MerkleHash to Server")
+	}
+
+}
+
+// ********************************************************************************************************************
+
+// SendMerkleTree - Send the client's MerkleTree to Fenix by calling Fenix's gPRC server
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) SendMerkleTree() {
+
+	var ctx context.Context
+	var returnMessageAckNack bool
+
+	var merkleTreeNodeMessages []*fenixExecutionServerGuiGrpcApi.MerkleTreeNodeMessage
+
+	// Set up variables to be sent to FenixTestDataSyncServer
+	_, merkleTree, _ := common_config.LoadAndProcessFile(testFile)
+
+	f, err := os.Create("merkleTreeProduced.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	merkleTree.WriteCSV(f)
+	f.Close()
+
+	merkleTreeNRows := merkleTree.Nrow()
+	for rowCounter := 0; rowCounter < merkleTreeNRows; rowCounter++ {
+		merkleLevel, _ := merkleTree.Elem(rowCounter, 0).Int()
+		merkleTreeNodeMessage := &fenixExecutionServerGuiGrpcApi.MerkleTreeNodeMessage{
+			NodeLevel:     uint32(merkleLevel),                     //MerkleLevel (0)
+			NodeName:      merkleTree.Elem(rowCounter, 1).String(), // MerkleName (1)
+			NodePath:      merkleTree.Elem(rowCounter, 4).String(), // MerkleFilterPath (4)
+			NodeHash:      merkleTree.Elem(rowCounter, 2).String(), // MerkleHash (2)
+			NodeChildHash: merkleTree.Elem(rowCounter, 3).String(), // MerkleChildHash (3)
+		}
+
+		merkleTreeNodeMessages = append(merkleTreeNodeMessages, merkleTreeNodeMessage)
+	}
+	merkleTreeMessage := &fenixExecutionServerGuiGrpcApi.MerkleTreeMessage{
+		TestDataClientUuid: fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
+		MerkleTreeNodes:    merkleTreeNodeMessages,
+		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
+			fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
+	}
+
+	// Set up connection to Server
+	fenixGuiTestCaseBuilderServerObject.SetConnectionToFenixTestDataSyncServer()
+
+	// Do gRPC-call
+	//ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer func() {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "dd9f00db-bab1-444e-a116-f9a62a2fdff6",
+		}).Error("Running Defer Cancel function")
+		cancel()
+	}()
+
+	// Only add access token when run on GCP
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+
+		// Add Access token
+		ctx, returnMessageAckNack, _ = fenixGuiTestCaseBuilderServerObject.generateGCPAccessToken(ctx)
+		if returnMessageAckNack == false {
+			return
+		}
+
+	}
+
+	returnMessage, err := fenixGuiTestCaseBuilderServerClient.SendMerkleTree(ctx, merkleTreeMessage)
+
+	// Shouldn't happen
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":    "c8a66468-17ca-4e0a-942b-a9ec9b246c82",
+			"error": err,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendMerkleTree'")
+
+	} else if returnMessage.AckNack == false {
+		// FenixTestDataSyncServer couldn't handle gPRC call
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "d8225481-d28c-426c-9cdb-986678001e5c",
+			"Message from FenixTestDataSyncServerObject": returnMessage.Comments,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendMerkleTree'")
+	}
+
+}
+
+// ********************************************************************************************************************
+
+// SendTestDataHeaderHash - Send the client's TestDataHeaderHash to Fenix by calling Fenix's gPRC server
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) SendTestDataHeaderHash() {
+
+	var ctx context.Context
+	var returnMessageAckNack bool
+
+	var testDataHeaderItemMessage *fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage
+	var testDataHeaderItemsMessage []*fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage
+	_, _, testDataHeaders := common_config.LoadAndProcessFile(testFile)
+	var testDataHeaderItemMessageHashArray []string
+
+	// Extract Header names, from sub set of testdata(1 row)
+	testDataSubSet := testDataHeaders.Subset(0)
+	headerData := testDataSubSet.Records()[0]
+
+	// Create variables to be sent to FenixTestDataSyncServer
+	for _, header := range headerData {
+		if header != "TestDataHash" {
+			var headerFilterValues []*fenixExecutionServerGuiGrpcApi.HeaderFilterValue
+			headerFilterValue := &fenixExecutionServerGuiGrpcApi.HeaderFilterValue{HeaderFilterValuesAsString: "value 1"}
+			headerFilterValues = append(headerFilterValues, headerFilterValue)
+			testDataHeaderItemMessage = &fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage{
+				TestDataHeaderItemMessageHash:       "XXX Is set below in the code XXX",
+				HeaderLabel:                         header,
+				HeaderShouldBeUsedForTestDataFilter: false,
+				HeaderIsMandatoryInTestDataFilter:   false,
+				HeaderSelectionType:                 fenixExecutionServerGuiGrpcApi.HeaderSelectionTypeEnum_HEADER_IS_SINGLE_SELECT,
+				HeaderFilterValues:                  headerFilterValues,
+			}
+			// Add hash value to 'TestDataHeaderItemMessageHash'
+			testDataHeaderItemMessageHash := common_config.CreateTestDataHeaderItemMessageHash(testDataHeaderItemMessage)
+			testDataHeaderItemMessage.TestDataHeaderItemMessageHash = testDataHeaderItemMessageHash
+
+			testDataHeaderItemsMessage = append(testDataHeaderItemsMessage, testDataHeaderItemMessage)
+			testDataHeaderItemMessageHashArray = append(testDataHeaderItemMessageHashArray, testDataHeaderItemMessageHash)
+
+		}
+
+	}
+
+	// Hash all 'testDataHeaderItemMessageHash' into a single hash
+	testDataHeaderItemMessageHash := common_config.HashValues(testDataHeaderItemMessageHashArray, false)
+
+	// HeaderHash message to be set to TestDataSyncServer
+	testDataHeaderMessage := &fenixExecutionServerGuiGrpcApi.TestDataHeaderHashMessage{
+		TestDataClientUuid:      fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
+		TestDataHeaderItemsHash: testDataHeaderItemMessageHash,
+		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
+			fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
+	}
+
+	// Set up connection to Server
+	fenixGuiTestCaseBuilderServerObject.SetConnectionToFenixTestDataSyncServer()
+
+	// Do gRPC-call
+	//ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer func() {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "59b7744c-6d3d-46dc-83f1-5ff3a0763183",
+		}).Error("Running Defer Cancel function")
+		cancel()
+	}()
+
+	// Only add access token when run on GCP
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+
+		// Add Access token
+		ctx, returnMessageAckNack, _ = fenixGuiTestCaseBuilderServerObject.generateGCPAccessToken(ctx)
+		if returnMessageAckNack == false {
+			return
+		}
+
+	}
+
+	returnMessage, err := fenixGuiTestCaseBuilderServerClient.SendTestDataHeaderHash(ctx, testDataHeaderMessage)
+
+	// Shouldn't happen
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":    "0f8d37a3-ac0d-4096-a5a7-c635cd434926",
+			"error": err,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendTestDataHeaders'")
+
+	} else if returnMessage.AckNack == false {
+		// FenixTestDataSyncServer couldn't handle gPRC call
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "1a2a215f-6356-49a5-a7db-e9a9ead2fe6e",
+			"Message from FenixTestDataSyncServerObject": returnMessage.Comments,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendTestDataHeaders'")
+	}
+
+}
+
+// ********************************************************************************************************************
+
+// SendTestDataHeaders - Send the client's TestDataHeaders to Fenix by calling Fenix's gPRC server
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) SendTestDataHeaders() {
+
+	var ctx context.Context
+	var returnMessageAckNack bool
+
+	// Header message to be sent to  TestDataSyncServer
+	testDataHeaderMessage := fenixGuiTestCaseBuilderServerObject.createTestDataHeaderMessage()
+
+	// Set up connection to Server
+	fenixGuiTestCaseBuilderServerObject.SetConnectionToFenixTestDataSyncServer()
+
+	// Do gRPC-call
+	//ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer func() {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "67da560b-0fb2-4e5d-b931-43c4cb19b0a5",
+		}).Error("Running Defer Cancel function")
+		cancel()
+	}()
+
+	// Only add access token when run on GCP
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+
+		// Add Access token
+		ctx, returnMessageAckNack, _ = fenixGuiTestCaseBuilderServerObject.generateGCPAccessToken(ctx)
+		if returnMessageAckNack == false {
+			return
+		}
+
+	}
+
+	returnMessage, err := fenixGuiTestCaseBuilderServerClient.SendTestDataHeaders(ctx, testDataHeaderMessage)
+
+	// Shouldn't happen
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":    "5644eeb0-7e95-4b42-ae2a-1fafdf926f9d",
+			"error": err,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendTestDataHeaders'")
+
+	} else if returnMessage.AckNack == false {
+		// FenixTestDataSyncServer couldn't handle gPRC call
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "3902e0d2-d28a-40e4-8aa8-553d31ac3b78",
+			"Message from FenixTestDataSyncServerObject": returnMessage.Comments,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendTestDataHeaders'")
+	}
+
+}
+
+// TODO - fix so fkn can take which rows to send back
+// ********************************************************************************************************************
+
+// SendTestDataRows - Send the client's TestDataRow to Fenix by calling Fenix's gPRC server
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) SendTestDataRows(merkleNodeNames []string) {
+
+	var ctx context.Context
+	var returnMessageAckNack bool
+
+	// Create the message with all test data to be sent to Fenix
+	testdataRowsMessages := fenixGuiTestCaseBuilderServerObject.createRowsMessage(merkleNodeNames)
+
+	// Create the message that will all messages to be in the stream
+	var testdataRowsMessagesStreamContainer []*fenixExecutionServerGuiGrpcApi.TestdataRowsMessages
+	testdataRowsMessagesStreamContainer = append(testdataRowsMessagesStreamContainer, testdataRowsMessages)
+
+	/*
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":                                  "5644eeb0-7e95-4b42-ae2a-1fafdf926f9d",
+			"testdataRowsMessagesStreamContainer": testdataRowsMessagesStreamContainer,
+		}).Debug("Sent TestDataRows")
+	*/
+
+	// Set up connection to Server
+	fenixGuiTestCaseBuilderServerObject.SetConnectionToFenixTestDataSyncServer()
+
+	// Set up Stream towards the gRPC-server
+	//ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer func() {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "d847a2d9-6b32-464c-831e-995a0b83e599",
+		}).Error("Running Defer Cancel function")
+		cancel()
+	}()
+
+	// Only add access token when run on GCP
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+
+		// Add Access token
+		ctx, returnMessageAckNack, _ = fenixGuiTestCaseBuilderServerObject.generateGCPAccessToken(ctx)
+		if returnMessageAckNack == false {
+			return
+		}
+
+	}
+
+	//ctx2, _ := context.WithCancel(ctx)
+	//defer cancel()
+	stream, err := fenixGuiTestCaseBuilderServerClient.SendTestDataRows(ctx)
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":    "e5d20ade-539b-4c20-834a-628e131d06be",
+			"error": err,
+		}).Error("Couldn't set up a 'Stream' to gRPC-server ")
+
+		return
+	}
+
+	// Loop all 'testdataRowsMessages' and stream the messages to the gRPC-server
+	for counter, testdataRowsMessages := range testdataRowsMessagesStreamContainer {
+		err = stream.Send(testdataRowsMessages)
+		if err != nil {
+			fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+				"ID":    "4773d81c-f42d-46d5-8d54-86a90c3d717f",
+				"error": err,
+			}).Error("Couldn't send stream-object to gRPC-server ")
+
+			//return
+		}
+		fmt.Println(counter)
+
+	}
+	returnMessage, err := stream.CloseAndRecv()
+
+	// Do gRPC-call
+	//ctx := context.Background()
+	//returnMessage, err := fenixGuiTestCaseBuilderServerClient.SendTestDataRows(ctx, testdataRowsMessages)
+
+	// Shouldn't happen
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":            "b457b233-41f9-4b3d-9f1e-00782b467045",
+			"error":         err,
+			"returnMessage": returnMessage,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendTestDataRows'")
+
+		return
+
+	} else if returnMessage.AckNack == false {
+		// FenixTestDataSyncServer couldn't handle gPRC call
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "c1f6a351-fb7e-4759-81a7-04ec61b74e59",
+			"Message from FenixTestDataSyncServerObject": returnMessage.Comments,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendTestDataRows'")
+
+		return
+	} else {
+
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "ef4afef1-6307-4f42-9623-4434040cc7da",
+			"Message from FenixTestDataSyncServer: 'returnMessage'": returnMessage,
+			"Messages Sent": len(testdataRowsMessagesStreamContainer),
+		}).Debug("Send TestDataRowMessages'")
+	}
+
+}
+
+// ********************************************************************************************************************
+
+// SendAreYouAliveToFenixTestDataServer - Send the client's TestDataHeaders to Fenix by calling Fenix's gPRC server
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) SendAreYouAliveToFenixTestDataServer() (bool, string) {
+
+	var ctx context.Context
+	var returnMessageAckNack bool
+	var returnMessageString string
+
+	// Set up connection to Server
+	fenixGuiTestCaseBuilderServerObject.SetConnectionToFenixTestDataSyncServer()
+
+	// Create the message with all test data to be sent to Fenix
+	emptyParameter := &fenixExecutionServerGuiGrpcApi.EmptyParameter{
+
+		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
+	}
+
+	// Do gRPC-call
+	//ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer func() {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "c5ba19bd-75ff-4366-818d-745d4d7f1a52",
+		}).Error("Running Defer Cancel function")
+		cancel()
+	}()
+
+	// Only add access token when run on GCP
+	if common_config.ExecutionLocationForFenixTestDataServer == common_config.GCP {
+
+		// Add Access token
+		ctx, returnMessageAckNack, returnMessageString = fenixGuiTestCaseBuilderServerObject.generateGCPAccessToken(ctx)
+		if returnMessageAckNack == false {
+			return false, returnMessageString
+		}
+
+	}
+
+	returnMessage, err := fenixGuiTestCaseBuilderServerClient.AreYouAlive(ctx, emptyParameter)
+
+	// Shouldn't happen
+	if err != nil {
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID":    "818aaf0b-4112-4be4-97b9-21cc084c7b8b",
+			"error": err,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendAreYouAliveToFenixTestDataServer'")
+
+	} else if returnMessage.AckNack == false {
+		// FenixTestDataSyncServer couldn't handle gPRC call
+		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			"ID": "2ecbc800-2fb6-4e88-858d-a421b61c5529",
+			"Message from FenixTestDataSyncServerObject": returnMessage.Comments,
+		}).Error("Problem to do gRPC-call to FenixTestDataSyncServer for 'SendAreYouAliveToFenixTestDataServer'")
+	}
+
+	return returnMessage.AckNack, returnMessage.Comments
+
+}
