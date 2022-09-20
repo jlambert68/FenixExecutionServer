@@ -97,3 +97,33 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLI
 
 	return sqlInsertValuesString
 }
+
+// Generates incoming integer values in the following form:  "(7, 2, 83)"
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLINIntegerArray(testdata []int) (sqlInsertValuesString string) {
+
+	// Create a list with '' as only element if there are no elements in array
+	if len(testdata) == 0 {
+		sqlInsertValuesString = "()"
+
+		return sqlInsertValuesString
+	}
+
+	sqlInsertValuesString = "("
+
+	// Loop over both rows and values
+	for counter, value := range testdata {
+
+		if counter == 0 {
+			// Only used for first row
+			sqlInsertValuesString = sqlInsertValuesString + "'" + string(value) + "'"
+
+		} else {
+
+			sqlInsertValuesString = sqlInsertValuesString + ", '" + string(value) + "'"
+		}
+	}
+
+	sqlInsertValuesString = sqlInsertValuesString + ") "
+
+	return sqlInsertValuesString
+}
