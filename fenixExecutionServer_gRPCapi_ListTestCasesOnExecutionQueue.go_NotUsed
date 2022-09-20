@@ -1,0 +1,73 @@
+package main
+
+import (
+	"context"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	"github.com/sirupsen/logrus"
+)
+
+// ListAllImmatureTestInstructionAttributes - *********************************************************************
+// The TestCase Builder asks for all TestInstructions Attributes that the user must add values to in TestCase
+func (s *fenixExecutionServerGuiGrpcServicesServer) ListTestCasesOnExecutionQueue(ctx context.Context, listTestCasesInExecutionQueueRequest *fenixExecutionServerGrpcApi.ListTestCasesInExecutionQueueRequest) (*fenixExecutionServerGrpcApi.ListTestCasesInExecutionQueueResponse, error) {
+
+	// Define the response message
+	var responseMessage *fenixExecutionServerGrpcApi.ListTestCasesInExecutionQueueResponse
+
+	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		"id": "a88c93c3-cc86-4b4b-86ca-a11dd606b242",
+	}).Debug("Incoming 'gRPC - ListTestCasesOnExecutionQueue'")
+
+	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		"id": "1ce24c71-11ae-4f76-a473-ce794e4610e6",
+	}).Debug("Outgoing 'gRPC - ListTestCasesOnExecutionQueue'")
+
+	// Current user
+	userID := listTestCasesInExecutionQueueRequest.UserIdentification.UserId
+
+	// Check if Client is using correct proto files version
+	returnMessage := fenixExecutionServerObject.isClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(listTestCasesInExecutionQueueRequest.UserIdentification.ProtoFileVersionUsedByClient))
+	if returnMessage != nil {
+
+		responseMessage = &fenixExecutionServerGrpcApi.ListTestCasesInExecutionQueueResponse{
+			AckNackResponse:           returnMessage,
+			TestCasesInExecutionQueue: nil,
+		}
+
+		// Exiting
+		return responseMessage, nil
+	}
+
+	// Define variables to store data from DB in
+	var testCaseExecutionBasicInformation []*fenixExecutionServerGrpcApi.TestCaseExecutionBasicInformationMessage
+
+	// Get users ImmatureTestInstruction-data from CloudDB
+	testCaseExecutionBasicInformation, err := fenixExecutionServerObject.listTestCasesOnExecutionQueueLoadFromCloudDB(userID)
+	if err != nil {
+		// Something went wrong so return an error to caller
+		responseMessage = &fenixExecutionServerGrpcApi.ListTestCasesInExecutionQueueResponse{
+			AckNackResponse: &fenixExecutionServerGrpcApi.AckNackResponse{
+				AckNack:                      false,
+				Comments:                     "Got some Error when retrieving TestCaseExecutionBasicInformationMessage from database",
+				ErrorCodes:                   []fenixExecutionServerGrpcApi.ErrorCodesEnum{fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM},
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			},
+			TestCasesInExecutionQueue: nil,
+		}
+
+		// Exiting
+		return responseMessage, nil
+	}
+
+	// Create the response to caller
+	responseMessage = &fenixExecutionServerGrpcApi.ListTestCasesInExecutionQueueResponse{
+		AckNackResponse: &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:                      true,
+			Comments:                     "",
+			ErrorCodes:                   nil,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+		},
+		TestCasesInExecutionQueue: testCaseExecutionBasicInformation,
+	}
+
+	return responseMessage, nil
+}

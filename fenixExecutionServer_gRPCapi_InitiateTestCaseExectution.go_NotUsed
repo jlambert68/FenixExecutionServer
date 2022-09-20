@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGuiGrpcApi/go_grpc_api"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 )
 
 // InitiateTestCaseExecution - *********************************************************************
 // Initiate a TestExecution from a TestCase and a TestDataSet
-func (s *fenixExecutionServerGuiGrpcServicesServer) InitiateTestCaseExecution(ctx context.Context, initiateSingleTestCaseExecutionRequestMessage *fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionRequestMessage) (*fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionResponseMessage, error) {
+func (s *fenixExecutionServerGuiGrpcServicesServer) InitiateTestCaseExecution(ctx context.Context, initiateSingleTestCaseExecutionRequestMessage *fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionRequestMessage) (*fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionResponseMessage, error) {
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "a93fb1bd-1a5b-4417-80c3-082d34267c06",
@@ -23,7 +23,7 @@ func (s *fenixExecutionServerGuiGrpcServicesServer) InitiateTestCaseExecution(ct
 	if ackNackRespons != nil {
 		// Not correct proto-file version is used
 		// Exiting
-		initiateSingleTestCaseExecutionResponseMessage := fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
+		initiateSingleTestCaseExecutionResponseMessage := fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
 			TestCaseExecutionUuid: "",
 			AckNackResponse:       ackNackRespons,
 		}

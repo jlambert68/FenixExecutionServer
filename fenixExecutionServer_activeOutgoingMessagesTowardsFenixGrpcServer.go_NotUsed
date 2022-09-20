@@ -4,8 +4,8 @@ import (
 	"FenixClientServer/common_config"
 	"crypto/tls"
 	"fmt"
-	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/Client/fenixExecutionServerGuiGrpcApi/go_grpc_api"
-	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/Fenix/fenixExecutionServerGuiGrpcApi/go_grpc_api"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/Client/fenixExecutionServerGrpcApi/go_grpc_api"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/Fenix/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -57,7 +57,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 		}).Info("gRPC connection OK to FenixTestDataSyncServer")
 
 		// Creates a new Clients
-		fenixGuiTestCaseBuilderServerClient = fenixExecutionServerGuiGrpcApi.NewFenixTestDataGrpcServicesClient(remoteFenixTestDataSyncServerConnection)
+		fenixGuiTestCaseBuilderServerClient = fenixExecutionServerGrpcApi.NewFenixTestDataGrpcServicesClient(remoteFenixTestDataSyncServerConnection)
 
 	}
 }
@@ -76,7 +76,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	var maxValue int32
 	maxValue = 0
 
-	for _, v := range fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum_value {
+	for _, v := range fenixExecutionServerGrpcApi.CurrentFenixTestDataProtoFileVersionEnum_value {
 		if v > maxValue {
 			maxValue = v
 		}
@@ -100,7 +100,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	var maxValue int32
 	maxValue = 0
 
-	for _, v := range fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum_value {
+	for _, v := range fenixExecutionServerGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum_value {
 		if v > maxValue {
 			maxValue = v
 		}
@@ -114,13 +114,13 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 // ********************************************************************************************************************
 // Check if Calling 'system' (Fenix or Clients own methods) is using correct proto-file version
 func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) isCallerUsingCorrectProtoFileVersion(
-	usedProtoFileVersion fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum) (
+	usedProtoFileVersion fenixExecutionServerGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum) (
 	clientUseCorrectProtoFileVersion bool,
-	protoFileExpected fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum,
-	protoFileUsed fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum) {
+	protoFileExpected fenixExecutionServerGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum,
+	protoFileUsed fenixExecutionServerGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum) {
 
 	protoFileUsed = usedProtoFileVersion
-	protoFileExpected = fenixExecutionServerGuiGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum(
+	protoFileExpected = fenixExecutionServerGrpcApi.CurrentFenixClientTestDataProtoFileVersionEnum(
 		fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion())
 
 	// Check if correct proto files is used
@@ -137,9 +137,9 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 }
 
 // Generate the current MerkleTree for Testdata supported by the client
-func getCurrentTestDataMerkleTree() fenixExecutionServerGuiGrpcApi.MerkleTreeMessage {
+func getCurrentTestDataMerkleTree() fenixExecutionServerGrpcApi.MerkleTreeMessage {
 
-	var merkleTreeMessage fenixExecutionServerGuiGrpcApi.MerkleTreeMessage
+	var merkleTreeMessage fenixExecutionServerGrpcApi.MerkleTreeMessage
 
 	return merkleTreeMessage
 }
@@ -147,10 +147,10 @@ func getCurrentTestDataMerkleTree() fenixExecutionServerGuiGrpcApi.MerkleTreeMes
 // ********************************************************************************************************************
 
 // RegisterTestDataClient  - Register the client at Fenix by calling Fenix's gPRC server
-func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) createTestDataHeaderMessage() *fenixExecutionServerGuiGrpcApi.TestDataHeadersMessage {
+func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_struct) createTestDataHeaderMessage() *fenixExecutionServerGrpcApi.TestDataHeadersMessage {
 
-	var testDataHeaderItemMessage *fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage
-	var testDataHeaderItemsMessage []*fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage
+	var testDataHeaderItemMessage *fenixExecutionServerGrpcApi.TestDataHeaderItemMessage
+	var testDataHeaderItemsMessage []*fenixExecutionServerGrpcApi.TestDataHeaderItemMessage
 	_, _, testDataHeaders := common_config.LoadAndProcessFile(testFile)
 
 	var testDataHeaderItemMessageHashArray []string
@@ -162,15 +162,15 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	// Create variables to be sent to FenixTestDataSyncServer
 	for _, header := range headerData {
 		if header != "TestDataHash" {
-			var headerFilterValues []*fenixExecutionServerGuiGrpcApi.HeaderFilterValue
-			headerFilterValue := &fenixExecutionServerGuiGrpcApi.HeaderFilterValue{HeaderFilterValuesAsString: "value 1"}
+			var headerFilterValues []*fenixExecutionServerGrpcApi.HeaderFilterValue
+			headerFilterValue := &fenixExecutionServerGrpcApi.HeaderFilterValue{HeaderFilterValuesAsString: "value 1"}
 			headerFilterValues = append(headerFilterValues, headerFilterValue)
-			testDataHeaderItemMessage = &fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage{
+			testDataHeaderItemMessage = &fenixExecutionServerGrpcApi.TestDataHeaderItemMessage{
 				TestDataHeaderItemMessageHash:       "XXX Is set below in the code XXX",
 				HeaderLabel:                         header,
 				HeaderShouldBeUsedForTestDataFilter: false,
 				HeaderIsMandatoryInTestDataFilter:   false,
-				HeaderSelectionType:                 fenixExecutionServerGuiGrpcApi.HeaderSelectionTypeEnum_HEADER_IS_SINGLE_SELECT,
+				HeaderSelectionType:                 fenixExecutionServerGrpcApi.HeaderSelectionTypeEnum_HEADER_IS_SINGLE_SELECT,
 				HeaderFilterValues:                  headerFilterValues,
 			}
 			// Add hash value to 'TestDataHeaderItemMessageHash'
@@ -188,11 +188,11 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	testDataHeaderItemMessageHash := common_config.HashValues(testDataHeaderItemMessageHashArray, false)
 
 	// Header message to be set to  TestDataSyncServer
-	testDataHeaderMessage := &fenixExecutionServerGuiGrpcApi.TestDataHeadersMessage{
+	testDataHeaderMessage := &fenixExecutionServerGrpcApi.TestDataHeadersMessage{
 		TestDataClientUuid:      fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
 		TestDataHeaderItemsHash: testDataHeaderItemMessageHash,
 		TestDataHeaderItems:     testDataHeaderItemsMessage,
-		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
 			fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
 	}
 
@@ -209,13 +209,13 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	var returnMessageAckNack bool
 
 	// Set up variables to be sent to FenixTestDataSyncServer
-	TestDataClientInformationMessage := fenixExecutionServerGuiGrpcApi.TestDataClientInformationMessage{
+	TestDataClientInformationMessage := fenixExecutionServerGrpcApi.TestDataClientInformationMessage{
 		TestDataClientUuid:           fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
 		TestDomainUuid:               fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_DomainUuid,
 		TestDomainName:               fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_DomainName,
 		TestDataClientIpAddress:      common_config.ClientTestDataSyncServerAddress,
 		TestDataClientPort:           string(rune(common_config.ClientTestDataSyncServerPort)),
-		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
 	}
 
 	// Set up connection to Server
@@ -272,12 +272,12 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	merkleFilterPathHash := common_config.HashSingleValue(fenixGuiTestCaseBuilderServerObject.merkleFilterPath)
 
 	// Set up variables to be sent to FenixTestDataSyncServer
-	merkleHashMessage := fenixExecutionServerGuiGrpcApi.MerkleHashMessage{
+	merkleHashMessage := fenixExecutionServerGrpcApi.MerkleHashMessage{
 		TestDataClientUuid: fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
 		MerkleHash:         merkleRootHash,
 		MerkleFilter:       fenixGuiTestCaseBuilderServerObject.merkleFilterPath,
 		MerkleFilterHash:   merkleFilterPathHash,
-		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
 			fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
 	}
 
@@ -336,7 +336,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	var ctx context.Context
 	var returnMessageAckNack bool
 
-	var merkleTreeNodeMessages []*fenixExecutionServerGuiGrpcApi.MerkleTreeNodeMessage
+	var merkleTreeNodeMessages []*fenixExecutionServerGrpcApi.MerkleTreeNodeMessage
 
 	// Set up variables to be sent to FenixTestDataSyncServer
 	_, merkleTree, _ := common_config.LoadAndProcessFile(testFile)
@@ -352,7 +352,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	merkleTreeNRows := merkleTree.Nrow()
 	for rowCounter := 0; rowCounter < merkleTreeNRows; rowCounter++ {
 		merkleLevel, _ := merkleTree.Elem(rowCounter, 0).Int()
-		merkleTreeNodeMessage := &fenixExecutionServerGuiGrpcApi.MerkleTreeNodeMessage{
+		merkleTreeNodeMessage := &fenixExecutionServerGrpcApi.MerkleTreeNodeMessage{
 			NodeLevel:     uint32(merkleLevel),                     //MerkleLevel (0)
 			NodeName:      merkleTree.Elem(rowCounter, 1).String(), // MerkleName (1)
 			NodePath:      merkleTree.Elem(rowCounter, 4).String(), // MerkleFilterPath (4)
@@ -362,10 +362,10 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 
 		merkleTreeNodeMessages = append(merkleTreeNodeMessages, merkleTreeNodeMessage)
 	}
-	merkleTreeMessage := &fenixExecutionServerGuiGrpcApi.MerkleTreeMessage{
+	merkleTreeMessage := &fenixExecutionServerGrpcApi.MerkleTreeMessage{
 		TestDataClientUuid: fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
 		MerkleTreeNodes:    merkleTreeNodeMessages,
-		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
 			fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
 	}
 
@@ -420,8 +420,8 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	var ctx context.Context
 	var returnMessageAckNack bool
 
-	var testDataHeaderItemMessage *fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage
-	var testDataHeaderItemsMessage []*fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage
+	var testDataHeaderItemMessage *fenixExecutionServerGrpcApi.TestDataHeaderItemMessage
+	var testDataHeaderItemsMessage []*fenixExecutionServerGrpcApi.TestDataHeaderItemMessage
 	_, _, testDataHeaders := common_config.LoadAndProcessFile(testFile)
 	var testDataHeaderItemMessageHashArray []string
 
@@ -432,15 +432,15 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	// Create variables to be sent to FenixTestDataSyncServer
 	for _, header := range headerData {
 		if header != "TestDataHash" {
-			var headerFilterValues []*fenixExecutionServerGuiGrpcApi.HeaderFilterValue
-			headerFilterValue := &fenixExecutionServerGuiGrpcApi.HeaderFilterValue{HeaderFilterValuesAsString: "value 1"}
+			var headerFilterValues []*fenixExecutionServerGrpcApi.HeaderFilterValue
+			headerFilterValue := &fenixExecutionServerGrpcApi.HeaderFilterValue{HeaderFilterValuesAsString: "value 1"}
 			headerFilterValues = append(headerFilterValues, headerFilterValue)
-			testDataHeaderItemMessage = &fenixExecutionServerGuiGrpcApi.TestDataHeaderItemMessage{
+			testDataHeaderItemMessage = &fenixExecutionServerGrpcApi.TestDataHeaderItemMessage{
 				TestDataHeaderItemMessageHash:       "XXX Is set below in the code XXX",
 				HeaderLabel:                         header,
 				HeaderShouldBeUsedForTestDataFilter: false,
 				HeaderIsMandatoryInTestDataFilter:   false,
-				HeaderSelectionType:                 fenixExecutionServerGuiGrpcApi.HeaderSelectionTypeEnum_HEADER_IS_SINGLE_SELECT,
+				HeaderSelectionType:                 fenixExecutionServerGrpcApi.HeaderSelectionTypeEnum_HEADER_IS_SINGLE_SELECT,
 				HeaderFilterValues:                  headerFilterValues,
 			}
 			// Add hash value to 'TestDataHeaderItemMessageHash'
@@ -458,10 +458,10 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	testDataHeaderItemMessageHash := common_config.HashValues(testDataHeaderItemMessageHashArray, false)
 
 	// HeaderHash message to be set to TestDataSyncServer
-	testDataHeaderMessage := &fenixExecutionServerGuiGrpcApi.TestDataHeaderHashMessage{
+	testDataHeaderMessage := &fenixExecutionServerGrpcApi.TestDataHeaderHashMessage{
 		TestDataClientUuid:      fenixGuiTestCaseBuilderServerObject.fenixGuiTestCaseBuilderServer_TestDataClientUuid,
 		TestDataHeaderItemsHash: testDataHeaderItemMessageHash,
-		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(
 			fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
 	}
 
@@ -575,7 +575,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	testdataRowsMessages := fenixGuiTestCaseBuilderServerObject.createRowsMessage(merkleNodeNames)
 
 	// Create the message that will all messages to be in the stream
-	var testdataRowsMessagesStreamContainer []*fenixExecutionServerGuiGrpcApi.TestdataRowsMessages
+	var testdataRowsMessagesStreamContainer []*fenixExecutionServerGrpcApi.TestdataRowsMessages
 	testdataRowsMessagesStreamContainer = append(testdataRowsMessagesStreamContainer, testdataRowsMessages)
 
 	/*
@@ -683,9 +683,9 @@ func (fenixGuiTestCaseBuilderServerObject *fenixGuiTestCaseBuilderServerObject_s
 	fenixGuiTestCaseBuilderServerObject.SetConnectionToFenixTestDataSyncServer()
 
 	// Create the message with all test data to be sent to Fenix
-	emptyParameter := &fenixExecutionServerGuiGrpcApi.EmptyParameter{
+	emptyParameter := &fenixExecutionServerGrpcApi.EmptyParameter{
 
-		ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixTestDataProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixProtoFileVersion()),
 	}
 
 	// Do gRPC-call

@@ -1,7 +1,7 @@
 package main
 
 import (
-	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGuiGrpcApi/go_grpc_api"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
@@ -18,13 +18,13 @@ var fenixExecutionServerObject *fenixExecutionServerObjectStruct
 
 // gRPC variables
 var (
-	registerFenixExecutionServerGuiGrpcServicesServer *grpc.Server // registerFenixExecutionServerGuiGrpcServicesServer *grpc.Server
-	lis                                               net.Listener
+	registerFenixExecutionServerGrpcServicesServer *grpc.Server
+	lis                                            net.Listener
 )
 
 // gRPC Server used for register clients Name, Ip and Por and Clients Test Enviroments and Clients Test Commandst
-type fenixExecutionServerGuiGrpcServicesServer struct {
-	fenixExecutionServerGuiGrpcApi.UnimplementedFenixExecutionServerGuiGrpcServicesServer
+type fenixExecutionServerGrpcServicesServer struct {
+	fenixExecutionServerGrpcApi.UnimplementedFenixExecutionServerGrpcServicesServer
 }
 
 //TODO FIXA DENNA PATH, HMMM borde köra i DB framöver

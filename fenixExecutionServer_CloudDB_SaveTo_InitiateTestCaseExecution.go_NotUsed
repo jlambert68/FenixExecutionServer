@@ -8,7 +8,7 @@ import (
 	"fmt"
 	uuidGenerator "github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
-	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGuiGrpcApi/go_grpc_api"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixTestCaseBuilderServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixTestCaseBuilderServer/fenixTestCaseBuilderServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
@@ -17,7 +17,7 @@ import (
 )
 
 // Prepare for Saving the Initiation of a new TestCaseExecution in the CloudDB
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) prepareInitiateTestCaseExecutionSaveToCloudDB(initiateSingleTestCaseExecutionRequestMessage *fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionRequestMessage) (initiateSingleTestCaseExecutionResponseMessage *fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionResponseMessage) {
+func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) prepareInitiateTestCaseExecutionSaveToCloudDB(initiateSingleTestCaseExecutionRequestMessage *fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionRequestMessage) (initiateSingleTestCaseExecutionResponseMessage *fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionResponseMessage) {
 
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
@@ -28,20 +28,20 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 		}).Error("Problem to do 'DbPool.Begin'  in 'prepareInitiateTestCaseExecutionSaveToCloudDB'")
 
 		// Set Error codes to return message
-		var errorCodes []fenixExecutionServerGuiGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionServerGuiGrpcApi.ErrorCodesEnum
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
 
-		errorCode = fenixExecutionServerGuiGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
 		errorCodes = append(errorCodes, errorCode)
 
 		// Create Return message
-		initiateSingleTestCaseExecutionResponseMessage = &fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
+		initiateSingleTestCaseExecutionResponseMessage = &fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
 			TestCaseExecutionUuid: "",
-			AckNackResponse: &fenixExecutionServerGuiGrpcApi.AckNackResponse{
+			AckNackResponse: &fenixExecutionServerGrpcApi.AckNackResponse{
 				AckNack:                      false,
 				Comments:                     "Problem when saving to database",
 				ErrorCodes:                   errorCodes,
-				ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
 			},
 		}
 
@@ -61,20 +61,20 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 	if err != nil {
 
 		// Set Error codes to return message
-		var errorCodes []fenixExecutionServerGuiGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionServerGuiGrpcApi.ErrorCodesEnum
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
 
-		errorCode = fenixExecutionServerGuiGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
 		errorCodes = append(errorCodes, errorCode)
 
 		// Create Return message
-		initiateSingleTestCaseExecutionResponseMessage = &fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
+		initiateSingleTestCaseExecutionResponseMessage = &fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
 			TestCaseExecutionUuid: "",
-			AckNackResponse: &fenixExecutionServerGuiGrpcApi.AckNackResponse{
+			AckNackResponse: &fenixExecutionServerGrpcApi.AckNackResponse{
 				AckNack:                      false,
 				Comments:                     "Problem when Loading TestCase Basic Information from database",
 				ErrorCodes:                   errorCodes,
-				ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
 			},
 		}
 
@@ -83,7 +83,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 	//TODO Load TestCase-data  from Database
 
 	// Prepare TestDataExecution-data to be saved in database
-	testCaseExecutionToBeSaved := fenixExecutionServerGuiGrpcApi.TestCaseExecutionBasicInformationMessage{
+	testCaseExecutionToBeSaved := fenixExecutionServerGrpcApi.TestCaseExecutionBasicInformationMessage{
 		DomainUuid:                          testCaseToExecuteBasicInformation.domainUuid,
 		DomainName:                          testCaseToExecuteBasicInformation.domainName,
 		TestSuiteUuid:                       "",
@@ -98,7 +98,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 		TestCaseExecutionVersion:            1,
 		PlacedOnTestExecutionQueueTimeStamp: timestamppb.New(placedOnTestExecutionQueueTimeStamp),
 		TestDataSetUuid:                     initiateSingleTestCaseExecutionRequestMessage.TestDataSetUuid,
-		ExecutionPriority:                   fenixExecutionServerGuiGrpcApi.ExecutionPriorityEnum_HIGH_SINGLE_TESTCASE,
+		ExecutionPriority:                   fenixExecutionServerGrpcApi.ExecutionPriorityEnum_HIGH_SINGLE_TESTCASE,
 	}
 
 	// Save the Initiation of a new TestCaseExecution in the CloudDB
@@ -114,20 +114,20 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 		txn.Rollback(context.Background())
 
 		// Set Error codes to return message
-		var errorCodes []fenixExecutionServerGuiGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionServerGuiGrpcApi.ErrorCodesEnum
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
 
-		errorCode = fenixExecutionServerGuiGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
 		errorCodes = append(errorCodes, errorCode)
 
 		// Create Return message
-		initiateSingleTestCaseExecutionResponseMessage = &fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
+		initiateSingleTestCaseExecutionResponseMessage = &fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
 			TestCaseExecutionUuid: "",
-			AckNackResponse: &fenixExecutionServerGuiGrpcApi.AckNackResponse{
+			AckNackResponse: &fenixExecutionServerGrpcApi.AckNackResponse{
 				AckNack:                      false,
 				Comments:                     "Problem when saving to database",
 				ErrorCodes:                   errorCodes,
-				ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
 			},
 		}
 
@@ -135,13 +135,13 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 
 	}
 
-	initiateSingleTestCaseExecutionResponseMessage = &fenixExecutionServerGuiGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
+	initiateSingleTestCaseExecutionResponseMessage = &fenixExecutionServerGrpcApi.InitiateSingleTestCaseExecutionResponseMessage{
 		TestCaseExecutionUuid: testCaseExecutionUuid,
-		AckNackResponse: &fenixExecutionServerGuiGrpcApi.AckNackResponse{
+		AckNackResponse: &fenixExecutionServerGrpcApi.AckNackResponse{
 			AckNack:                      true,
 			Comments:                     "",
-			ErrorCodes:                   []fenixExecutionServerGuiGrpcApi.ErrorCodesEnum{},
-			ProtoFileVersionUsedByClient: fenixExecutionServerGuiGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ErrorCodes:                   []fenixExecutionServerGrpcApi.ErrorCodesEnum{},
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
 		},
 	}
 
@@ -149,7 +149,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 }
 
 // Save the newly created TestExecution in database
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) saveInitiateTestCaseExecutionSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionToBeSaved *fenixExecutionServerGuiGrpcApi.TestCaseExecutionBasicInformationMessage) (err error) {
+func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) saveInitiateTestCaseExecutionSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionToBeSaved *fenixExecutionServerGrpcApi.TestCaseExecutionBasicInformationMessage) (err error) {
 
 	fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
 		"Id": "653795a1-d686-4823-9b5e-909dc37acc7d",
@@ -179,8 +179,8 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) sav
 
 	// Check if this is a SingleTestCase-execution. Then use UUIDs from TestCase in Suite-uuid-parts
 	var suiteInformationExists bool
-	if testCaseExecutionToBeSaved.ExecutionPriority == fenixExecutionServerGuiGrpcApi.ExecutionPriorityEnum_HIGH_SINGLE_TESTCASE ||
-		testCaseExecutionToBeSaved.ExecutionPriority == fenixExecutionServerGuiGrpcApi.ExecutionPriorityEnum_MEDIUM_MULTIPLE_TESTCASES {
+	if testCaseExecutionToBeSaved.ExecutionPriority == fenixExecutionServerGrpcApi.ExecutionPriorityEnum_HIGH_SINGLE_TESTCASE ||
+		testCaseExecutionToBeSaved.ExecutionPriority == fenixExecutionServerGrpcApi.ExecutionPriorityEnum_MEDIUM_MULTIPLE_TESTCASES {
 
 		suiteInformationExists = false
 	} else {

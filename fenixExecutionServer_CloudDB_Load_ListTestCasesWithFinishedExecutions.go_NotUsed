@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
-	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGuiGrpcApi/go_grpc_api"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) listTestCasesWithFinishedExecutionsLoadFromCloudDB(userID string) (testCasesWithFinishedExecutions []*fenixExecutionServerGuiGrpcApi.TestCaseWithFinishedExecutionMessage, err error) {
+func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) listTestCasesWithFinishedExecutionsLoadFromCloudDB(userID string) (testCasesWithFinishedExecutions []*fenixExecutionServerGrpcApi.TestCaseWithFinishedExecutionMessage, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -47,9 +47,9 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) lis
 	for rows.Next() {
 
 		// Initiate a new variable to store the data
-		testCaseUnderExecution := fenixExecutionServerGuiGrpcApi.TestCaseWithFinishedExecutionMessage{}
-		testCaseExecutionBasicInformation := fenixExecutionServerGuiGrpcApi.TestCaseExecutionBasicInformationMessage{}
-		testCaseExecutionDetails := fenixExecutionServerGuiGrpcApi.TestCaseExecutionDetailsMessage{}
+		testCaseUnderExecution := fenixExecutionServerGrpcApi.TestCaseWithFinishedExecutionMessage{}
+		testCaseExecutionBasicInformation := fenixExecutionServerGrpcApi.TestCaseExecutionBasicInformationMessage{}
+		testCaseExecutionDetails := fenixExecutionServerGrpcApi.TestCaseExecutionDetailsMessage{}
 
 		err := rows.Scan(
 			// TestCaseExecutionBasicInformationMessage
@@ -88,11 +88,11 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) lis
 
 		// Convert temp-variables into gRPC-variables
 		testCaseExecutionBasicInformation.PlacedOnTestExecutionQueueTimeStamp = timestamppb.New(tempPlacedOnTestExecutionQueueTimeStamp)
-		testCaseExecutionBasicInformation.ExecutionPriority = fenixExecutionServerGuiGrpcApi.ExecutionPriorityEnum(tempExecutionPriority)
+		testCaseExecutionBasicInformation.ExecutionPriority = fenixExecutionServerGrpcApi.ExecutionPriorityEnum(tempExecutionPriority)
 
 		testCaseExecutionDetails.ExecutionStartTimeStamp = timestamppb.New(tempExecutionStartTimeStamp)
 		testCaseExecutionDetails.ExecutionStopTimeStamp = timestamppb.New(tempExecutionStopTimeStamp)
-		testCaseExecutionDetails.TestCaseExecutionStatus = fenixExecutionServerGuiGrpcApi.TestCaseExecutionStatusEnum(tempTestCaseExecutionStatus)
+		testCaseExecutionDetails.TestCaseExecutionStatus = fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum(tempTestCaseExecutionStatus)
 
 		// Build 'TestCaseWithFinishedExecutionMessage'
 		testCaseUnderExecution.TestCaseExecutionBasicInformation = &testCaseExecutionBasicInformation

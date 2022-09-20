@@ -2,7 +2,7 @@ package main
 
 import (
 	"FenixExecutionServer/common_config"
-	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGuiGrpcApi/go_grpc_api"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -45,17 +45,17 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) Ini
 		"Id": "b0ccffb5-4367-464c-a3bc-460cafed16cb",
 	}).Info("Starting Backend gRPC Server")
 
-	registerFenixExecutionServerGuiGrpcServicesServer = grpc.NewServer()
-	fenixExecutionServerGuiGrpcApi.RegisterFenixExecutionServerGuiGrpcServicesServer(registerFenixExecutionServerGuiGrpcServicesServer, &fenixExecutionServerGuiGrpcServicesServer{})
+	registerFenixExecutionServerGrpcServicesServer = grpc.NewServer()
+	fenixExecutionServerGrpcApi.RegisterFenixExecutionServerGrpcServicesServer(registerFenixExecutionServerGrpcServicesServer, &fenixExecutionServerGrpcServicesServer{})
 
 	// Register RouteGuide on the same server.
-	reflection.Register(registerFenixExecutionServerGuiGrpcServicesServer)
+	reflection.Register(registerFenixExecutionServerGrpcServicesServer)
 
 	fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
 		"Id": "e843ece9-b707-4c60-b1d8-14464305e68f",
 		"common_config.FenixExecutionGuiServerPort: ": common_config.FenixExecutionGuiServerPort,
-	}).Info("registerFenixExecutionServerGuiGrpcServicesServer for TestExecution-GUI Backend Server started")
-	registerFenixExecutionServerGuiGrpcServicesServer.Serve(lis)
+	}).Info("registerFenixExecutionServerGrpcServicesServer for TestExecution-GUI Backend Server started")
+	registerFenixExecutionServerGrpcServicesServer.Serve(lis)
 	//}()
 
 }
@@ -63,8 +63,8 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) Ini
 // StopGrpcServer - Stop Backend gRPC-server
 func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) StopGrpcServer() {
 
-	fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{}).Info("Gracefully stop for: registerFenixExecutionServerGuiGrpcServicesServer")
-	registerFenixExecutionServerGuiGrpcServicesServer.GracefulStop()
+	fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{}).Info("Gracefully stop for: registerFenixExecutionServerGrpcServicesServer")
+	registerFenixExecutionServerGrpcServicesServer.GracefulStop()
 
 	fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
 		"common_config.FenixExecutionGuiServerPort: ": common_config.FenixExecutionGuiServerPort,
