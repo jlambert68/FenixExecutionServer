@@ -70,7 +70,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 
 // ReportCurrentTestInstructionExecutionResult - *********************************************************************
 // During a TestInstruction execution the Client use this to inform the current of the execution result to the Server
-func (s *fenixExecutionServerGrpcServicesServer) ReportCurrentTestInstructionExecutionResult(currentTestInstructionExecutionResultMessageStream fenixExecutionServerGrpcApi.FenixExecutionServerGrpcServices_ReportCurrentTestInstructionExecutionResultServer) (*fenixExecutionServerGrpcApi.AckNackResponse, error) {
+func (s *fenixExecutionServerGrpcServicesServer) ReportCurrentTestInstructionExecutionResult(currentTestInstructionExecutionResultMessageStream fenixExecutionServerGrpcApi.FenixExecutionServerGrpcServices_ReportCurrentTestInstructionExecutionResultServer) error {
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "8a01617a-6cfc-4684-98de-52631edfd2c4",
@@ -105,12 +105,13 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCurrentTestInstructionExe
 		AckNack:  true,
 		Comments: ""}
 
-	return returnMessage, nil
+	return currentTestInstructionExecutionResultMessageStream.SendAndClose(returnMessage)
+
 }
 
 // SendLogPostForExecution - *********************************************************************
 // During the execution the Client can send log information that can be shown to the user
-func (s *fenixExecutionServerGrpcServicesServer) SendLogPostForExecution(logPostsMessageStream fenixExecutionServerGrpcApi.FenixExecutionServerGrpcServices_SendLogPostForExecutionServer) (*fenixExecutionServerGrpcApi.AckNackResponse, error) {
+func (s *fenixExecutionServerGrpcServicesServer) SendLogPostForExecution(logPostsMessageStream fenixExecutionServerGrpcApi.FenixExecutionServerGrpcServices_SendLogPostForExecutionServer) error {
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "ce04f087-1721-44f9-8534-e4c8ae87f18d",
@@ -145,6 +146,6 @@ func (s *fenixExecutionServerGrpcServicesServer) SendLogPostForExecution(logPost
 		AckNack:  true,
 		Comments: ""}
 
-	return returnMessage, nil
+	return logPostsMessageStream.SendAndClose(returnMessage)
 
 }
