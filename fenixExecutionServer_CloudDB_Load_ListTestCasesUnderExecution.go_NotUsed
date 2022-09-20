@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) listTestCasesUnderExecutionLoadFromCloudDB(userID string) (testCaseUnderExecutionMessage []*fenixExecutionServerGrpcApi.TestCaseUnderExecutionMessage, err error) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) listTestCasesUnderExecutionLoadFromCloudDB(userID string) (testCaseUnderExecutionMessage []*fenixExecutionServerGrpcApi.TestCaseUnderExecutionMessage, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -23,7 +23,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) lis
 	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
-		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"Id":           "f5b88d14-dbdb-4cb3-a33a-2b71ab1eeda9",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -74,7 +74,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) lis
 		)
 
 		if err != nil {
-			fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 				"Id":           "a1833e32-5ad5-468d-8e5f-ca6280d58099",
 				"Error":        err,
 				"sqlToExecute": sqlToExecute,

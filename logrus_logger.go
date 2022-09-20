@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) InitLogger(filename string) {
-	fenixGuiTestCaseBuilderServerObject.logger = logrus.StandardLogger()
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) InitLogger(filename string) {
+	fenixExecutionServerObject.logger = logrus.StandardLogger()
 
 	switch common_config.LoggingLevel {
 
@@ -39,12 +39,12 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) Ini
 	//If no file then set standard out
 
 	if filename == "" {
-		fenixGuiTestCaseBuilderServerObject.logger.Out = os.Stdout
+		fenixExecutionServerObject.logger.Out = os.Stdout
 
 	} else {
 		file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0666)
 		if err == nil {
-			fenixGuiTestCaseBuilderServerObject.logger.Out = file
+			fenixExecutionServerObject.logger.Out = file
 		} else {
 			log.Println("Failed to log to file, using default stderr")
 		}

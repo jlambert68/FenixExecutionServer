@@ -11,17 +11,17 @@ import (
 )
 
 // Generate Google access token. Used when running in GCP
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) generateGCPAccessToken(ctx context.Context) (appendedCtx context.Context, returnAckNack bool, returnMessage string) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateGCPAccessToken(ctx context.Context) (appendedCtx context.Context, returnAckNack bool, returnMessage string) {
 
 	// Only create the token if there is none, or it has expired
-	if fenixGuiTestCaseBuilderServerObject.gcpAccessToken == nil || fenixGuiTestCaseBuilderServerObject.gcpAccessToken.Expiry.Before(time.Now()) {
+	if fenixExecutionServerObject.gcpAccessToken == nil || fenixExecutionServerObject.gcpAccessToken.Expiry.Before(time.Now()) {
 
 		// Create an identity token.
 		// With a global TokenSource tokens would be reused and auto-refreshed at need.
 		// A given TokenSource is specific to the audience.
 		tokenSource, err := idtoken.NewTokenSource(ctx, "https://"+common_config.FenixTestDataSyncServerAddress)
 		if err != nil {
-			fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 				"ID":  "8ba622d8-b4cd-46c7-9f81-d9ade2568eca",
 				"err": err,
 			}).Error("Couldn't generate access token")
@@ -31,30 +31,30 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) gen
 
 		token, err := tokenSource.Token()
 		if err != nil {
-			fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 				"ID":  "0cf31da5-9e6b-41bc-96f1-6b78fb446194",
 				"err": err,
 			}).Error("Problem getting the token")
 
 			return nil, false, "Problem getting the token"
 		} else {
-			fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 				"ID":    "8b1ca089-0797-4ee6-bf9d-f9b06f606ae9",
 				"token": token,
 			}).Debug("Got Bearer Token")
 		}
 
-		fenixGuiTestCaseBuilderServerObject.gcpAccessToken = token
+		fenixExecutionServerObject.gcpAccessToken = token
 
 	}
 
-	fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"ID": "cd124ca3-87bb-431b-9e7f-e044c52b4960",
-		"fenixExecutionServerObject.gcpAccessToken": fenixGuiTestCaseBuilderServerObject.gcpAccessToken,
+		"fenixExecutionServerObject.gcpAccessToken": fenixExecutionServerObject.gcpAccessToken,
 	}).Debug("Will use Bearer Token")
 
 	// Add token to gRPC Request.
-	appendedCtx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+fenixGuiTestCaseBuilderServerObject.gcpAccessToken.AccessToken)
+	appendedCtx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+fenixExecutionServerObject.gcpAccessToken.AccessToken)
 
 	return appendedCtx, true, ""
 
@@ -62,14 +62,14 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) gen
 
 // ********************************************************************************************************************
 // Check if Calling Client is using correct proto-file version
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) isClientUsingCorrectTestDataProtoFileVersion(callingClientUuid string, usedProtoFileVersion fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum) (returnMessage *fenixExecutionServerGrpcApi.AckNackResponse) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) isClientUsingCorrectTestDataProtoFileVersion(callingClientUuid string, usedProtoFileVersion fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum) (returnMessage *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	var clientUseCorrectProtoFileVersion bool
 	var protoFileExpected fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum
 	var protoFileUsed fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum
 
 	protoFileUsed = usedProtoFileVersion
-	protoFileExpected = fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion())
+	protoFileExpected = fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion())
 
 	// Check if correct proto files is used
 	if protoFileExpected == protoFileUsed {
@@ -97,7 +97,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) isC
 			ProtoFileVersionUsedByClient: protoFileExpected,
 		}
 
-		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"id": "513dd8fb-a0bb-4738-9a0b-b7eaf7bb8adb",
 		}).Debug("Wrong proto file used. Expected: '" + protoFileExpected.String() + "', but got: '" + protoFileUsed.String() + "' for Client: " + callingClientUuid)
 
@@ -111,7 +111,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) isC
 
 // ********************************************************************************************************************
 // Get the highest FenixProtoFileVersionEnumeration
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) getHighestFenixTestDataProtoFileVersion() int32 {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) getHighestFenixTestDataProtoFileVersion() int32 {
 
 	// Check if there already is a 'highestFenixProtoFileVersion' saved, if so use that one
 	if highestFenixProtoFileVersion != -1 {

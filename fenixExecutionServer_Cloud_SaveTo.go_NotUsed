@@ -10,12 +10,12 @@ import (
 )
 
 // Prepare to Save Pinned TestInstructions and TestInstructionContainers to CloudDB
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) prepareSavePinnedTestInstructionsAndPinnedTestInstructionContainersToCloudDB(pinnedTestInstructionsAndTestContainersMessage *fenixTestCaseBuilderServerGrpcApi.SavePinnedTestInstructionsAndPreCreatedTestInstructionContainersMessage) (returnMessage *fenixTestCaseBuilderServerGrpcApi.AckNackResponse) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareSavePinnedTestInstructionsAndPinnedTestInstructionContainersToCloudDB(pinnedTestInstructionsAndTestContainersMessage *fenixTestCaseBuilderServerGrpcApi.SavePinnedTestInstructionsAndPreCreatedTestInstructionContainersMessage) (returnMessage *fenixTestCaseBuilderServerGrpcApi.AckNackResponse) {
 
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
 	if err != nil {
-		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"id":    "306edce0-7a5a-4a0f-992b-5c9b69b0bcc6",
 			"error": err,
 		}).Error("Problem to do 'DbPool.Begin' for user: ", pinnedTestInstructionsAndTestContainersMessage.UserId)
@@ -32,7 +32,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixTestCaseBuilderServerGrpcApi.CurrentFenixTestCaseBuilderProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixTestCaseBuilderServerGrpcApi.CurrentFenixTestCaseBuilderProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return returnMessage
@@ -40,10 +40,10 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 	defer txn.Commit(context.Background())
 
 	// Save Pinned TestInstructions- and TestInstructionContainer-data
-	err = fenixGuiTestCaseBuilderServerObject.savePinnedTestInstructionsAndTestContainersToCloudDB(txn, pinnedTestInstructionsAndTestContainersMessage)
+	err = fenixExecutionServerObject.savePinnedTestInstructionsAndTestContainersToCloudDB(txn, pinnedTestInstructionsAndTestContainersMessage)
 	if err != nil {
 
-		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"id":    "07b91f77-db17-484f-8448-e53375df94ce",
 			"error": err,
 		}).Error("Couldn't Save Pinned TestInstructions and pre-created TestInstructionContainer to CloudDB for user: ", pinnedTestInstructionsAndTestContainersMessage.UserId)
@@ -73,7 +73,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixTestCaseBuilderServerGrpcApi.CurrentFenixTestCaseBuilderProtoFileVersionEnum(fenixGuiTestCaseBuilderServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixTestCaseBuilderServerGrpcApi.CurrentFenixTestCaseBuilderProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return returnMessage
@@ -84,14 +84,14 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) pre
 }
 
 // Save Pinned TestInstructions and TestInstructionContainers to CloudDB
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) savePinnedTestInstructionsAndTestContainersToCloudDB(dbTransaction pgx.Tx, pinnedTestInstructionsAndTestContainersMessage *fenixTestCaseBuilderServerGrpcApi.SavePinnedTestInstructionsAndPreCreatedTestInstructionContainersMessage) (err error) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) savePinnedTestInstructionsAndTestContainersToCloudDB(dbTransaction pgx.Tx, pinnedTestInstructionsAndTestContainersMessage *fenixTestCaseBuilderServerGrpcApi.SavePinnedTestInstructionsAndPreCreatedTestInstructionContainersMessage) (err error) {
 
-	fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"Id": "9d4e401a-edbf-4a45-bd34-8d3c13eeaffb",
 	}).Debug("Entering: savePinnedTestInstructionsAndTestContainersToCloudDB()")
 
 	defer func() {
-		fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"Id": "e0f4ded9-c140-40cf-95a9-c366daa49e07",
 		}).Debug("Exiting: savePinnedTestInstructionsAndTestContainersToCloudDB()")
 	}()
@@ -157,7 +157,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) sav
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"PinnedTestInstructionsAndPreCreatedTestInstructionContainers\" "
 	sqlToExecute = sqlToExecute + "(\"UserId\", \"PinnedUuid\", \"PinnedName\", \"PinnedType\", \"TimeStamp\") "
-	sqlToExecute = sqlToExecute + fenixGuiTestCaseBuilderServerObject.generateSQLInsertValues(dataRowsToBeInsertedMultiType)
+	sqlToExecute = sqlToExecute + fenixExecutionServerObject.generateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
 	// Execute Query CloudDB
@@ -168,7 +168,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) sav
 	}
 
 	// Log response from CloudDB
-	fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -184,7 +184,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) sav
 }
 
 // Generates all "VALUES('xxx', 'yyy')..." for insert statements
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) generateSQLInsertValues(testdata [][]interface{}) (sqlInsertValuesString string) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLInsertValues(testdata [][]interface{}) (sqlInsertValuesString string) {
 
 	sqlInsertValuesString = ""
 
@@ -210,7 +210,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) gen
 				sqlInsertValuesString = sqlInsertValuesString + "'" + fmt.Sprint(value) + "'"
 
 			default:
-				fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+				fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 					"id": "53539786-cbb6-418d-8752-c2e337b9e962",
 				}).Fatal("Unhandled type, %valueType", valueType)
 			}
@@ -231,7 +231,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) gen
 }
 
 // Generates incoming values in the following form:  "('monkey', 'tiger'. 'fish')"
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) generateSQLINArray(testdata []string) (sqlInsertValuesString string) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLINArray(testdata []string) (sqlInsertValuesString string) {
 
 	// Create a list with '' as only element if there are no elements in array
 	if len(testdata) == 0 {

@@ -9,7 +9,7 @@ import (
 )
 
 // Generates all "VALUES('xxx', 'yyy')..." for insert statements
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) generateSQLInsertValues(testdata [][]interface{}) (sqlInsertValuesString string) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLInsertValues(testdata [][]interface{}) (sqlInsertValuesString string) {
 
 	sqlInsertValuesString = ""
 
@@ -48,7 +48,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) gen
 				sqlInsertValuesString = sqlInsertValuesString + fmt.Sprint(valueAsNumber)
 
 			default:
-				fenixGuiTestCaseBuilderServerObject.logger.WithFields(logrus.Fields{
+				fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 					"id": "33e11bc9-bfc7-4c2f-8440-30f8d9a89ab0",
 				}).Fatal("Unhandled type, %valueType", valueType)
 			}
@@ -69,7 +69,7 @@ func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) gen
 }
 
 // Generates incoming values in the following form:  "('monkey', 'tiger'. 'fish')"
-func (fenixGuiTestCaseBuilderServerObject *fenixExecutionServerObjectStruct) generateSQLINArray(testdata []string) (sqlInsertValuesString string) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLINArray(testdata []string) (sqlInsertValuesString string) {
 
 	// Create a list with '' as only element if there are no elements in array
 	if len(testdata) == 0 {
