@@ -5,11 +5,14 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
+	uuidGenerator "github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixTestCaseBuilderServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixTestCaseBuilderServer/fenixTestCaseBuilderServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // Prepare for Saving the llongoing Execution of a new TestCaseExecution in the CloudDB
@@ -134,8 +137,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 
 	}
 
-	// Load TestInstructions to be added to TestInstructionExecutionQueue
-	err = fenixExecutionServerObject.loadTestInstructionsToBeAddedToExecutionQueueLoadFromCloudDB(txn, testCaseExecutionQueueMessages)
+	//Load all data around TestCase to bes used for putting TestInstructions on the TestInstructionExecutionQueue
+	allDataAroundAllTestCase, err := fenixExecutionServerObject.loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages)
 	if err != nil {
 
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
@@ -166,7 +169,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	}
 
 	// Add TestInstructions to TestInstructionsExecutionQueue
-	err = fenixExecutionServerObject.SaveTestInstructionsToExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
+	err = fenixExecutionServerObject.SaveTestInstructionsToExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages, allDataAroundAllTestCase)
 	if err != nil {
 
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
@@ -226,6 +229,39 @@ type tempTestCaseExecutionQueueInformationStruct struct {
 	testDataSetUuid           string
 	executionPriority         int
 	uniqueCounter             int
+}
+
+// Struct to use with variable to hold TestInstructionExecutionQueue-messages
+type tempTestInstructionExecutionQueueInformationStruct struct {
+	domainUuid                        string
+	domainName                        string
+	testInstructionExecutionUuid      string
+	testInstructionUuid               string
+	testInstructionName               string
+	testInstructionMajorVersionNumber int
+	testInstructionMinorVersionNumber int
+	queueTimeStamp                    string
+	executionPriority                 int
+	testCaseExecutionUuid             string
+	testDataSetUuid                   string
+	testCaseExecutionVersion          int
+	testInstructionExecutionVersion   int
+	testInstructionExecutionOrder     int
+	uniqueCounter                     int
+	testInstructionOriginalUuid       string
+}
+
+// Struct to be used when extracting TestInstructions from TestCases
+type tempTestInstructionInTestCaseStruct struct {
+	domainUuid                      string
+	domainName                      string
+	testCaseUuid                    string
+	testCaseName                    string
+	testCaseVersion                 int
+	testCaseBasicInformationAsJsonb string
+	testInstructionsAsJsonb         string
+	testInstructionContainersAsJsonb string
+	uniqueCounter                   int
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecution-table
@@ -429,10 +465,6 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) clearTestCas
 		}).Debug("Exiting: clearTestCasesExecutionQueueSaveToCloudDB()")
 	}()
 
-	type testCaseExecutionsToBeDeletedFromQueueStruct struct {
-		testCaseExecutionUuid    string
-		testCaseExecutionVersion int
-	}
 	var testCaseExecutionsToBeDeletedFromQueue []int
 
 	// Loop over TestCaseExecutionQueue-messages and extract  "UniqueCounter"
@@ -478,15 +510,253 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) clearTestCas
 
 }
 
-/*
-SELECT DISTINCT ON (TC."TestCaseUuid")
-TC."DomainUuid", TC."DomainName", TC."TestCaseUuid", TC."TestCaseName", TC."TestCaseVersion", "TestInstructionsAsJsonb", TC."UniqueCounter"
-FROM "FenixGuiBuilder"."TestCases" TC
-WHERE TC."TestCaseUuid"  IN ('c365a9f7-e236-417b-9236-dd20b728fe64', '8c8cc470-0d16-49b2-9a89-3a4d8f81783f', '3383d2d6-a87f-4425-a26b-539349b8c6cc', '63cecc8d-a53d-4589-9cba-d2650e13b5c6')
-ORDER  BY TC."TestCaseUuid" ASC, TC."TestCaseVersion" DESC ;
+//Load all data around TestCase to bes used for putting TestInstructions on the TestInstructionExecutionQueue
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct, err error) {
+
+	var testCasesUuidsToBeUsedInSQL []string
+
+	// Loop over TestCaseExecutionQueue-messages and extract  "UniqueCounter"
+	for _, testCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
+		testCasesUuidsToBeUsedInSQL = append(testCasesUuidsToBeUsedInSQL, testCaseExecutionQueueMessage.testCaseUuid)
+	}
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT DISTINCT ON (TC.\"TestCaseUuid\") "
+	sqlToExecute = sqlToExecute + "TC.\"DomainUuid\", TC.\"DomainName\", TC.\"TestCaseUuid\", TC.\"TestCaseName\", TC.\"TestCaseVersion\", \"TestCaseBasicInformationAsJsonb\", \"TestInstructionsAsJsonb\", \"TestInstructionContainersAsJsonb\", TC.\"UniqueCounter\" "
+	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestCases\" TC "
+	sqlToExecute = sqlToExecute + "WHERE TC.\"TestCaseUuid\" IN " + fenixExecutionServerObject.generateSQLINArray(testCasesUuidsToBeUsedInSQL) + " "
+	sqlToExecute = sqlToExecute + "ORDER BY TC.\"TestCaseUuid\" ASC, TC.\"TestCaseVersion\" DESC; "
+
+	// Query DB
+	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+
+	if err != nil {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":           "e7cef945-e58b-43b9-b8e2-f5d264e0fd21",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return []*tempTestInstructionInTestCaseStruct{}, err
+	}
+
+	// Extract data from DB result set
+	for rows.Next() {
+
+		var tempTestCaseModelAndTestInstructionsInTestCases *tempTestInstructionInTestCaseStruct
+
+		err := rows.Scan(
+			&tempTestCaseModelAndTestInstructionsInTestCases.domainUuid,
+			&tempTestCaseModelAndTestInstructionsInTestCases.domainName,
+			&tempTestCaseModelAndTestInstructionsInTestCases.testCaseUuid,
+			&tempTestCaseModelAndTestInstructionsInTestCases.testCaseVersion,
+			&tempTestCaseModelAndTestInstructionsInTestCases.testCaseBasicInformationAsJsonb,
+			&tempTestCaseModelAndTestInstructionsInTestCases.testInstructionsAsJsonb,
+			&tempTestCaseModelAndTestInstructionsInTestCases.testInstructionContainersAsJsonb,
+			&tempTestCaseModelAndTestInstructionsInTestCases.uniqueCounter,
+		)
+
+		if err != nil {
+
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+				"Id":           "4573547c-f4a6-46b9-b8c8-6189ebb5f721",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return []*tempTestInstructionInTestCaseStruct{}, err
+		}
+
+		// Add Queue-message to slice of messages
+		testInstructionsInTestCases = append(testInstructionsInTestCases, tempTestCaseModelAndTestInstructionsInTestCases)
+
+	}
+
+	return testInstructionsInTestCases, err
+
+}
+
+// Save all TestInstructions in TestInstructionExecutionQueue
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (err error) {
+
+	// Get a common dateTimeStamp to use
+	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	var dataRowToBeInsertedMultiType []interface{}
+	var dataRowsToBeInsertedMultiType [][]interface{}
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
 
 
-*/
+
+	// Convert TestInstruction slice into map-structure
+	testCaseExecutionQueueMessagesMap := make(map[string]*tempTestCaseExecutionQueueInformationStruct)
+	for _, testCaseExecutionQueueMessages := range testCaseExecutionQueueMessages {
+		testCaseExecutionQueueMessagesMap[testCaseExecutionQueueMessages.testCaseUuid] = testCaseExecutionQueueMessages
+	}
+
+	// Create Insert Statement for TestCaseExecution that will be put on ExecutionQueue
+	// Data to be inserted in the DB-table
+	dataRowsToBeInsertedMultiType = nil
+
+	for _, testInstructionsInTestCase := range testInstructionsInTestCases {
+
+		var testInstructions fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionsMessage
+		var testInstructionContainers fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainerMessage
+		var testCaseBasicInformationMessage fenixTestCaseBuilderServerGrpcApi.TestCaseBasicInformationMessage
+
+		err := protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructions)
+		err := protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructionContainers)
+		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testCaseBasicInformationAsJsonb), &testCaseBasicInformationMessage)
+
+		// Generate TestCaseElementModel-map
+		testCaseElementModelMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage)
+		for _, testCaseModelElement := range testCaseBasicInformationMessage.TestCaseModel.TestCaseModelElements{
+			testCaseElementModelMap[testCaseModelElement.MatureElementUuid] = testCaseModelElement
+		}
+
+		// Generate TestCaseTestInstruction-map
+		testInstructionContainerMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainerMessage)
+		for _, testCaseModelElement := range testCaseBasicInformationMessage.TestCaseModel.TestCaseModelElements{
+			testCaseElementModelMap[testCaseModelElement.MatureElementUuid] = testCaseModelElement
+		}
+
+
+
+		calculateExecutionOrder :=  fenixExecutionServerObject.recursiveExecutionOrderCalculator(testCaseBasicInformationMessage.TestCaseModel.FirstMatureElementUuid, testCaseElementModelMap)
+
+
+		// Loop all TestInstructions in TestCase and add them
+		for _, testInstruction := range testInstructions.MatureTestInstructions {
+
+			calculateExecutionOrder := testCaseBasicInformationMessage.TestCaseModel.
+
+			dataRowToBeInsertedMultiType = nil
+
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.domainUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.domainName)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, uuidGenerator.New().String()) //TestInstructionExecutionUuid
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.MajorVersionNumber)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.MinorVersionNumber)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].executionPriority)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testDataSetUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionVersion)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, 1)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, executionOrder)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOrignalUuid)
+
+			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
+		}
+	}
+
+	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestSuiteUuid\", \"TestSuiteName\", \"TestSuiteVersion\", " +
+		"\"TestSuiteExecutionUuid\", \"TestSuiteExecutionVersion\", \"TestCaseUuid\", \"TestCaseName\", \"TestCaseVersion\"," +
+		" \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"QueueTimeStamp\", \"TestDataSetUuid\", \"ExecutionPriority\", " +
+		"\"ExecutionStartTimeStamp\", \"ExecutionStopTimeStamp\", \"TestCaseExecutionStatus\", \"ExecutionHasFinished\") "
+	sqlToExecute = sqlToExecute + fenixExecutionServerObject.generateSQLInsertValues(dataRowsToBeInsertedMultiType)
+	sqlToExecute = sqlToExecute + ";"
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":           "7b2447a0-5790-47b5-af28-5f069c80c88a",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return nil
+
+}
+
+// Extract ExecutionOrder for TestInstruction
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveExecutionOrderCalculator(elementsUuid string, testCaseElementModelMap map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage, currentExecutionOrder []int, elementUuidToFind string) (executionOrder []int, err error) {
+
+	// Extract current element
+	currentElement, existInMap := testCaseElementModelMap[elementsUuid]
+
+	// If the element doesn't exit then there is something really wrong
+	if existInMap == false {
+		// This shouldn't happen
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"id":           "9f628356-2ea2-48a6-8e6a-546a5f97f05b",
+			"elementsUuid": elementsUuid,
+		}).Error(elementsUuid + " could not be found in in map 'testCaseElementModelMap'")
+
+		err = errors.New(elementsUuid + " could not be found in in map 'testCaseElementModelMap'")
+
+		return []int{}, err
+	}
+
+	// Check if parent TestInstructionContainer is executing in parallell or in serial
+	var parentTestContainerExecutesInParallell bool //TODO FIX THE CHECK
+
+	// Element has child-element then go that path
+	if currentElement.FirstChildElementUuid != elementsUuid {
+
+
+
+		executionOrder, err = fenixExecutionServerObject.recursiveExecutionOrderCalculator(currentElement.FirstChildElementUuid, testCaseElementModelMap, currentExecutionOrder , elementUuidToFind)
+	}
+
+	// If we got an error back then something wrong happen, so just back out
+	if err != nil {
+		return []int{}, err
+	}
+
+	// If element has a next-element the go that path
+	if currentElement.NextElementUuid != elementsUuid {
+
+		// Check if parent TestInstructionContainer executes in Serial or in Parallell
+		if (currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TI_TESTINSTRUCTION ||
+			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIx_TESTINSTRUCTION_NONE_REMOVABLE ||
+			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIC_TESTINSTRUCTIONCONTAINER ||
+			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TICx_TESTINSTRUCTIONCONTAINER_NONE_REMOVABLE) &&
+			parentTestContainerExecutesInParallell == false {
+			// Is Serial processed
+			lastPositionValue := currentExecutionOrder[len(currentExecutionOrder)-1]
+			lastPositionValue = lastPositionValue + 1
+			currentExecutionOrder[len(currentExecutionOrder)-1] = lastPositionValue
+		}
+
+		executionOrder, err = fenixExecutionServerObject.recursiveExecutionOrderCalculator(currentElement.NextElementUuid, testCaseElementModelMap, currentExecutionOrder , elementUuidToFind)
+	}
+
+	// If we got an error back then something wrong happen, so just back out
+	if err != nil {
+		return []int{}, err
+	}
+
+
+	err = errors.New(fmt.Sprintf("Couldn't find the Element that we were looking for, %s", elementUuidToFind))
+	return []int{}, err
+}
+
 // See https://www.alexedwards.net/blog/using-postgresql-jsonb
 // Make the Attrs struct implement the driver.Valuer interface. This method
 // simply returns the JSON-encoded representation of the struct.
