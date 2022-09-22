@@ -4,8 +4,10 @@ import (
 	"FenixExecutionServer/common_config"
 	"fmt"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 )
 
 // Generates all "VALUES('xxx', 'yyy')..." for insert statements
@@ -40,6 +42,11 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLI
 				valueAsTimeGrpcTimeStamp := value.(*timestamppb.Timestamp)
 
 				valueAsString := common_config.ConvertGrpcTimeStampToStringForDB(valueAsTimeGrpcTimeStamp)
+
+				sqlInsertValuesString = sqlInsertValuesString + "'" + fmt.Sprint(valueAsString) + "'"
+
+			case time.Time:
+				valueAsString := fenixSyncShared.GenerateDatetimeTimeStampForDB()
 
 				sqlInsertValuesString = sqlInsertValuesString + "'" + fmt.Sprint(valueAsString) + "'"
 
