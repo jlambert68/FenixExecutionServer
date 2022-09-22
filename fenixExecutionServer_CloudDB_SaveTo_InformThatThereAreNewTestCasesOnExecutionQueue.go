@@ -524,7 +524,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 		testCasesUuidsToBeUsedInSQL = append(testCasesUuidsToBeUsedInSQL, testCaseExecutionQueueMessage.testCaseUuid)
 	}
 
-	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+	usedDBSchema := "FenixGuiBuilder" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT DISTINCT ON (TC.\"TestCaseUuid\") "
@@ -549,7 +549,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 	// Extract data from DB result set
 	for rows.Next() {
 
-		var tempTestCaseModelAndTestInstructionsInTestCases *tempTestInstructionInTestCaseStruct
+		var tempTestCaseModelAndTestInstructionsInTestCases tempTestInstructionInTestCaseStruct
 
 		err := rows.Scan(
 			&tempTestCaseModelAndTestInstructionsInTestCases.domainUuid,
@@ -574,7 +574,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 		}
 
 		// Add Queue-message to slice of messages
-		testInstructionsInTestCases = append(testInstructionsInTestCases, tempTestCaseModelAndTestInstructionsInTestCases)
+		testInstructionsInTestCases = append(testInstructionsInTestCases, &tempTestCaseModelAndTestInstructionsInTestCases)
 
 	}
 

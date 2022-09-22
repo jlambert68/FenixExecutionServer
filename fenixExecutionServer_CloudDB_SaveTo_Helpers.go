@@ -4,7 +4,6 @@ import (
 	"FenixExecutionServer/common_config"
 	"fmt"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
-	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
@@ -46,7 +45,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLI
 				sqlInsertValuesString = sqlInsertValuesString + "'" + fmt.Sprint(valueAsString) + "'"
 
 			case time.Time:
-				valueAsString := fenixSyncShared.GenerateDatetimeFromTimeInputForDB(value.(time.Time))
+				valueAsString := common_config.GenerateDatetimeFromTimeInputForDB(value.(time.Time))
 
 				sqlInsertValuesString = sqlInsertValuesString + "'" + fmt.Sprint(valueAsString) + "'"
 
@@ -122,11 +121,11 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLI
 
 		if counter == 0 {
 			// Only used for first row
-			sqlInsertValuesString = sqlInsertValuesString + "'" + string(value) + "'"
+			sqlInsertValuesString = sqlInsertValuesString + "'" + fmt.Sprint(value) + "'"
 
 		} else {
 
-			sqlInsertValuesString = sqlInsertValuesString + ", '" + string(value) + "'"
+			sqlInsertValuesString = sqlInsertValuesString + ", '" + fmt.Sprint(value) + "'"
 		}
 	}
 
