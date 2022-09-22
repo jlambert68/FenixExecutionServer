@@ -46,7 +46,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) generateSQLI
 				sqlInsertValuesString = sqlInsertValuesString + "'" + fmt.Sprint(valueAsString) + "'"
 
 			case time.Time:
-				valueAsString := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+				valueAsString := fenixSyncShared.GenerateDatetimeFromTimeInputForDB(value.(time.Time))
 
 				sqlInsertValuesString = sqlInsertValuesString + "'" + fmt.Sprint(valueAsString) + "'"
 
