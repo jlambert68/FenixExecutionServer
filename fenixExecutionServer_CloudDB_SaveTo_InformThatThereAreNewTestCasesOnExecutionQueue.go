@@ -941,7 +941,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 			currentElement.FirstChildElementUuid,
 			testCaseElementModelMapReference,
 			currentExecutionOrder,
-			testInstructionExecutionOrderMapReference)
+			testInstructionExecutionOrderMapReference,
+			testInstructionContainerMapReference)
 	}
 
 	// If we got an error back then something wrong happen, so just back out
@@ -973,7 +974,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 			currentElement.NextElementUuid,
 			testCaseElementModelMapReference,
 			currentExecutionOrder,
-			testInstructionExecutionOrderMapReference)
+			testInstructionExecutionOrderMapReference,
+			testInstructionContainerMapReference)
 	}
 
 	// If we got an error back then something wrong happen, so just back out
