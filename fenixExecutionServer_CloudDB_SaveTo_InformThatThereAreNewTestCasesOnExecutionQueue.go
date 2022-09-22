@@ -13,6 +13,9 @@ import (
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/encoding/protojson"
+	"sort"
+	"strconv"
+	"strings"
 )
 
 // Prepare for Saving the llongoing Execution of a new TestCaseExecution in the CloudDB
@@ -578,6 +581,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 
 }
 
+
+
 // Save all TestInstructions in TestInstructionExecutionQueue
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (err error) {
 
@@ -587,7 +592,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 	var dataRowToBeInsertedMultiType []interface{}
 	var dataRowsToBeInsertedMultiType [][]interface{}
 
-	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+		usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	sqlToExecute := ""
 
@@ -609,12 +614,13 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 		var testInstructionContainers fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainerMessage
 		var testCaseBasicInformationMessage fenixTestCaseBuilderServerGrpcApi.TestCaseBasicInformationMessage
 
+		// Convert json-objects into their gRPC-structs
 		err := protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructions)
-		err := protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructionContainers)
+		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructionContainers)
 		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testCaseBasicInformationAsJsonb), &testCaseBasicInformationMessage)
 
 		// Generate TestCaseElementModel-map
-		testCaseElementModelMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage)
+		testCaseElementModelMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage) //map[testCaseUuid]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage
 		for _, testCaseModelElement := range testCaseBasicInformationMessage.TestCaseModel.TestCaseModelElements{
 			testCaseElementModelMap[testCaseModelElement.MatureElementUuid] = testCaseModelElement
 		}
@@ -626,8 +632,12 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 		}
 
 
+		testInstructionExecutionOrder := make(map[string]*testInstructionsRawExecutionOrderStruct) //map[testInstructionUuid]*testInstructionsRawExecutionOrderStruct
 
-		calculateExecutionOrder :=  fenixExecutionServerObject.recursiveExecutionOrderCalculator(testCaseBasicInformationMessage.TestCaseModel.FirstMatureElementUuid, testCaseElementModelMap)
+		calculateExecutionOrder :=  fenixExecutionServerObject.testInstructionExecutionOrderCalculator(
+			testCaseBasicInformationMessage.TestCaseModel.FirstMatureElementUuid,
+			&testCaseElementModelMap,
+			&testInstructionExecutionOrder)
 
 
 		// Loop all TestInstructions in TestCase and add them
@@ -694,10 +704,121 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 
 }
 
-// Extract ExecutionOrder for TestInstruction
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveExecutionOrderCalculator(elementsUuid string, testCaseElementModelMap map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage, currentExecutionOrder []int, elementUuidToFind string) (executionOrder []int, err error) {
+// *************************************************************************************************************
+// Extract ExecutionOrder for TestInstructions
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) testInstructionExecutionOrderCalculator(
+	elementsUuid string,
+	testCaseElementModelMapReference *map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage,
+	testInstructionExecutionOrderMapReference *map[string]*testInstructionsRawExecutionOrderStruct) (err error) {
+
+	// Extract 'Raw ExecutionOrder' for TestInstructions by recursive process element-model-tree
+	err = fenixExecutionServerObject.recursiveTestInstructionExecutionOrderCalculator(
+		elementsUuid,
+		testCaseElementModelMapReference,
+		[]int{0},
+		testInstructionExecutionOrderMapReference)
+
+	if err != nil {
+		return err
+	}
+
+	//*** Convert 'Raw ExecutionOrder'[1,11,403] into 'Processed ExecutionOrder'[001,011,403] ***
+	// Loop over Row ExecutionOrderNumbers and find the size of each number
+	maxNumberFound := -1
+	testInstructionExecutionOrderMap := *testInstructionExecutionOrderMapReference
+	for _, testInstructionExecutionOrderRef := range testInstructionExecutionOrderMap {
+		testInstructionExecutionOrder := testInstructionExecutionOrderRef
+		for _, subpartOfTestInstructionExecutionOrder := range testInstructionExecutionOrder.rawExecutionOrder {
+			if subpartOfTestInstructionExecutionOrder > maxNumberFound {
+				maxNumberFound = subpartOfTestInstructionExecutionOrder
+			}
+		}
+	}
+
+
+	var sortedtestInstructionExecutionOrderSlice testInstructionsRawExecutionOrderSliceType
+
+	// Create the 'Processed ExecutionOrder'[001,011,403] and a temporary OrderNumber {1011403} from 'Raw ExecutionOrder'[1,11,403]
+	for _, testInstructionExecutionOrderRef := range testInstructionExecutionOrderMap {
+		testInstructionExecutionOrder := testInstructionExecutionOrderRef
+		var processExecutionOrder []string
+		for _, subpartOfTestInstructionExecutionOrder := range testInstructionExecutionOrder.rawExecutionOrder {
+			numberOfLeadingZeros := maxNumberFound - len(string(subpartOfTestInstructionExecutionOrder))
+
+			formatString := "%0" + string(numberOfLeadingZeros) + "d"
+			processExecutionOrderNumber := fmt.Sprintf(formatString, subpartOfTestInstructionExecutionOrder)
+
+			processExecutionOrder = append(processExecutionOrder, processExecutionOrderNumber)
+
+		}
+		// Add the 'Processed ExecutionOrder' [001,011,403]
+		testInstructionExecutionOrder.processedExecutionOrder = processExecutionOrder
+
+		// Create and add a temporary OrderNumber {1011403} from 'Processed ExecutionOrder' [001,011,403]
+		temporaryOrderNumberAsString := strings.Join(processExecutionOrder[:], "")
+		temporaryOrderNumber, err := strconv.ParseInt(temporaryOrderNumberAsString, 10, 64)
+		if err != nil {
+			return err
+		}
+		testInstructionExecutionOrder.temporaryOrderNumber = temporaryOrderNumber
+
+		// Add to slice that can be sorted
+		sortedtestInstructionExecutionOrderSlice = append(sortedtestInstructionExecutionOrderSlice, *testInstructionExecutionOrder)
+	}
+
+	//*** Sort on temporary OrderNumber [1011403] and then create the OrderNumber [5] ***
+	sort.Sort(testInstructionsRawExecutionOrderSliceType(sortedtestInstructionExecutionOrderSlice))
+
+	for orderNumber, testInstruction := range sortedtestInstructionExecutionOrderSlice {
+
+		// Extract the TestInstruction and add Execution OrderNumber
+		testInstructionSorted, existsInMap := testInstructionExecutionOrderMap[testInstruction.testInstructionUuid]
+		if existsInMap == false {
+			err = errors.New(fmt.Sprintf("couldn't find TestInstruction %s in 'testInstructionExecutionOrderMap'", testInstruction.testInstructionUuid))
+			return err
+		}
+		// Add order number to TestInstruction
+		testInstructionSorted.orderNumber = orderNumber
+
+		// Save the TestInstruction back in Map
+		testInstructionExecutionOrderMap[testInstruction.testInstructionUuid] = testInstructionSorted
+	}
+
+	return err
+}
+
+
+type testInstructionsRawExecutionOrderStruct struct {
+	testInstructionUuid string
+	rawExecutionOrder []int
+	processedExecutionOrder []string
+	temporaryOrderNumber int64
+	orderNumber int
+}
+ type testInstructionsRawExecutionOrderSliceType []testInstructionsRawExecutionOrderStruct
+
+func (e testInstructionsRawExecutionOrderSliceType) Len() int {
+	return len(e)
+}
+
+func (e testInstructionsRawExecutionOrderSliceType) Less(i, j int) bool {
+	return e[i].temporaryOrderNumber > e[j].temporaryOrderNumber
+}
+
+func (e testInstructionsRawExecutionOrderSliceType) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
+}
+
+// *************************************************************************************************************
+// Extract ExecutionOrder for TestInstructions by recursive process element-model-tree
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTestInstructionExecutionOrderCalculator(
+	elementsUuid string,
+	testCaseElementModelMapReference *map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage,
+	currentExecutionOrder []int,
+	testInstructionExecutionOrderMapReference *map[string]*testInstructionsRawExecutionOrderStruct) (err error) {
 
 	// Extract current element
+	testCaseElementModelMap := *testCaseElementModelMapReference
 	currentElement, existInMap := testCaseElementModelMap[elementsUuid]
 
 	// If the element doesn't exit then there is something really wrong
@@ -710,7 +831,35 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveExe
 
 		err = errors.New(elementsUuid + " could not be found in in map 'testCaseElementModelMap'")
 
-		return []int{}, err
+		return err
+	}
+
+	// Save TestInstructions ExecutionOrder
+	if currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TI_TESTINSTRUCTION ||
+		currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIx_TESTINSTRUCTION_NONE_REMOVABLE {
+
+		testInstructionExecutionOrderMap := *testInstructionExecutionOrderMapReference
+		_, existInMap := testInstructionExecutionOrderMap[elementsUuid]
+
+		// If the element does exit then there is something really wrong
+		if existInMap == false {
+			// This shouldn't happen
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+				"id":           "db8472c1-9383-4a43-b475-ff7218f13ff5",
+				"elementsUuid": elementsUuid,
+			}).Error(elementsUuid + " testInstruction already exits in could not be found in in map 'testCaseElementModelMap'")
+
+			err = errors.New(elementsUuid + " testInstruction can already be found in in map 'testCaseElementModelMap'")
+
+			return err
+		}
+
+		testInstructionExecutionOrderMap[elementsUuid] = &testInstructionsRawExecutionOrderStruct{
+			testInstructionUuid:     elementsUuid,
+			rawExecutionOrder:       currentExecutionOrder,
+			processedExecutionOrder: []string{},
+		}
+
 	}
 
 	// Check if parent TestInstructionContainer is executing in parallell or in serial
@@ -719,42 +868,68 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveExe
 	// Element has child-element then go that path
 	if currentElement.FirstChildElementUuid != elementsUuid {
 
+		// Check if parent TestInstructionContainer executes in Serial or in Parallell
+		if currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TI_TESTINSTRUCTION ||
+			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIx_TESTINSTRUCTION_NONE_REMOVABLE ||
+			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIC_TESTINSTRUCTIONCONTAINER ||
+			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TICx_TESTINSTRUCTIONCONTAINER_NONE_REMOVABLE {
+			if parentTestContainerExecutesInParallell == false {
+				// Parent is Serial processed
 
+			} else {
+				// Parent is Parallell processed
+				currentExecutionOrder = append(currentExecutionOrder, 0)
+			}
+		}
 
-		executionOrder, err = fenixExecutionServerObject.recursiveExecutionOrderCalculator(currentElement.FirstChildElementUuid, testCaseElementModelMap, currentExecutionOrder , elementUuidToFind)
+		// Recursive call to child-element
+		err = fenixExecutionServerObject.recursiveTestInstructionExecutionOrderCalculator(
+			currentElement.FirstChildElementUuid,
+			testCaseElementModelMapReference,
+			currentExecutionOrder,
+			testInstructionExecutionOrderMapReference)
 	}
 
 	// If we got an error back then something wrong happen, so just back out
 	if err != nil {
-		return []int{}, err
+		return err
 	}
 
 	// If element has a next-element the go that path
 	if currentElement.NextElementUuid != elementsUuid {
 
 		// Check if parent TestInstructionContainer executes in Serial or in Parallell
-		if (currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TI_TESTINSTRUCTION ||
-			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIx_TESTINSTRUCTION_NONE_REMOVABLE ||
-			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIC_TESTINSTRUCTIONCONTAINER ||
-			currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TICx_TESTINSTRUCTIONCONTAINER_NONE_REMOVABLE) &&
-			parentTestContainerExecutesInParallell == false {
-			// Is Serial processed
-			lastPositionValue := currentExecutionOrder[len(currentExecutionOrder)-1]
-			lastPositionValue = lastPositionValue + 1
-			currentExecutionOrder[len(currentExecutionOrder)-1] = lastPositionValue
+		if currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TI_TESTINSTRUCTION ||
+					currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIx_TESTINSTRUCTION_NONE_REMOVABLE ||
+					currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TIC_TESTINSTRUCTIONCONTAINER ||
+					currentElement.TestCaseModelElementType == fenixTestCaseBuilderServerGrpcApi.TestCaseModelElementTypeEnum_TICx_TESTINSTRUCTIONCONTAINER_NONE_REMOVABLE {
+			if parentTestContainerExecutesInParallell == false {
+				// Parent is Serial processed
+				lastPositionValue := currentExecutionOrder[len(currentExecutionOrder)-1]
+				lastPositionValue = lastPositionValue + 1
+				currentExecutionOrder[len(currentExecutionOrder)-1] = lastPositionValue
+			}  else {
+				// Parent is Parallell processed
+
+			}
 		}
 
-		executionOrder, err = fenixExecutionServerObject.recursiveExecutionOrderCalculator(currentElement.NextElementUuid, testCaseElementModelMap, currentExecutionOrder , elementUuidToFind)
+		// Recursive call to next-element
+		err = fenixExecutionServerObject.recursiveTestInstructionExecutionOrderCalculator(
+			currentElement.NextElementUuid,
+			testCaseElementModelMapReference,
+			currentExecutionOrder,
+			testInstructionExecutionOrderMapReference)
 	}
 
 	// If we got an error back then something wrong happen, so just back out
 	if err != nil {
-		return []int{}, err
+		return err
 	}
 
 
 	err = errors.New(fmt.Sprintf("Couldn't find the Element that we were looking for, %s", elementUuidToFind))
-	return []int{}, err
+	return err
 }
 
 // See https://www.alexedwards.net/blog/using-postgresql-jsonb
