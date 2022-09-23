@@ -19,7 +19,18 @@ import (
 	"time"
 )
 
-// Prepare for Saving the llongoing Execution of a new TestCaseExecution in the CloudDB
+// After all stuff is done, then Commit or Rollback depending on result
+var doCommitNotRoleBack bool
+
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBack(dbTransaction pgx.Tx) {
+	if doCommitNotRoleBack == true {
+		dbTransaction.Commit(context.Background())
+	} else {
+		dbTransaction.Rollback(context.Background())
+	}
+}
+
+// Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(emptyParameter *fenixExecutionServerGrpcApi.EmptyParameter) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Begin SQL Transaction
@@ -47,7 +58,9 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 
 		return ackNackResponse
 	}
-	defer txn.Commit(context.Background())
+	// Standard is to do a Rollback
+	doCommitNotRoleBack = false
+	defer fenixExecutionServerObject.commitOrRoleBack(txn) //txn.Commit(context.Background())
 
 	// Generate a new TestCaseExecution-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
@@ -77,7 +90,17 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 		return ackNackResponse
 	}
 
-	//TODO ROLLBACK if error - in all places
+	// If there are no TestCases on Queue the exit
+	if testCaseExecutionQueueMessages == nil {
+		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:                      true,
+			Comments:                     "",
+			ErrorCodes:                   []fenixExecutionServerGrpcApi.ErrorCodesEnum{},
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+		}
+
+		return ackNackResponse
+	}
 
 	// Save the Initiation of a new TestCaseExecution in the CloudDB
 	err = fenixExecutionServerObject.saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
@@ -203,7 +226,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 
 	}
 
-	// Trigger TestInstructionExecutionEngine by sending
+	// TODO Trigger TestInstructionExecutionEngine by sending
 
 	ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
 		AckNack:                      true,
@@ -211,6 +234,9 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 		ErrorCodes:                   []fenixExecutionServerGrpcApi.ErrorCodesEnum{},
 		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
 	}
+
+	// Commit every database change
+	doCommitNotRoleBack = true
 
 	return ackNackResponse
 }
@@ -555,6 +581,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 			&tempTestCaseModelAndTestInstructionsInTestCases.domainUuid,
 			&tempTestCaseModelAndTestInstructionsInTestCases.domainName,
 			&tempTestCaseModelAndTestInstructionsInTestCases.testCaseUuid,
+			&tempTestCaseModelAndTestInstructionsInTestCases.testCaseName,
 			&tempTestCaseModelAndTestInstructionsInTestCases.testCaseVersion,
 			&tempTestCaseModelAndTestInstructionsInTestCases.testCaseBasicInformationAsJsonb,
 			&tempTestCaseModelAndTestInstructionsInTestCases.testInstructionsAsJsonb,
@@ -613,8 +640,17 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 
 		// Convert json-objects into their gRPC-structs
 		err := protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructions)
+		if err != nil {
+			return err
+		}
 		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionContainersAsJsonb), &testInstructionContainers)
+		if err != nil {
+			return err
+		}
 		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testCaseBasicInformationAsJsonb), &testCaseBasicInformationMessage)
+		if err != nil {
+			return err
+		}
 
 		// Generate TestCaseElementModel-map
 		testCaseElementModelMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage) //map[testCaseUuid]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage
@@ -672,9 +708,9 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 		}
 	}
 
-	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" "
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
-		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMajorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
+		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
 		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\") "
 	sqlToExecute = sqlToExecute + fenixExecutionServerObject.generateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
@@ -730,13 +766,13 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) testInstruct
 
 	//*** Convert 'Raw ExecutionOrder'[1,11,403] into 'Processed ExecutionOrder'[001,011,403] ***
 	// Loop over Row ExecutionOrderNumbers and find the size of each number
-	maxNumberFound := -1
+	maxNumberOfDigitsFound := -1
 	testInstructionExecutionOrderMap := *testInstructionExecutionOrderMapReference
 	for _, testInstructionExecutionOrderRef := range testInstructionExecutionOrderMap {
 		testInstructionExecutionOrder := testInstructionExecutionOrderRef
 		for _, subpartOfTestInstructionExecutionOrder := range testInstructionExecutionOrder.rawExecutionOrder {
-			if subpartOfTestInstructionExecutionOrder > maxNumberFound {
-				maxNumberFound = subpartOfTestInstructionExecutionOrder
+			if len(fmt.Sprint(subpartOfTestInstructionExecutionOrder)) > maxNumberOfDigitsFound {
+				maxNumberOfDigitsFound = len(fmt.Sprint(subpartOfTestInstructionExecutionOrder))
 			}
 		}
 	}
@@ -748,9 +784,9 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) testInstruct
 		testInstructionExecutionOrder := testInstructionExecutionOrderRef
 		var processExecutionOrder []string
 		for _, subpartOfTestInstructionExecutionOrder := range testInstructionExecutionOrder.rawExecutionOrder {
-			numberOfLeadingZeros := maxNumberFound - len(string(subpartOfTestInstructionExecutionOrder))
+			numberOfLeadingZeros := maxNumberOfDigitsFound - len(fmt.Sprint(subpartOfTestInstructionExecutionOrder))
 
-			formatString := "%0" + string(numberOfLeadingZeros) + "d"
+			formatString := "%0" + fmt.Sprint(numberOfLeadingZeros) + "d"
 			processExecutionOrderNumber := fmt.Sprintf(formatString, subpartOfTestInstructionExecutionOrder)
 
 			processExecutionOrder = append(processExecutionOrder, processExecutionOrderNumber)
@@ -847,7 +883,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 		_, existInMap := testInstructionExecutionOrderMap[elementsUuid]
 
 		// If the element does exit then there is something really wrong
-		if existInMap == false {
+		if existInMap == true {
 			// This shouldn't happen
 			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 				"id":           "db8472c1-9383-4a43-b475-ff7218f13ff5",
