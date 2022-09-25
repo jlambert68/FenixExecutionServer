@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FenixExecutionServer/testInstructionExecutionEngine"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 )
@@ -31,13 +32,29 @@ func fenixExecutionServerMain() {
 	fenixSyncShared.ConnectToDB()
 
 	// Set up BackendObject
-	fenixExecutionServerObject = &fenixExecutionServerObjectStruct{}
+	fenixExecutionServerObject = &fenixExecutionServerObjectStruct{
+		logger:                    nil,
+		gcpAccessToken:            nil,
+		executionEngineChannelRef: nil,
+		executionEngine:           &testInstructionExecutionEngine.TestInstructionExecutionEngineStruct{},
+	}
 
 	// Init logger
 	fenixExecutionServerObject.InitLogger("")
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information
 	defer cleanup()
+
+	// Create Channel used for sending Commands to TestInstructionExecutionCommandsEngine
+	testInstructionExecutionEngine.ExecutionEngineCommandChannel = make(chan testInstructionExecutionEngine.ChannelCommandStruct)
+	myCommandChannelRef := &testInstructionExecutionEngine.ExecutionEngineCommandChannel
+	fenixExecutionServerObject.executionEngineChannelRef = myCommandChannelRef
+
+	// Initiate logger in TestInstructionEngine
+	fenixExecutionServerObject.executionEngine.SetLogger(fenixExecutionServerObject.logger)
+
+	// Start Receiver channel for Commands
+	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRef)
 
 	// Start Backend gRPC-server
 	fenixExecutionServerObject.InitGrpcServer()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FenixExecutionServer/testInstructionExecutionEngine"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
@@ -9,8 +10,10 @@ import (
 )
 
 type fenixExecutionServerObjectStruct struct {
-	logger         *logrus.Logger
-	gcpAccessToken *oauth2.Token
+	logger                    *logrus.Logger
+	gcpAccessToken            *oauth2.Token
+	executionEngineChannelRef *testInstructionExecutionEngine.ExecutionEngineChannelType
+	executionEngine           *testInstructionExecutionEngine.TestInstructionExecutionEngineStruct
 }
 
 // Variable holding everything together

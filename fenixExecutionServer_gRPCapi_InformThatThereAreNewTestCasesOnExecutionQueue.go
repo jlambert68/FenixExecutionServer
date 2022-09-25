@@ -29,7 +29,7 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 		return returnMessage, nil
 	}
 
-	// Create TestInstructions to be save on 'TestInstructionExecutionQueue'
+	// Create TestInstructions to be saved on 'TestInstructionExecutionQueue'
 	returnMessage = fenixExecutionServerObject.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(emptyParameter)
 	if returnMessage != nil {
 		return returnMessage, nil

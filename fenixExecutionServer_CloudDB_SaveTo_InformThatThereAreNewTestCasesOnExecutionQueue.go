@@ -226,7 +226,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 
 	}
 
-	// TODO Trigger TestInstructionExecutionEngine by sending
+	// TODO Trigger testInstructionExecutionEngine by sending
 
 	ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
 		AckNack:                      true,
