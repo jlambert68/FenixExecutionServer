@@ -35,4 +35,7 @@ var (
 	FenixExecutionGuiServerPort    int
 )
 
+var highestFenixProtoFileVersion int32 = -1
+var highestClientProtoFileVersion int32 = -1
+
 // ***********************************************************************************************************

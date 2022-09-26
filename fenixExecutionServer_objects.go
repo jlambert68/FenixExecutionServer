@@ -33,6 +33,3 @@ type fenixExecutionServerGrpcServicesServer struct {
 //TODO FIXA DENNA PATH, HMMM borde köra i DB framöver
 // For now hardcoded MerklePath
 //var merkleFilterPath string = //"AccountEnvironment/ClientJuristictionCountryCode/MarketSubType/MarketName/" //SecurityType/"
-
-var highestFenixProtoFileVersion int32 = -1
-var highestClientProtoFileVersion int32 = -1

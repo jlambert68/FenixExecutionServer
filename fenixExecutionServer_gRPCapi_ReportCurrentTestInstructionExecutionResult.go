@@ -39,7 +39,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCurrentTestInstructionExe
 			userID := currentTestInstructionExecutionResultMessage.ClientSystemIdentification.DomainUuid
 
 			// Check if Client is using correct proto files version
-			returnMessage := fenixExecutionServerObject.isClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(currentTestInstructionExecutionResultMessage.ClientSystemIdentification.ProtoFileVersionUsedByClient))
+			returnMessage := common_config.IsClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(currentTestInstructionExecutionResultMessage.ClientSystemIdentification.ProtoFileVersionUsedByClient))
 			if returnMessage != nil {
 
 				// Exiting

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FenixExecutionServer/common_config"
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
@@ -22,7 +23,7 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 	userID := "gRPC-api doesn't support UserId"
 
 	// Check if Client is using correct proto files version
-	returnMessage := fenixExecutionServerObject.isClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(emptyParameter.ProtoFileVersionUsedByClient))
+	returnMessage := common_config.IsClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(emptyParameter.ProtoFileVersionUsedByClient))
 	if returnMessage != nil {
 
 		// Exiting

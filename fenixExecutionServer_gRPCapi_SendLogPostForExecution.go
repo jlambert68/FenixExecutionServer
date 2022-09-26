@@ -39,7 +39,7 @@ func (s *fenixExecutionServerGrpcServicesServer) SendLogPostForExecution(logPost
 			userID := logPostsMessage.ClientSystemIdentification.DomainUuid
 
 			// Check if Client is using correct proto files version
-			returnMessage := fenixExecutionServerObject.isClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(logPostsMessage.ClientSystemIdentification.ProtoFileVersionUsedByClient))
+			returnMessage := common_config.IsClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(logPostsMessage.ClientSystemIdentification.ProtoFileVersionUsedByClient))
 			if returnMessage != nil {
 
 				// Exiting

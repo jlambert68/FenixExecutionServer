@@ -22,7 +22,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportProcessingCapability(ctx 
 	userID := processingCapabilityMessage.ClientSystemIdentification.DomainUuid
 
 	// Check if Client is using correct proto files version
-	returnMessage := fenixExecutionServerObject.isClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(processingCapabilityMessage.ClientSystemIdentification.ProtoFileVersionUsedByClient))
+	returnMessage := common_config.IsClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(processingCapabilityMessage.ClientSystemIdentification.ProtoFileVersionUsedByClient))
 	if returnMessage != nil {
 
 		// Exiting

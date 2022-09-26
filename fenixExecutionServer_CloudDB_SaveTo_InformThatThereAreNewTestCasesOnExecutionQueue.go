@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FenixExecutionServer/common_config"
 	"context"
 	"database/sql/driver"
 	"encoding/json"
@@ -53,7 +54,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -69,7 +70,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
-	testCaseExecutionQueueMessages, err := fenixExecutionServerObject.loadTestCaseExecutionQueueMessages()
+	testCaseExecutionQueueMessages, err := fenixExecutionServerObject.loadTestCaseExecutionQueueMessages() //(txn)
 	if err != nil {
 
 		// Set Error codes to return message
@@ -84,7 +85,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 			AckNack:                      false,
 			Comments:                     "Problem when Loading TestCaseExecutions from ExecutionQueue from database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -96,7 +97,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 			AckNack:                      true,
 			Comments:                     "",
 			ErrorCodes:                   []fenixExecutionServerGrpcApi.ErrorCodesEnum{},
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -126,7 +127,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -157,7 +158,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -188,7 +189,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -219,7 +220,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -232,7 +233,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 		AckNack:                      true,
 		Comments:                     "",
 		ErrorCodes:                   []fenixExecutionServerGrpcApi.ErrorCodesEnum{},
-		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixTestDataProtoFileVersion()),
 	}
 
 	// Commit every database change
@@ -305,6 +306,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 	sqlToExecute = sqlToExecute + "ORDER BY TCEQ.\"QueueTimeStamp\" ASC; "
 
 	// Query DB
+	// Execute Query CloudDB
+	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
@@ -450,7 +453,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCase
 		"\"TestSuiteExecutionUuid\", \"TestSuiteExecutionVersion\", \"TestCaseUuid\", \"TestCaseName\", \"TestCaseVersion\"," +
 		" \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"QueueTimeStamp\", \"TestDataSetUuid\", \"ExecutionPriority\", " +
 		"\"ExecutionStartTimeStamp\", \"ExecutionStopTimeStamp\", \"TestCaseExecutionStatus\", \"ExecutionHasFinished\") "
-	sqlToExecute = sqlToExecute + fenixExecutionServerObject.generateSQLInsertValues(dataRowsToBeInsertedMultiType)
+	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
 	// Execute Query CloudDB
@@ -508,7 +511,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) clearTestCas
 
 	sqlToExecute = sqlToExecute + "DELETE FROM \"" + usedDBSchema + "\".\"TestCaseExecutionQueue\" TCEQ "
 	sqlToExecute = sqlToExecute + "WHERE TCEQ.\"UniqueCounter\" IN "
-	sqlToExecute = sqlToExecute + fenixExecutionServerObject.generateSQLINIntegerArray(testCaseExecutionsToBeDeletedFromQueue)
+	sqlToExecute = sqlToExecute + common_config.GenerateSQLINIntegerArray(testCaseExecutionsToBeDeletedFromQueue)
 	sqlToExecute = sqlToExecute + ";"
 
 	// Execute Query CloudDB
@@ -556,7 +559,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 	sqlToExecute = sqlToExecute + "SELECT DISTINCT ON (TC.\"TestCaseUuid\") "
 	sqlToExecute = sqlToExecute + "TC.\"DomainUuid\", TC.\"DomainName\", TC.\"TestCaseUuid\", TC.\"TestCaseName\", TC.\"TestCaseVersion\", \"TestCaseBasicInformationAsJsonb\", \"TestInstructionsAsJsonb\", \"TestInstructionContainersAsJsonb\", TC.\"UniqueCounter\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestCases\" TC "
-	sqlToExecute = sqlToExecute + "WHERE TC.\"TestCaseUuid\" IN " + fenixExecutionServerObject.generateSQLINArray(testCasesUuidsToBeUsedInSQL) + " "
+	sqlToExecute = sqlToExecute + "WHERE TC.\"TestCaseUuid\" IN " + common_config.GenerateSQLINArray(testCasesUuidsToBeUsedInSQL) + " "
 	sqlToExecute = sqlToExecute + "ORDER BY TC.\"TestCaseUuid\" ASC, TC.\"TestCaseVersion\" DESC; "
 
 	// Query DB
@@ -712,7 +715,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
 		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
 		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\") "
-	sqlToExecute = sqlToExecute + fenixExecutionServerObject.generateSQLInsertValues(dataRowsToBeInsertedMultiType)
+	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
 	// Execute Query CloudDB

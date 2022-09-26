@@ -25,7 +25,7 @@ func (s *fenixExecutionServerGuiGrpcServicesServer) ListTestCasesUnderExecution(
 	userID := listTestCasesUnderExecutionRequest.UserIdentification.UserId
 
 	// Check if Client is using correct proto files version
-	returnMessage := fenixExecutionServerObject.isClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(listTestCasesUnderExecutionRequest.UserIdentification.ProtoFileVersionUsedByClient))
+	returnMessage := common_config.IsClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(listTestCasesUnderExecutionRequest.UserIdentification.ProtoFileVersionUsedByClient))
 	if returnMessage != nil {
 
 		responseMessage = &fenixExecutionServerGrpcApi.ListTestCasesUnderExecutionResponse{
@@ -48,7 +48,7 @@ func (s *fenixExecutionServerGuiGrpcServicesServer) ListTestCasesUnderExecution(
 				AckNack:                      false,
 				Comments:                     "Got some Error when retrieving TestCaseUnderExecutionMessage from database",
 				ErrorCodes:                   []fenixExecutionServerGrpcApi.ErrorCodesEnum{fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM},
-				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(GetHighestFenixTestDataProtoFileVersion()),
 			},
 			TestCasesUnderExecution: nil,
 		}
@@ -63,7 +63,7 @@ func (s *fenixExecutionServerGuiGrpcServicesServer) ListTestCasesUnderExecution(
 			AckNack:                      true,
 			Comments:                     "",
 			ErrorCodes:                   nil,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionGuiProtoFileVersionEnum(GetHighestFenixTestDataProtoFileVersion()),
 		},
 		TestCasesUnderExecution: testCaseUnderExecutionMessage,
 	}

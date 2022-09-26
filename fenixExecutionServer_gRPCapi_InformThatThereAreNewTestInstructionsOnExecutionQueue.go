@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FenixExecutionServer/testInstructionExecutionEngine"
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
@@ -22,19 +23,19 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestInstru
 	userID := "gRPC-api doesn't support UserId"
 
 	// Check if Client is using correct proto files version
-	returnMessage := fenixExecutionServerObject.isClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(emptyParameter.ProtoFileVersionUsedByClient))
+	returnMessage := common_config.IsClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(emptyParameter.ProtoFileVersionUsedByClient))
 	if returnMessage != nil {
 
 		// Exiting
 		return returnMessage, nil
 	}
 
-	/*
-		// Create TestInstructions to be saved on 'TestInstructionExecutionQueue'
-		returnMessage = fenixExecutionServerObject.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(emptyParameter)
-		if returnMessage != nil {
-			return returnMessage, nil
-		}
-	*/
+	// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
+	channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+		ChannelCommand: testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+	}
+
+	*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+
 	return &fenixExecutionServerGrpcApi.AckNackResponse{AckNack: true, Comments: ""}, nil
 }

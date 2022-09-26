@@ -1,6 +1,7 @@
 package testInstructionExecutionEngine
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -16,7 +17,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		switch incomingChannelCommand.ChannelCommand {
 
 		case ChannelCommandCheckTestInstructionExecutionQueue:
-			executionEngine.initiateExecutionsTestInstructionsOnExecutionQueue()
+			executionEngine.initiateExecutionsForTestInstructionsOnExecutionQueue()
 
 		case ChannelCommandCheckOngoingTestInstructionExecutions:
 			executionEngine.checkOngoingExecutionsForTestInstructions()
@@ -33,8 +34,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 }
 
 // Check ExecutionQueue for TestInstructions and move them to ongoing Executions-table
-func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsTestInstructionsOnExecutionQueue() {
+func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsForTestInstructionsOnExecutionQueue() {
 
+	fmt.Println("initiateExecutionsForTestInstructionsOnExecutionQueue")
+	executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB()
 }
 
 // Check ongoing executions  for TestInstructions for change in status that should be propagated to other places

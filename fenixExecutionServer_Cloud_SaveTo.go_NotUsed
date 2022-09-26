@@ -32,7 +32,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareSaveP
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixTestCaseBuilderServerGrpcApi.CurrentFenixTestCaseBuilderProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixTestCaseBuilderServerGrpcApi.CurrentFenixTestCaseBuilderProtoFileVersionEnum(GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return returnMessage
@@ -73,7 +73,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareSaveP
 			AckNack:                      false,
 			Comments:                     "Problem when saving to database",
 			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixTestCaseBuilderServerGrpcApi.CurrentFenixTestCaseBuilderProtoFileVersionEnum(fenixExecutionServerObject.getHighestFenixTestDataProtoFileVersion()),
+			ProtoFileVersionUsedByClient: fenixTestCaseBuilderServerGrpcApi.CurrentFenixTestCaseBuilderProtoFileVersionEnum(GetHighestFenixTestDataProtoFileVersion()),
 		}
 
 		return returnMessage
