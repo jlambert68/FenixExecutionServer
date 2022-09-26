@@ -121,7 +121,7 @@ type tempTestInstructionExecutionQueueInformationStruct struct {
 	testInstructionName               string
 	testInstructionMajorVersionNumber int
 	testInstructionMinorVersionNumber int
-	queueTimeStamp                    string
+	queueTimeStamp                    time.Time
 	executionPriority                 int
 	testCaseExecutionUuid             string
 	testDataSetUuid                   string
@@ -205,6 +205,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 			return []*tempTestInstructionExecutionQueueInformationStruct{}, err
 		}
+
+		// Convert
 
 		// Add Queue-message to slice of messages
 		testInstructionExecutionQueueInformation = append(testInstructionExecutionQueueInformation, &tempTestInstructionExecutionQueueMessage)
