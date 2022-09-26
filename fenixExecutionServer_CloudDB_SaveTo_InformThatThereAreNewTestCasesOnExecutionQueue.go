@@ -2,6 +2,7 @@ package main
 
 import (
 	"FenixExecutionServer/common_config"
+	"FenixExecutionServer/testInstructionExecutionEngine"
 	"context"
 	"database/sql/driver"
 	"encoding/json"
@@ -26,6 +27,17 @@ var doCommitNotRoleBack bool
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBack(dbTransaction pgx.Tx) {
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
+
+		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
+		go func() {
+			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+				ChannelCommand: testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+			}
+
+			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+
+		}()
+
 	} else {
 		dbTransaction.Rollback(context.Background())
 	}
@@ -226,8 +238,6 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 		return ackNackResponse
 
 	}
-
-	// TODO Trigger testInstructionExecutionEngine by sending
 
 	ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
 		AckNack:                      true,

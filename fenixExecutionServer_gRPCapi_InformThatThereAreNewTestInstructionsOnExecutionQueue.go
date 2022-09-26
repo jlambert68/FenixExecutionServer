@@ -36,6 +36,7 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestInstru
 		ChannelCommand: testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
 	}
 
+	// Send Message on Channel
 	*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
 	return &fenixExecutionServerGrpcApi.AckNackResponse{AckNack: true, Comments: ""}, nil
