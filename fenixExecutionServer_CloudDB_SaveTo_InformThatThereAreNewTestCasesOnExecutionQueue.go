@@ -748,7 +748,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 						TestInstructionAttributeUuid: attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
 						TestInstructionAttributeName: attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoxName,
 						AttributeValueAsString:       attribute.AttributeInformation.InputTextBoxProperty.TextBoxAttributeValue,
-						AttributeValueUuid:           "",
+						AttributeValueUuid:           attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
 					}
 
 				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_COMBOBOX:
