@@ -7,7 +7,7 @@ import (
 
 func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackParallellSave(dbTransactionReference *pgx.Tx, doCommitNotRoleBackReference *bool) {
 	dbTransaction := *dbTransactionReference
-	doCommitNotRoleBack = *doCommitNotRoleBackReference
+	doCommitNotRoleBack := *doCommitNotRoleBackReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
