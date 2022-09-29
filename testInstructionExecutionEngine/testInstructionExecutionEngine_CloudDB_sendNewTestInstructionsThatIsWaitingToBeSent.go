@@ -3,9 +3,9 @@ package testInstructionExecutionEngine
 import (
 	"FenixExecutionServer/common_config"
 	"context"
+	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
-	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 )
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
@@ -60,7 +60,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		return
 	}
 
-
 	// Update status on TestInstructions that could be sent to workers
 	err = executionEngine.clearTestInstructionExecutionQueueSaveToCloudDB(txn, testInstructionExecutionQueueMessages)
 	if err != nil {
@@ -103,16 +102,17 @@ type newTestInstructionToBeSentToExecutionWorkersStruct struct {
 	testInstructionName               string
 	testInstructionMajorVersionNumber int
 	testInstructionMinorVersionNumber int
+	testDataSetUuid                   string
 }
 
-	// Hold one new TestInstructionAttribute to be sent to Execution Worker
-	type newTestInstructionAttributeToBeSentToExecutionWorkersStruct struct {
-	testInstructionExecutionUuid      string
-	testInstructionAttributeType      int
-	testInstructionAttributeUuid      string
-	testInstructionAttributeName      string
-	attributeValueAsString            string
-	attributeValueUuid                string
+// Hold one new TestInstructionAttribute to be sent to Execution Worker
+type newTestInstructionAttributeToBeSentToExecutionWorkersStruct struct {
+	testInstructionExecutionUuid string
+	testInstructionAttributeType int
+	testInstructionAttributeUuid string
+	testInstructionAttributeName string
+	attributeValueAsString       string
+	attributeValueUuid           string
 }
 
 // Load all New TestInstructions and their attributes to be sent to the Executions Workers over gRPC
@@ -126,7 +126,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT DP.\"DomainUuid\", DP.\"DomainName\", DP.\"ExecutionWorker Address\", " +
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionOriginalUuid\", TIUE.\"TestInstructionName\", " +
-		"TIUE.\"TestInstructionMajorVersionNumber\", TIUE.\"TestInstructionMinorVersionNumber\" "
+		"TIUE.\"TestInstructionMajorVersionNumber\", TIUE.\"TestInstructionMinorVersionNumber\", " +
+		"TIUE.\"TestDataSetUuid\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE, " +
 		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = 0 AND "
@@ -146,7 +147,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
 
-		return nil,nil, err
+		return nil, nil, err
 	}
 
 	// Extract data from DB result set
@@ -164,7 +165,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			&tempTestInstructionAndAttributeData.testInstructionName,
 			&tempTestInstructionAndAttributeData.testInstructionMajorVersionNumber,
 			&tempTestInstructionAndAttributeData.testInstructionMinorVersionNumber,
-
+			&tempTestInstructionAndAttributeData.testDataSetUuid,
 		)
 
 		if err != nil {
@@ -175,7 +176,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 				"sqlToExecute": sqlToExecute,
 			}).Error("Something went wrong when processing result from database")
 
-			return nil,nil, err
+			return nil, nil, err
 		}
 
 		// Add Queue-message to slice of messages
@@ -213,7 +214,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
 
-		return nil,nil, err
+		return nil, nil, err
 	}
 
 	// Extract data from DB result set
@@ -239,7 +240,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 				"sqlToExecute": sqlToExecute,
 			}).Error("Something went wrong when processing result from database")
 
-			return nil,nil, err
+			return nil, nil, err
 		}
 
 		// Add Queue-message to slice of messages
@@ -251,7 +252,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 
 }
 
-
 // Holds address, to the execution worker, and a message that will be sent to worker
 type processTestInstructionExecutionRequestMessageContainer struct {
 	addressToExecutionWorker string
@@ -259,47 +259,80 @@ type processTestInstructionExecutionRequestMessageContainer struct {
 }
 
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
-func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestInstructionsAndAttributeIntogRPCMessages(rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct, rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct) (testInstructionsToBeSentToExecutionWorkers []processTestInstructionExecutionRequestMessageContainer, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct, rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct) (testInstructionsToBeSentToExecutionWorkers []processTestInstructionExecutionRequestMessageContainer, err error) {
 
 	attributesMap := make(map[string]*[]newTestInstructionAttributeToBeSentToExecutionWorkersStruct)
 
-		// Create map for attributes to be able to find attributes in an easier way
-		for _,  rawTestInstructionAttribute := range rawTestInstructionAttributesToBeSentToExecutionWorkers {
-			attributesSliceReference, existsInMap := attributesMap[rawTestInstructionAttribute.testInstructionExecutionUuid]
+	// Create map for attributes to be able to find attributes in an easier way
+	for _, rawTestInstructionAttribute := range rawTestInstructionAttributesToBeSentToExecutionWorkers {
+		attributesSliceReference, existsInMap := attributesMap[rawTestInstructionAttribute.testInstructionExecutionUuid]
 
-			if existsInMap == true {
-				// Exists, so just append value to slice
-				*attributesSliceReference = append(*attributesSliceReference, rawTestInstructionAttribute)
-			} else {
-				// Doesn't exists, so create new slice and add reference to Map
-				var newAttributesSlice []newTestInstructionAttributeToBeSentToExecutionWorkersStruct
-				newAttributesSlice = append(newAttributesSlice, rawTestInstructionAttribute)
-				attributesMap[rawTestInstructionAttribute.testInstructionExecutionUuid] = &newAttributesSlice
-			}
+		if existsInMap == true {
+			// Exists, so just append value to slice
+			*attributesSliceReference = append(*attributesSliceReference, rawTestInstructionAttribute)
+		} else {
+			// Doesn't exist, so create new slice and add reference to Map
+			var newAttributesSlice []newTestInstructionAttributeToBeSentToExecutionWorkersStruct
+			newAttributesSlice = append(newAttributesSlice, rawTestInstructionAttribute)
+			attributesMap[rawTestInstructionAttribute.testInstructionExecutionUuid] = &newAttributesSlice
 		}
+	}
 
 	// Loop TestInstruction build message ready to be sent over gRPC to workers
 	for _, rawTestInstructionData := range rawTestInstructionsToBeSentToExecutionWorkers {
 
+		var attributesForTestInstruction []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage
 
+		// Extract all attributes that belongs to a certain TestInstructionExecution
+		attributesSlice, existsInMap := attributesMap[rawTestInstructionData.testInstructionExecutionUuid]
+		if existsInMap == false || len(*attributesSlice) == 0 {
+			// No attributes for the TestInstruction
+			attributesForTestInstruction = []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage{}
+		} else {
+			// Create Attributes-message to be added to TestInstructionExecution-message
 
-		[]*ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage
+			var newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage
+
+			for _, attributeInSlice := range *attributesSlice {
+
+				newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage{
+					TestInstructionAttributeType: fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType),
+					TestInstructionAttributeUuid: attributeInSlice.testInstructionAttributeUuid,
+					TestInstructionAttributeName: attributeInSlice.testInstructionAttributeName,
+					AttributeValueAsString:       attributeInSlice.attributeValueAsString,
+					AttributeValueUuid:           attributeInSlice.attributeValueUuid,
+				}
+			}
+
+			// Append to TestInstructionsAttributes-message
+			attributesForTestInstruction = append(attributesForTestInstruction, newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage)
+		}
 
 		var newTestInstructionToBeSentToExecutionWorkers *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest
-		newTestInstructionToBeSentToExecutionWorkers = & fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest{
-			TestInstructionExecutionUuid: "",
-			TestInstructionUuid:          "",
-			TestInstructionName:          "",
-			MajorVersionNumber:           0,
-			MinorVersionNumber:           0,
-			TestInstructionAttributes:    nil,
+		newTestInstructionToBeSentToExecutionWorkers = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest{
+			TestInstructionExecutionUuid: rawTestInstructionData.testInstructionExecutionUuid,
+			TestInstructionUuid:          rawTestInstructionData.testInstructionOriginalUuid,
+			TestInstructionName:          rawTestInstructionData.testInstructionName,
+			MajorVersionNumber:           uint32(rawTestInstructionData.testInstructionMajorVersionNumber),
+			MinorVersionNumber:           uint32(rawTestInstructionData.testInstructionMinorVersionNumber),
+			TestInstructionAttributes:    attributesForTestInstruction,
 			TestData: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestDataMessage{
-				TestDataSetUuid:           "",
-				ManualOverrideForTestData: nil,
+				TestDataSetUuid:           rawTestInstructionData.testDataSetUuid,
+				ManualOverrideForTestData: []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestDataMessage_ManualOverrideForTestDataMessage{},
 			},
 		}
+
+		// Create one TestInstruction-message that holds all info to be able to send to Execution Worker gPRC
+		var newProcessTestInstructionExecutionRequestMessageContainer processTestInstructionExecutionRequestMessageContainer
+		newProcessTestInstructionExecutionRequestMessageContainer = processTestInstructionExecutionRequestMessageContainer{
+			addressToExecutionWorker:               rawTestInstructionData.executionWorkerAddress,
+			ProcessTestInstructionExecutionRequest: newTestInstructionToBeSentToExecutionWorkers,
+		}
+
+		// Add the TestInstruction-message to slice of messages
+		testInstructionsToBeSentToExecutionWorkers = append(testInstructionsToBeSentToExecutionWorkers, newProcessTestInstructionExecutionRequestMessageContainer)
+
 	}
 
-
-return testInstructionsToBeSentToExecutionWorkers, err
+	return testInstructionsToBeSentToExecutionWorkers, err
 }
