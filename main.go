@@ -26,39 +26,55 @@ func main() {
 }
 
 func init() {
-	//executionLocation := flag.String("startupType", "0", "The application should be started with one of the following: LOCALHOST_NODOCKER, LOCALHOST_DOCKER, GCP")
-	//flag.Parse()
 
 	var err error
 
-	// Get Environment variable to tell how this program was started
-	var executionLocation = mustGetenv("ExecutionLocation")
+	// Get Environment variable to tell how/were this worker is  running
+	var executionLocationForWorker = mustGetenv("ExecutionLocationForWorker")
 
-	switch executionLocation {
+	switch executionLocationForWorker {
 	case "LOCALHOST_NODOCKER":
-		common_config.ExecutionLocationForClient = common_config.LocalhostNoDocker
+		common_config.ExecutionLocationForWorker = common_config.LocalhostNoDocker
 
 	case "LOCALHOST_DOCKER":
-		common_config.ExecutionLocationForClient = common_config.LocalhostDocker
+		common_config.ExecutionLocationForWorker = common_config.LocalhostDocker
 
 	case "GCP":
-		common_config.ExecutionLocationForClient = common_config.GCP
+		common_config.ExecutionLocationForWorker = common_config.GCP
 
 	default:
-		fmt.Println("Unknown Execution location for FenixGuiServer: " + executionLocation + ". Expected one of the following: LOCALHOST_NODOCKER, LOCALHOST_DOCKER, GCP")
+		fmt.Println("Unknown Execution location for Worker: " + executionLocationForWorker + ". Expected one of the following: 'LOCALHOST_NODOCKER', 'LOCALHOST_DOCKER', 'GCP'")
 		os.Exit(0)
 
 	}
 
-	// Address to GuiBuilderServer
-	common_config.FenixGuiServerAddress = mustGetenv("FenixGuiBuilderServerAddress")
+	// Get Environment variable to tell were Fenix Execution Server is running
+	var executionLocationForExecutionServer = mustGetenv("ExecutionLocationForFenixTestExecutionServer")
 
-	// Port for GuiBuilderServer
-	common_config.FenixExecutionGuiServerPort, err = strconv.Atoi(mustGetenv("FenixGuiBuilderServerPort"))
+	switch executionLocationForExecutionServer {
+	case "LOCALHOST_NODOCKER":
+		common_config.ExecutionLocationForFenixExecutionServer = common_config.LocalhostNoDocker
+
+	case "LOCALHOST_DOCKER":
+		common_config.ExecutionLocationForFenixExecutionServer = common_config.LocalhostDocker
+
+	case "GCP":
+		common_config.ExecutionLocationForFenixExecutionServer = common_config.GCP
+
+	default:
+		fmt.Println("Unknown Execution location for Fenix Execution Server: " + executionLocationForWorker + ". Expected one of the following: 'LOCALHOST_NODOCKER', 'LOCALHOST_DOCKER', 'GCP'")
+		os.Exit(0)
+
+	}
+
+	// Address to Fenix Execution Server
+	//common_config.FenixExecutionWorkerServerAddress = mustGetenv("FenixExecutionServerAddress")
+
+	// Port for Fenix Execution Worker Server
+	common_config.FenixExecutionWorkerServerPort, err = strconv.Atoi(mustGetenv("FenixExecutionWorkerServerPort"))
 	if err != nil {
-		fmt.Println("Couldn't convert environment variable 'FenixGuiBuilderServerPort' to an integer, error: ", err)
+		fmt.Println("Couldn't convert environment variable 'FenixExecutionWorkerServerPort' to an integer, error: ", err)
 		os.Exit(0)
 
 	}
-
 }

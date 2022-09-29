@@ -1,8 +1,9 @@
 package messagesToExecutionWorker
 
 import (
-	"FenixExecutionWorker/common_config"
+	"FenixExecutionServer/common_config"
 	"crypto/tls"
+	"fmt"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/idtoken"
@@ -17,8 +18,26 @@ import (
 
 // ********************************************************************************************************************
 
+// Extract reference to WorkerVariablesStruct
+
+func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) getWorkerVariablesReference(domainUuid string) (executionWorkerVariablesReference *common_config.ExecutionWorkerVariablesStruct) {
+
+	executionWorkerVariablesReference, existInMap := common_config.ExecutionWorkerVariablesMap[domainUuid]
+	if existInMap == false {
+		fenixExecutionWorkerObject.logger.WithFields(logrus.Fields{
+			"ID":         "bb2d7e51-83dc-4027-9c6a-ee8b4677699f",
+			"domainUuid": domainUuid,
+		}).Fatalln(fmt.Sprintf("Couldn't find DomainUuid: %s. This shouldn't happend", domainUuid))
+	}
+
+	return executionWorkerVariablesReference
+}
+
 // SetConnectionToFenixTestExecutionServer - Set upp connection and Dial to FenixExecutionServer
-func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SetConnectionToFenixTestExecutionServer() (err error) {
+func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SetConnectionToFenixTestExecutionServer(domainUuid string) (err error) {
+
+	// Get WorkerVariablesReference
+	workerVariables := fenixExecutionWorkerObject.getWorkerVariablesReference(domainUuid)
 
 	var opts []grpc.DialOption
 
@@ -37,35 +56,40 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	// When run on GCP, use credentials
 	if common_config.ExecutionLocationForFenixExecutionWorkerServer == common_config.GCP {
 		// Run on GCP
-		remoteFenixExecutionWorkerServerConnection, err = grpc.Dial(FenixExecutionServerAddressToDial, opts...)
+		workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerAddressToDial, opts...)
 	} else {
 		// Run Local
-		remoteFenixExecutionWorkerServerConnection, err = grpc.Dial(FenixExecutionServerAddressToDial, grpc.WithInsecure())
+		workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerAddressToDial, grpc.WithInsecure())
 	}
 	if err != nil {
 		fenixExecutionWorkerObject.logger.WithFields(logrus.Fields{
-			"ID":                                "50b59b1b-57ce-4c27-aa84-617f0cde3100",
-			"FenixExecutionServerAddressToDial": FenixExecutionServerAddressToDial,
-			"error message":                     err,
-		}).Error("Did not connect to FenixExecutionServer via gRPC")
+			"ID": "50b59b1b-57ce-4c27-aa84-617f0cde3100",
+			"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerAddressToDial,
+			"error message": err,
+			"domainUuid":    domainUuid,
+		}).Error("Did not connect to FenixExecutionWorkerServer via gRPC")
 
 		return err
 
 	} else {
 		fenixExecutionWorkerObject.logger.WithFields(logrus.Fields{
-			"ID":                                "0c650bbc-45d0-4029-bd25-4ced9925a059",
-			"FenixExecutionServerAddressToDial": FenixExecutionServerAddressToDial,
-		}).Info("gRPC connection OK to FenixExecutionServer")
+			"ID": "0c650bbc-45d0-4029-bd25-4ced9925a059",
+			"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerAddressToDial,
+			"domainUuid": domainUuid,
+		}).Info("gRPC connection OK to FenixExecutionWorkerServer")
 
 		// Creates a new Clients
-		fenixExecutionWorkerServerGrpcClient = fenixExecutionServerGrpcApi.NewFenixExecutionServerGrpcServicesClient(remoteFenixExecutionWorkerServerConnection)
+		workerVariables.FenixExecutionWorkerServerGrpcClient = fenixExecutionServerGrpcApi.NewFenixExecutionServerGrpcServicesClient(workerVariables.RemoteFenixExecutionWorkerServerConnection)
 
 	}
 	return err
 }
 
 // Generate Google access token. Used when running in GCP
-func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) generateGCPAccessToken(ctx context.Context, fenixExecutionServerWorkerAddressToUse string) (appendedCtx context.Context, returnAckNack bool, returnMessage string) {
+func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) generateGCPAccessToken(ctx context.Context, fenixExecutionServerWorkerAddressToUse string, domainUuid string) (appendedCtx context.Context, returnAckNack bool, returnMessage string) {
+
+	// Get WorkerVariablesReference
+	workerVariables := fenixExecutionWorkerObject.getWorkerVariablesReference(domainUuid)
 
 	// Only create the token if there is none, or it has expired
 	if fenixExecutionWorkerObject.gcpAccessToken == nil || fenixExecutionWorkerObject.gcpAccessToken.Expiry.Before(time.Now()) {
@@ -73,7 +97,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) g
 		// Create an identity token.
 		// With a global TokenSource tokens would be reused and auto-refreshed at need.
 		// A given TokenSource is specific to the audience.
-		tokenSource, err := idtoken.NewTokenSource(ctx, "https://"+fenixExecutionServerWorkerAddressToUse)
+		tokenSource, err := idtoken.NewTokenSource(ctx, "https://"+workerVariables.FenixExecutionServerWorkerAddressToUse)
 		if err != nil {
 			fenixExecutionWorkerObject.logger.WithFields(logrus.Fields{
 				"ID":  "8ba622d8-b4cd-46c7-9f81-d9ade2568eca",
