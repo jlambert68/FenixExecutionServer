@@ -16,6 +16,7 @@ type ChannelCommandType uint8
 
 const (
 	ChannelCommandCheckTestInstructionExecutionQueue ChannelCommandType = iota
+	ChannelCommandCheckNewTestInstructionExecutions
 	ChannelCommandCheckOngoingTestInstructionExecutions
 )
 

@@ -19,6 +19,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		case ChannelCommandCheckTestInstructionExecutionQueue:
 			executionEngine.initiateExecutionsForTestInstructionsOnExecutionQueue()
 
+		case ChannelCommandCheckNewTestInstructionExecutions:
+
 		case ChannelCommandCheckOngoingTestInstructionExecutions:
 			executionEngine.checkOngoingExecutionsForTestInstructions()
 
@@ -40,7 +42,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsF
 	executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB()
 }
 
-// Check ongoing executions  for TestInstructions for change in status that should be propagated to other places
+// Check for new executions for TestInstructions that should be sent to workers
+func (executionEngine *TestInstructionExecutionEngineStruct) checkNewExecutionsForTestInstructions() {
+	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker()
+}
+
+// Check for ongoing executions  for TestInstructions for change in status that should be propagated to other places
 func (executionEngine *TestInstructionExecutionEngineStruct) checkOngoingExecutionsForTestInstructions() {
 
 }

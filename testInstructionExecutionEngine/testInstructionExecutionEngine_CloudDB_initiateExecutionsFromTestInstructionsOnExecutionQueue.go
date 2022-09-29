@@ -10,19 +10,11 @@ import (
 	"time"
 )
 
-// After all stuff is done, then Commit or Rollback depending on result
-var doCommitNotRoleBack bool
-
-func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBack(dbTransaction pgx.Tx) {
-	if doCommitNotRoleBack == true {
-		dbTransaction.Commit(context.Background())
-	} else {
-		dbTransaction.Rollback(context.Background())
-	}
-}
-
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB() {
+
+	// After all stuff is done, then Commit or Rollback depending on result
+	var doCommitNotRoleBack bool
 
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
@@ -34,9 +26,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 		return
 	}
+
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
-	defer executionEngine.commitOrRoleBack(txn)
+	defer executionEngine.commitOrRoleBackParallellSave(&txn, &doCommitNotRoleBack)
 
 	// Generate a new TestCaseExecution-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
@@ -202,8 +195,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 			return []*tempTestInstructionExecutionQueueInformationStruct{}, err
 		}
-
-		// Convert
 
 		// Add Queue-message to slice of messages
 		testInstructionExecutionQueueInformation = append(testInstructionExecutionQueueInformation, &tempTestInstructionExecutionQueueMessage)
