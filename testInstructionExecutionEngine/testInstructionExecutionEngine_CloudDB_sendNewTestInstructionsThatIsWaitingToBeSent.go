@@ -38,6 +38,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err := executionEngine.loadNewTestInstructionToBeSentToExecutionWorkers() //(txn)
 	if err != nil {
 
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "25cd9e94-76f6-40ca-8f4c-eed10b618224",
+			"error": err,
+		}).Error("Got some error when loading the TestInstructionExecutions and Attributes for Executions")
+
 		return
 	}
 
@@ -48,8 +53,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Transform Raw TestInstructions and Attributes, from DB, into messages ready to be sent over gRPC to Execution Workers
-	testInstructionsToBeSentToExecutionWorkers, err := executionEngine.transformRawTestInstructionsAndAttributeIntogRPCMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
+	testInstructionsToBeSentToExecutionWorkers, err := executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
 	if err != nil {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "25cd9e94-76f6-40ca-8f4c-eed10b618224",
+			"error": err,
+		}).Error("Some problem when transforming raw TestInstruction- and Attributes-data into gRPC-messages")
 
 		return
 	}
@@ -60,8 +70,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		return
 	}
 
+	// Send TestInstructionExecutions with their attributes to correct Execution Worker
+	testInstructionExecutionsWithSendStatus, err = executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers)
+	if err != nil {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+			"error": err,
+		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+
+		return
+
+	}
+
 	// Update status on TestInstructions that could be sent to workers
-	err = executionEngine.clearTestInstructionExecutionQueueSaveToCloudDB(txn, testInstructionExecutionQueueMessages)
+	err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -74,7 +97,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Update status on TestCases that TestInstructions have been sent to workers
-	err = executionEngine.clearTestInstructionExecutionQueueSaveToCloudDB(txn, testInstructionExecutionQueueMessages)
+	err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
