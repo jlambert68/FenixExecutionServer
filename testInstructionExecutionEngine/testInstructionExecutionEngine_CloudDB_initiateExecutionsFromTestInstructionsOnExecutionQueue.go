@@ -79,9 +79,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 			"error": err,
 		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-		// Rollback any SQL transactions
-		txn.Rollback(context.Background())
-
 		return
 
 	}

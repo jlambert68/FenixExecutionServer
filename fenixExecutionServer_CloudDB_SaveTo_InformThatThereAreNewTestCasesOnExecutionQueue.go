@@ -209,7 +209,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	}
 
 	// Add TestInstructions to TestInstructionsExecutionQueue
-	err = fenixExecutionServerObject.SaveTestInstructionsToExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages, allDataAroundAllTestCase)
+	testInstructionUuidTotestInstructionExecutionUuidMap, err := fenixExecutionServerObject.SaveTestInstructionsToExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages, allDataAroundAllTestCase)
 	if err != nil {
 
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
@@ -237,6 +237,18 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 
 		return ackNackResponse
 
+	}
+
+	// Add attributes to table for 'TestInstructionAttributesUnderExecution'
+	err = fenixExecutionServerObject.saveTestInstructionAttributesUnderExecutionSaveToCloudDB(txn, testInstructionUuidTotestInstructionExecutionUuidMap)
+	if err != nil {
+
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"id":    "d50bded9-f541-4367-b141-b640e7f6fc67",
+			"error": err,
+		}).Error("Couldn't add TestInstructionAttributes to table in CloudDB")
+
+		return
 	}
 
 	ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
@@ -303,6 +315,17 @@ type tempTestInstructionInTestCaseStruct struct {
 	testInstructionsAsJsonb          string
 	testInstructionContainersAsJsonb string
 	uniqueCounter                    int
+}
+
+// Stores a slice of attributes to be stored in Cloud-DB
+type tempAttributesType []tempAttributeStruct
+type tempAttributeStruct struct {
+	testInstructionExecutionUuid string
+	testInstructionAttributeType int
+	TestInstructionAttributeUuid string
+	TestInstructionAttributeName string
+	AttributeValueAsString       string
+	AttributeValueUuid           string
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecution-table
@@ -623,13 +646,17 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 }
 
 // Save all TestInstructions in 'TestInstructionExecutionQueue'
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (err error) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType, err error) {
 
 	// Get a common dateTimeStamp to use
 	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
 
 	var dataRowToBeInsertedMultiType []interface{}
 	var dataRowsToBeInsertedMultiType [][]interface{}
+	var newTestInstructionExecutionUuid string
+
+	//Initiate response-map
+	testInstructionAttributesForInstructionExecutionUuidMap = make(map[string]tempAttributesType)
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -654,15 +681,15 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 		// Convert json-objects into their gRPC-structs
 		err := protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructions)
 		if err != nil {
-			return err
+			return testInstructionAttributesForInstructionExecutionUuidMap, err
 		}
 		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionContainersAsJsonb), &testInstructionContainers)
 		if err != nil {
-			return err
+			return testInstructionAttributesForInstructionExecutionUuidMap, err
 		}
 		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testCaseBasicInformationAsJsonb), &testCaseBasicInformationMessage)
 		if err != nil {
-			return err
+			return testInstructionAttributesForInstructionExecutionUuidMap, err
 		}
 
 		// Generate TestCaseElementModel-map
@@ -692,7 +719,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 					"Error": err,
 				}).Error("Couldn't calculate Execution Order for TestInstructions")
 
-				return err
+				return testInstructionAttributesForInstructionExecutionUuidMap, err
 			}
 		}
 
@@ -701,9 +728,56 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 
 			dataRowToBeInsertedMultiType = nil
 
+			// Generate the Execution-Uuid for the TestInstruction
+			newTestInstructionExecutionUuid = uuidGenerator.New().String()
+
+			// Loop attributes for TestInstructions and add Map, to be saved in Cloud-DB (on other function)
+			var attributesSliceToStoreInDB tempAttributesType
+
+			for _, attribute := range testInstruction.MatureTestInstructionInformation.TestInstructionAttributesList {
+
+				var attributeToStoreInDB tempAttributeStruct
+
+				// Switch type of attribute, e.g. TextBox, ComboBox and so on
+				switch attribute.BaseAttributeInformation.TestInstructionAttributeType {
+
+				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_TEXTBOX:
+					attributeToStoreInDB = tempAttributeStruct{
+						testInstructionExecutionUuid: newTestInstructionExecutionUuid,
+						testInstructionAttributeType: int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
+						TestInstructionAttributeUuid: attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
+						TestInstructionAttributeName: attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoxName,
+						AttributeValueAsString:       attribute.AttributeInformation.InputTextBoxProperty.TextBoxAttributeValue,
+						AttributeValueUuid:           "",
+					}
+
+				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_COMBOBOX:
+					attributeToStoreInDB = tempAttributeStruct{
+						testInstructionExecutionUuid: newTestInstructionExecutionUuid,
+						testInstructionAttributeType: int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
+						TestInstructionAttributeUuid: attribute.AttributeInformation.InputComboBoxProperty.TestInstructionAttributeComboBoxUuid,
+						TestInstructionAttributeName: attribute.AttributeInformation.InputComboBoxProperty.TestInstructionAttributeComboBoxName,
+						AttributeValueAsString:       attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValue,
+						AttributeValueUuid:           attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValueUuid,
+					}
+
+				default:
+					fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+						"Id": "f9c124ba-beb2-40c7-a1b3-52d5b9997b2b",
+						"attribute.BaseAttributeInformation.TestInstructionAttributeType": attribute.BaseAttributeInformation.TestInstructionAttributeType,
+					}).Fatalln("Unknown attribute type. Exiting")
+				}
+
+				// Add attribute to slice of attributes
+				attributesSliceToStoreInDB = append(attributesSliceToStoreInDB, attributeToStoreInDB)
+			}
+
+			// Store slice of attributes in response-map
+			testInstructionAttributesForInstructionExecutionUuidMap[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid] = attributesSliceToStoreInDB
+
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.domainUuid)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.domainName)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, uuidGenerator.New().String()) //TestInstructionExecutionUuid
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, newTestInstructionExecutionUuid)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.MajorVersionNumber)
@@ -734,6 +808,86 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 	if err != nil {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"Id":           "7b2447a0-5790-47b5-af28-5f069c80c88a",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return testInstructionAttributesForInstructionExecutionUuidMap, err
+	}
+
+	// Log response from CloudDB
+	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return testInstructionAttributesForInstructionExecutionUuidMap, nil
+
+}
+
+// Save the attributes for the TestInstructions waiting on Execution queue
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestInstructionAttributesUnderExecutionSaveToCloudDB(dbTransaction pgx.Tx, testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType) (err error) {
+
+	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		"Id": "23993342-01dc-40b5-b3c0-b83d1d0b2eb7",
+	}).Debug("Entering: saveTestInstructionAttributesUnderExecutionSaveToCloudDB()")
+
+	defer func() {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id": "9c36c17f-b4f9-4383-820a-32c22c050b71",
+		}).Debug("Exiting: saveTestInstructionAttributesUnderExecutionSaveToCloudDB()")
+	}()
+
+	// Get a common dateTimeStamp to use
+	//currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	var dataRowToBeInsertedMultiType []interface{}
+	var dataRowsToBeInsertedMultiType [][]interface{}
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+
+	// Create Insert Statement for Ongoing TestInstructionExecution
+	// Data to be inserted in the DB-table
+	dataRowsToBeInsertedMultiType = nil
+
+	for _, testInstructionsAttributesPerTestInstructionExecutionUuid := range testInstructionAttributesForInstructionExecutionUuidMap {
+
+		for _, testInstructionsAttribute := range testInstructionsAttributesPerTestInstructionExecutionUuid {
+
+			dataRowToBeInsertedMultiType = nil
+
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionExecutionUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeType)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.TestInstructionAttributeUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.TestInstructionAttributeName)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueAsString)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueUuid)
+
+			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
+
+		}
+	}
+
+	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionAttributesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "(\"TestInstructionExecutionUuid\", \"TestInstructionAttributeType\", \"TestInstructionAttributeUuid\", " +
+		"\"TestInstructionAttributeName\", \"AttributeValueAsString\", \"AttributeValueUuid\") "
+	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
+	sqlToExecute = sqlToExecute + ";"
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":           "8abe1477-351f-49e5-a563-94ed227dfad1",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
