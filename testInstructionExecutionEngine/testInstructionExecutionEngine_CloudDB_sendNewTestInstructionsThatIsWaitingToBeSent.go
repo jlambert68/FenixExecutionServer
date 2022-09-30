@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
 	"context"
+	"fmt"
 	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
@@ -71,7 +72,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Send TestInstructionExecutions with their attributes to correct Execution Worker
-	testInstructionExecutionsWithSendStatus, err = executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers)
+	testInstructionExecutionsWithSendStatus, err := executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers)
+	fmt.Println(testInstructionExecutionsWithSendStatus)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -82,36 +84,38 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		return
 
 	}
+	/*
+		// Update status on TestInstructions that could be sent to workers
+		err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
+		if err != nil {
 
-	// Update status on TestInstructions that could be sent to workers
-	err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
-	if err != nil {
+			executionEngine.logger.WithFields(logrus.Fields{
+				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+				"error": err,
+			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-			"error": err,
-		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+			return
 
-		return
+		}
 
-	}
+		// Update status on TestCases that TestInstructions have been sent to workers
+		err = executionEngine.updateStatusOnTestCasesInCloudDB(txn, testInstructionExecutionQueueMessages)
+		if err != nil {
 
-	// Update status on TestCases that TestInstructions have been sent to workers
-	err = executionEngine.updateStatusOnTestCasesInCloudDB(txn, testInstructionExecutionQueueMessages)
-	if err != nil {
+			executionEngine.logger.WithFields(logrus.Fields{
+				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+				"error": err,
+			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-			"error": err,
-		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+			return
 
-		return
+		}
 
-	}
+		// Commit every database change
+		// TODO Remove after tests doCommitNotRoleBack = true
 
-	// Commit every database change
-	// TODO Remove after tests doCommitNotRoleBack = true
 
+	*/
 	return
 }
 
@@ -390,13 +394,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 	// Set up instance to use for execution gPRC
 	var fenixExecutionWorkerObject *messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct
-	fenixExecutionWorkerObject = &messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct{Logger: s.logger}
+	fenixExecutionWorkerObject = &messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct{Logger: executionEngine.logger}
 
 	// Loop all TestInstructionExecutions and send them to correct Worker for executions
 	for _, testInstructionToBeSentToExecutionWorkers := range testInstructionsToBeSentToExecutionWorkers {
 
 		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(testInstructionToBeSentToExecutionWorkers.domainUuid, testInstructionToBeSentToExecutionWorkers.ProcessTestInstructionExecutionRequest)
-
+		fmt.Println(responseFromWorker)
 	}
 	return testInstructionExecutionsWithSendStatus, err
 }
