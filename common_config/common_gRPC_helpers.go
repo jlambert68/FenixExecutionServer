@@ -103,7 +103,7 @@ func GetHighestExecutionWorkerProtoFileVersion(domainUuid string) int32 {
 	var maxValue int32
 	maxValue = 0
 
-	for _, v := range fenixExecutionWorkerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum_value {
+	for _, v := range fenixExecutionWorkerGrpcApi.CurrentFenixExecutionWorkerProtoFileVersionEnum_value {
 		if v > maxValue {
 			maxValue = v
 		}

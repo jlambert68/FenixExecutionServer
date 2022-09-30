@@ -20,7 +20,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	workerVariables := fenixExecutionWorkerObject.getWorkerVariablesReference(domainUuid)
 
 	// Set up connection to Server
-	err := fenixExecutionWorkerObject.SetConnectionToFenixTestExecutionServer(domainUuid)
+	err := fenixExecutionWorkerObject.SetConnectionToExecutionWorkerServer(domainUuid)
 	if err != nil {
 
 		// Set Error codes to return message

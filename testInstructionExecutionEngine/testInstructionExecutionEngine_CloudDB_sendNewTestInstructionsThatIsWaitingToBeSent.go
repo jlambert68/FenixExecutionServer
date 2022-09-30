@@ -279,8 +279,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 
 // Holds address, to the execution worker, and a message that will be sent to worker
 type processTestInstructionExecutionRequestMessageContainer struct {
-	addressToExecutionWorker string
-	*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest
+	addressToExecutionWorker               string
+	ProcessTestInstructionExecutionRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest
 }
 
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
@@ -306,21 +306,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 	// Loop TestInstruction build message ready to be sent over gRPC to workers
 	for _, rawTestInstructionData := range rawTestInstructionsToBeSentToExecutionWorkers {
 
-		var attributesForTestInstruction []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage
+		var attributesForTestInstruction []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage
 
 		// Extract all attributes that belongs to a certain TestInstructionExecution
 		attributesSlice, existsInMap := attributesMap[rawTestInstructionData.testInstructionExecutionUuid]
 		if existsInMap == false || len(*attributesSlice) == 0 {
 			// No attributes for the TestInstruction
-			attributesForTestInstruction = []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage{}
+			attributesForTestInstruction = []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage{}
 		} else {
 			// Create Attributes-message to be added to TestInstructionExecution-message
 
-			var newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage
+			var newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage
 
 			for _, attributeInSlice := range *attributesSlice {
 
-				newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage{
+				newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage{
 					TestInstructionAttributeType: fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType),
 					TestInstructionAttributeUuid: attributeInSlice.testInstructionAttributeUuid,
 					TestInstructionAttributeName: attributeInSlice.testInstructionAttributeName,
@@ -333,28 +333,40 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 			attributesForTestInstruction = append(attributesForTestInstruction, newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage)
 		}
 
-		var newTestInstructionToBeSentToExecutionWorkers *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest
-		newTestInstructionToBeSentToExecutionWorkers = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest{
+		// Create The TestInstruction and its attributes object, to be sent late
+		var newTestInstructionToBeSentToExecutionWorkers *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage
+		newTestInstructionToBeSentToExecutionWorkers = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage{
 			TestInstructionExecutionUuid: rawTestInstructionData.testInstructionExecutionUuid,
 			TestInstructionUuid:          rawTestInstructionData.testInstructionOriginalUuid,
 			TestInstructionName:          rawTestInstructionData.testInstructionName,
 			MajorVersionNumber:           uint32(rawTestInstructionData.testInstructionMajorVersionNumber),
 			MinorVersionNumber:           uint32(rawTestInstructionData.testInstructionMinorVersionNumber),
 			TestInstructionAttributes:    attributesForTestInstruction,
-			TestData: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestDataMessage{
-				TestDataSetUuid:           rawTestInstructionData.testDataSetUuid,
-				ManualOverrideForTestData: []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionRequest_TestDataMessage_ManualOverrideForTestDataMessage{},
-			},
 		}
 
-		// Create one TestInstruction-message that holds all info to be able to send to Execution Worker gPRC
+		// Create the TestData object, to be sent later
+		var newTestDataToBeSentToExecutionWorker *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestDataMessage
+		newTestDataToBeSentToExecutionWorker = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestDataMessage{
+			TestDataSetUuid:           rawTestInstructionData.testDataSetUuid,
+			ManualOverrideForTestData: []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestDataMessage_ManualOverrideForTestDataMessage{},
+		}
+
+		// Build the full request to later be sent to Worker
+		var newProcessTestInstructionExecutionReveredRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest
+		newProcessTestInstructionExecutionReveredRequest = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest{
+			ProtoFileVersionUsedByClient: 0,
+			TestInstruction:              newTestInstructionToBeSentToExecutionWorkers,
+			TestData:                     newTestDataToBeSentToExecutionWorker,
+		}
+
+		// Create one full TestInstruction-coontainer, including address to Worker, so TestInstruction can be sent to Execution Worker over gPRC
 		var newProcessTestInstructionExecutionRequestMessageContainer processTestInstructionExecutionRequestMessageContainer
 		newProcessTestInstructionExecutionRequestMessageContainer = processTestInstructionExecutionRequestMessageContainer{
 			addressToExecutionWorker:               rawTestInstructionData.executionWorkerAddress,
-			ProcessTestInstructionExecutionRequest: newTestInstructionToBeSentToExecutionWorkers,
+			ProcessTestInstructionExecutionRequest: newProcessTestInstructionExecutionReveredRequest,
 		}
 
-		// Add the TestInstruction-message to slice of messages
+		// Add the TestInstruction-container to slice of containers
 		testInstructionsToBeSentToExecutionWorkers = append(testInstructionsToBeSentToExecutionWorkers, newProcessTestInstructionExecutionRequestMessageContainer)
 
 	}

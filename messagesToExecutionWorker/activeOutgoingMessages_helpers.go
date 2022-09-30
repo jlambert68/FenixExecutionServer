@@ -4,7 +4,7 @@ import (
 	"FenixExecutionServer/common_config"
 	"crypto/tls"
 	"fmt"
-	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/idtoken"
 	grpcMetadata "google.golang.org/grpc/metadata"
@@ -33,8 +33,8 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) g
 	return executionWorkerVariablesReference
 }
 
-// SetConnectionToFenixTestExecutionServer - Set upp connection and Dial to FenixExecutionServer
-func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SetConnectionToFenixTestExecutionServer(domainUuid string) (err error) {
+// SetConnectionToExecutionWorkerServer - Set upp connection and Dial to FenixExecutionServer
+func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SetConnectionToExecutionWorkerServer(domainUuid string) (err error) {
 
 	// Get WorkerVariablesReference
 	workerVariables := fenixExecutionWorkerObject.getWorkerVariablesReference(domainUuid)
@@ -79,7 +79,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		}).Info("gRPC connection OK to FenixExecutionWorkerServer")
 
 		// Creates a new Clients
-		workerVariables.FenixExecutionWorkerServerGrpcClient = fenixExecutionServerGrpcApi.NewFenixExecutionServerGrpcServicesClient(workerVariables.RemoteFenixExecutionWorkerServerConnection)
+		workerVariables.FenixExecutionWorkerServerGrpcClient = fenixExecutionWorkerGrpcApi.NewFenixExecutionWorkerGrpcServicesClient(workerVariables.RemoteFenixExecutionWorkerServerConnection)
 
 	}
 	return err
