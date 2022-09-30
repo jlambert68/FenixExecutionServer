@@ -70,6 +70,14 @@ func init() {
 	// Address to Fenix Execution Server
 	//common_config.FenixExecutionWorkerServerAddress = mustGetenv("FenixExecutionServerAddress")
 
+	// Port for Fenix Execution Server
+	common_config.FenixExecutionExecutionServerPort, err = strconv.Atoi(mustGetenv("FenixExecutionExecutionServerPort"))
+	if err != nil {
+		fmt.Println("Couldn't convert environment variable 'FenixExecutionWorkerServerPort' to an integer, error: ", err)
+		os.Exit(0)
+
+	}
+
 	// Port for Fenix Execution Worker Server
 	common_config.FenixExecutionWorkerServerPort, err = strconv.Atoi(mustGetenv("FenixExecutionWorkerServerPort"))
 	if err != nil {

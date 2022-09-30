@@ -53,7 +53,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Transform Raw TestInstructions and Attributes, from DB, into messages ready to be sent over gRPC to Execution Workers
-	testInstructionsToBeSentToExecutionWorkers, err := executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
+	_, err = executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
+	//testInstructionsToBeSentToExecutionWorkers
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -70,48 +71,49 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		return
 	}
 
-	// Send TestInstructionExecutions with their attributes to correct Execution Worker
-	testInstructionExecutionsWithSendStatus, err = executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers)
-	if err != nil {
+	/*
+		// Send TestInstructionExecutions with their attributes to correct Execution Worker
+		testInstructionExecutionsWithSendStatus, err = executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers)
+		if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-			"error": err,
-		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+			executionEngine.logger.WithFields(logrus.Fields{
+				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+				"error": err,
+			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-		return
+			return
 
-	}
+		}
 
-	// Update status on TestInstructions that could be sent to workers
-	err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
-	if err != nil {
+		// Update status on TestInstructions that could be sent to workers
+		err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
+		if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-			"error": err,
-		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+			executionEngine.logger.WithFields(logrus.Fields{
+				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+				"error": err,
+			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-		return
+			return
 
-	}
+		}
 
-	// Update status on TestCases that TestInstructions have been sent to workers
-	err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
-	if err != nil {
+		// Update status on TestCases that TestInstructions have been sent to workers
+		err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
+		if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-			"error": err,
-		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+			executionEngine.logger.WithFields(logrus.Fields{
+				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+				"error": err,
+			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-		return
+			return
 
-	}
+		}
 
-	// Commit every database change
-	doCommitNotRoleBack = true
-
+		// Commit every database change
+		doCommitNotRoleBack = true
+	*/
 	return
 }
 

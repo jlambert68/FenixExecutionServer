@@ -3,12 +3,15 @@ package common_config
 // ***********************************************************************************************************
 // The following variables receives their values from environment variables
 
+// ExecutionLocationForWorker
 // Where is the Worker running
 var ExecutionLocationForWorker ExecutionLocationTypeType
 
+// ExecutionLocationForFenixExecutionServer
 // Where is Fenix Execution Server running
 var ExecutionLocationForFenixExecutionServer ExecutionLocationTypeType
 
+// ExecutionLocationTypeType
 // Definitions for where client and Fenix Server is running
 type ExecutionLocationTypeType int
 
@@ -19,5 +22,10 @@ const (
 	GCP
 )
 
+// FenixExecutionWorkerServerPort
 // Execution Worker Port to use, will have its value from Environment variables at startup
 var FenixExecutionWorkerServerPort int
+
+// FenixExecutionExecutionServerPort
+// Execution Server Port to use, will have its value from Environment variables at startup
+var FenixExecutionExecutionServerPort int

@@ -10,7 +10,8 @@ var highestFenixExecutionServerProtoFileVersion int32 = -1
 
 //var highestExecutionWorkerProtoFileVersion int32 = -1
 
-// Structure that keeps track of one individual Workers varaibles
+// ExecutionWorkerVariablesStruct
+// Structure that keeps track of one individual Workers variables
 type ExecutionWorkerVariablesStruct struct {
 	HighestExecutionWorkerProtoFileVersion int32
 	FenixExecutionWorkerServerAddress      string
@@ -22,5 +23,6 @@ type ExecutionWorkerVariablesStruct struct {
 	FenixExecutionServerWorkerAddressToUse     string
 }
 
-// Map that keeps track of all individuals Workers varaibles
+// ExecutionWorkerVariablesMap
+// Map that keeps track of all individuals Workers variables
 var ExecutionWorkerVariablesMap map[string]*ExecutionWorkerVariablesStruct //map[DomainUUID]*ExecutionWorkerVariablesStruct

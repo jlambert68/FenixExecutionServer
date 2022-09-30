@@ -22,9 +22,9 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) InitGrpcServ
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"Id": "ca3593b1-466b-4536-be91-5e038de178f4",
-		"common_config.FenixExecutionGuiServerPort: ": common_config.FenixExecutionGuiServerPort,
+		"common_config.FenixExecutionExecutionServerPort: ": common_config.FenixExecutionExecutionServerPort,
 	}).Info("Start listening on:")
-	lis, err = net.Listen("tcp", ":"+strconv.Itoa(common_config.FenixExecutionGuiServerPort))
+	lis, err = net.Listen("tcp", ":"+strconv.Itoa(common_config.FenixExecutionExecutionServerPort))
 
 	if err != nil {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
@@ -34,7 +34,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) InitGrpcServ
 	} else {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"Id": "ba070b9b-5d57-4c0a-ab4c-a76247a50fd3",
-			"common_config.FenixExecutionGuiServerPort: ": common_config.FenixExecutionGuiServerPort,
+			"common_config.FenixExecutionExecutionServerPort: ": common_config.FenixExecutionExecutionServerPort,
 		}).Info("Success in listening on port:")
 
 	}
@@ -53,8 +53,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) InitGrpcServ
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"Id": "e843ece9-b707-4c60-b1d8-14464305e68f",
-		"common_config.FenixExecutionGuiServerPort: ": common_config.FenixExecutionGuiServerPort,
-	}).Info("registerFenixExecutionServerGrpcServicesServer for TestExecution-GUI Backend Server started")
+		"common_config.FenixExecutionExecutionServerPort: ": common_config.FenixExecutionExecutionServerPort,
+	}).Info("registerFenixExecutionServerGrpcServicesServer for TestExecution Server started")
 	registerFenixExecutionServerGrpcServicesServer.Serve(lis)
 	//}()
 
@@ -67,7 +67,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) StopGrpcServ
 	registerFenixExecutionServerGrpcServicesServer.GracefulStop()
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
-		"common_config.FenixExecutionGuiServerPort: ": common_config.FenixExecutionGuiServerPort,
+		"common_config.FenixExecutionExecutionServerPort: ": common_config.FenixExecutionExecutionServerPort,
 	}).Info("Close net.Listing")
 	_ = lis.Close()
 

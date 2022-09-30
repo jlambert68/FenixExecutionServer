@@ -42,7 +42,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	var opts []grpc.DialOption
 
 	//When running on GCP then use credential otherwise not
-	if common_config.ExecutionLocationForFenixExecutionWorkerServer == common_config.GCP {
+	if common_config.ExecutionLocationForWorker == common_config.GCP {
 		creds := credentials.NewTLS(&tls.Config{
 			InsecureSkipVerify: true,
 		})
@@ -52,9 +52,9 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		}
 	}
 
-	// Set up connection to Fenix Execution Server
+	// Set up connection to Fenix Worker Server
 	// When run on GCP, use credentials
-	if common_config.ExecutionLocationForFenixExecutionWorkerServer == common_config.GCP {
+	if common_config.ExecutionLocationForWorker == common_config.GCP {
 		// Run on GCP
 		workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerAddressToDial, opts...)
 	} else {
@@ -86,7 +86,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 }
 
 // Generate Google access token. Used when running in GCP
-func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) generateGCPAccessToken(ctx context.Context, fenixExecutionServerWorkerAddressToUse string, domainUuid string) (appendedCtx context.Context, returnAckNack bool, returnMessage string) {
+func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) generateGCPAccessToken(ctx context.Context, domainUuid string) (appendedCtx context.Context, returnAckNack bool, returnMessage string) {
 
 	// Get WorkerVariablesReference
 	workerVariables := fenixExecutionWorkerObject.getWorkerVariablesReference(domainUuid)

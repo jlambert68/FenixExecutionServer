@@ -3,9 +3,9 @@ package common_config
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	fenixTestDataSyncServerGrpcApi "github.com/jlambert68/FenixGrpcApi/Fenix/fenixTestDataSyncServerGrpcApi/go_grpc_api"
-	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"log"
 	"time"
 )
 
@@ -82,83 +82,13 @@ func GenerateDatetimeFromTimeInputForDB(currentTime time.Time) (currentTimeStamp
 	return currentTimeStampAsString
 }
 
-// ConvertGrpcTimeStampToStringForDB
-// Convert a gRPC-timestamp into a string that can be used to store in the database
-func ConvertGrpcTimeStampToStringForDB(grpcTimeStamp *timestamppb.Timestamp) (grpcTimeStampAsTimeStampAsString string) {
-	grpcTimeStampAsTimeStamp := grpcTimeStamp.AsTime()
+func getWorkerVariablesReference(domainUuid string) (executionWorkerVariablesReference *ExecutionWorkerVariablesStruct) {
 
-	timeStampLayOut := "2006-01-02 15:04:05.000000" //milliseconds
-
-	grpcTimeStampAsTimeStampAsString = grpcTimeStampAsTimeStamp.Format(timeStampLayOut)
-
-	return grpcTimeStampAsTimeStampAsString
-}
-
-// ********************************************************************************************************************
-// Check if Calling Client is using correct proto-file version
-func IsClientUsingCorrectTestDataProtoFileVersion(callingClientUuid string, usedProtoFileVersion fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum) (returnMessage *fenixExecutionServerGrpcApi.AckNackResponse) {
-
-	var clientUseCorrectProtoFileVersion bool
-	var protoFileExpected fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum
-	var protoFileUsed fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum
-
-	protoFileUsed = usedProtoFileVersion
-	protoFileExpected = fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(GetHighestFenixTestDataProtoFileVersion())
-
-	// Check if correct proto files is used
-	if protoFileExpected == protoFileUsed {
-		clientUseCorrectProtoFileVersion = true
-	} else {
-		clientUseCorrectProtoFileVersion = false
+	executionWorkerVariablesReference, existInMap := ExecutionWorkerVariablesMap[domainUuid]
+	if existInMap == false {
+		errorID := "ab3986b4-e61d-4792-bf68-133a6c057c19"
+		log.Fatalln(fmt.Sprintf("Couldn't find DomainUuid %s, [ErrorId: %s"), domainUuid, errorID)
 	}
 
-	// Check if Client is using correct proto files version
-	if clientUseCorrectProtoFileVersion == false {
-		// Not correct proto-file version is used
-
-		// Set Error codes to return message
-		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
-
-		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_WRONG_PROTO_FILE_VERSION
-		errorCodes = append(errorCodes, errorCode)
-
-		// Create Return message
-		returnMessage = &fenixExecutionServerGrpcApi.AckNackResponse{
-			AckNack:                      false,
-			Comments:                     "Wrong proto file used. Expected: '" + protoFileExpected.String() + "', but got: '" + protoFileUsed.String() + "'",
-			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: protoFileExpected,
-		}
-
-		return returnMessage
-
-	} else {
-		return nil
-	}
-
-}
-
-// ********************************************************************************************************************
-// Get the highest FenixProtoFileVersionEnumeration
-func GetHighestFenixTestDataProtoFileVersion() int32 {
-
-	// Check if there already is a 'highestFenixProtoFileVersion' saved, if so use that one
-	if highestFenixProtoFileVersion != -1 {
-		return highestFenixProtoFileVersion
-	}
-
-	// Find the highest value for proto-file version
-	var maxValue int32
-	maxValue = 0
-
-	for _, v := range fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum_value {
-		if v > maxValue {
-			maxValue = v
-		}
-	}
-
-	highestFenixProtoFileVersion = maxValue
-
-	return highestFenixProtoFileVersion
+	return executionWorkerVariablesReference
 }
