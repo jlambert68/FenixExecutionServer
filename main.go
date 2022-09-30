@@ -78,6 +78,8 @@ func init() {
 
 	}
 
+	common_config.FenixExecutionWorkerAddress, err = strconv.Atoi(mustGetenv("FenixExecutionWorkerServerAddress"))
+
 	// Port for Fenix Execution Worker Server
 	common_config.FenixExecutionWorkerServerPort, err = strconv.Atoi(mustGetenv("FenixExecutionWorkerServerPort"))
 	if err != nil {

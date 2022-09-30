@@ -11,15 +11,15 @@ import (
 
 // AreYouAlive - *********************************************************************
 // Ask Fenix Execution Server to call a specific Worker to see if the Worker is alive
-func (s *fenixExecutionServerGrpcServicesServer) IsWorkerYouAlive(ctx context.Context, isWorkerAliveRequest *fenixExecutionServerGrpcApi.IsWorkerAliveRequest) (responseMessage *fenixExecutionServerGrpcApi.AckNackResponse, err error) {
+func (s *fenixExecutionServerGrpcServicesServer) IsWorkerAlive(ctx context.Context, isWorkerAliveRequest *fenixExecutionServerGrpcApi.IsWorkerAliveRequest) (responseMessage *fenixExecutionServerGrpcApi.AckNackResponse, err error) {
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "877d0a0d-8c6d-47ce-b072-7b93f7e6aea0",
-	}).Debug("Incoming 'gRPC - isWorkerAliveRequest'")
+	}).Debug("Incoming 'gRPC - IsWorkerAlive'")
 
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "dc32da91-e261-4236-b9a3-01f79b988d95",
-	}).Debug("Outgoing 'gRPC - isWorkerAliveRequest'")
+	}).Debug("Outgoing 'gRPC - IsWorkerAlive'")
 
 	// Current user
 	userID := "gRPC-api doesn't support UserId"

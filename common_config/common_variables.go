@@ -2,6 +2,7 @@ package common_config
 
 import (
 	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -18,7 +19,7 @@ type ExecutionWorkerVariablesStruct struct {
 
 	// Variables used for contacting Fenix Execution Worker Server
 	RemoteFenixExecutionWorkerServerConnection *grpc.ClientConn
-	FenixExecutionServerAddressToDial          string
+	FenixExecutionServerWorkerAddressToDial    string
 	FenixExecutionWorkerServerGrpcClient       fenixExecutionWorkerGrpcApi.FenixExecutionWorkerGrpcServicesClient
 	FenixExecutionServerWorkerAddressToUse     string
 }
@@ -26,3 +27,6 @@ type ExecutionWorkerVariablesStruct struct {
 // ExecutionWorkerVariablesMap
 // Map that keeps track of all individuals Workers variables
 var ExecutionWorkerVariablesMap map[string]*ExecutionWorkerVariablesStruct //map[DomainUUID]*ExecutionWorkerVariablesStruct
+
+// Logger that can be used by all part of the Execution Server
+var Logger *logrus.Logger

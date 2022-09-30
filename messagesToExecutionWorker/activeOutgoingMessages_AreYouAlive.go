@@ -44,7 +44,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	//ctx := context.Background()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer func() {
-		fenixExecutionWorkerObject.Logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"ID": "ba28e796-6873-4e2a-b1b8-935fdd1a0e71",
 		}).Error("Running Defer Cancel function")
 		cancel()
@@ -88,7 +88,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 
 	// Shouldn't happen
 	if err != nil {
-		fenixExecutionWorkerObject.Logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"ID":         "818aaf0b-4112-4be4-97b9-21cc084c7b8b",
 			"error":      err,
 			"domainUuid": domainUuid,
@@ -112,7 +112,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 
 	} else if returnMessage.AckNack == false {
 		// ExecutionWorker couldn't handle gPRC call
-		fenixExecutionWorkerObject.Logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"ID":                                  "2ecbc800-2fb6-4e88-858d-a421b61c5529",
 			"domainUuid":                          domainUuid,
 			"Message from Fenix Execution Server": returnMessage.Comments,

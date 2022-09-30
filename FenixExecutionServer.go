@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
@@ -53,6 +54,9 @@ func fenixExecutionServerMain() {
 
 	// Initiate logger in TestInstructionEngine
 	fenixExecutionServerObject.executionEngine.SetLogger(fenixExecutionServerObject.logger)
+
+	// Store Logger in common_config variable
+	common_config.Logger = fenixExecutionServerObject.logger
 
 	// Start Receiver channel for Commands
 	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRef)

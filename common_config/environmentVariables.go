@@ -26,6 +26,9 @@ const (
 // Execution Worker Port to use, will have its value from Environment variables at startup
 var FenixExecutionWorkerServerPort int
 
+// Address to use when not run locally, not on GCP/Cloud which gets its address from DB
+var FenixExecutionWorkerAddress string
+
 // FenixExecutionExecutionServerPort
 // Execution Server Port to use, will have its value from Environment variables at startup
 var FenixExecutionExecutionServerPort int

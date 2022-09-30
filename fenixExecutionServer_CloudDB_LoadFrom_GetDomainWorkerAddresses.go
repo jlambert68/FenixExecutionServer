@@ -5,6 +5,7 @@ import (
 	"context"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"strconv"
 )
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
@@ -98,14 +99,27 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) storeDomainW
 	// Store Domain Worker info in Map
 	for _, domainWorkerParameters := range domainWorkersParameters {
 
+		// Create address for Worker depending on Worker is run in Cloud or locally
+		var addressToDial string
+		var addressToUse string
+		if common_config.ExecutionLocationForWorker == common_config.GCP {
+			//GCP
+			addressToDial = domainWorkerParameters.executionWorkerAddress + ":" + strconv.Itoa(common_config.FenixExecutionWorkerServerPort)
+			addressToUse = domainWorkerParameters.executionWorkerAddress
+		} else {
+			//Local
+			addressToDial = common_config.FenixExecutionWorkerAddress + ":" + strconv.Itoa(common_config.FenixExecutionWorkerServerPort)
+			addressToDial = common_config.FenixExecutionWorkerAddress
+		}
+
 		var newExecutionWorkerVariables *common_config.ExecutionWorkerVariablesStruct
 		newExecutionWorkerVariables = &common_config.ExecutionWorkerVariablesStruct{
 			HighestExecutionWorkerProtoFileVersion:     -1,
 			FenixExecutionWorkerServerAddress:          domainWorkerParameters.executionWorkerAddress,
 			RemoteFenixExecutionWorkerServerConnection: nil,
-			FenixExecutionServerAddressToDial:          "",
+			FenixExecutionServerWorkerAddressToDial:    addressToDial,
 			FenixExecutionWorkerServerGrpcClient:       nil,
-			FenixExecutionServerWorkerAddressToUse:     "",
+			FenixExecutionServerWorkerAddressToUse:     addressToUse,
 		}
 
 		// Store in Map
