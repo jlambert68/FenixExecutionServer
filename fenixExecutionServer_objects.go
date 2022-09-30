@@ -30,6 +30,7 @@ var (
 // gRPC Server used for register clients Name, Ip and Por and Clients Test Enviroments and Clients Test Commandst
 type fenixExecutionServerGrpcServicesServer struct {
 	fenixExecutionServerGrpcApi.UnimplementedFenixExecutionServerGrpcServicesServer
+	logger *logrus.Logger
 }
 
 //TODO FIXA DENNA PATH, HMMM borde köra i DB framöver

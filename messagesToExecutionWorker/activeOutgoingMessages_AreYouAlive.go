@@ -3,13 +3,14 @@ package messagesToExecutionWorker
 import (
 	"FenixExecutionServer/common_config"
 	"context"
-	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	"fmt"
+	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"time"
 )
 
-// SendAreYouAliveToFenixExecutionServer - Ask Fenix Execution Server to check if it's up and running
-func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SendAreYouAliveToFenixExecutionServer(domainUuid string) (bool, string) {
+// SendAreYouAliveToExecutionWorkerServer - Ask Fenix Execution Server to check if a certain Worker is up and running
+func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SendAreYouAliveToExecutionWorkerServer(domainUuid string) (returnMessage *fenixExecutionWorkerGrpcApi.AckNackResponse) {
 
 	var ctx context.Context
 	var returnMessageAckNack bool
@@ -21,21 +22,30 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	// Set up connection to Server
 	err := fenixExecutionWorkerObject.SetConnectionToFenixTestExecutionServer(domainUuid)
 	if err != nil {
-		return false, err.Error()
-	}
 
-	// Create the message with all test data to be sent to Fenix
-	emptyParameter := &fenixExecutionServerGrpcApi.EmptyParameter{
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
 
-		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestExecutionWorkerProtoFileVersion(domainUuid)),
+		errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		returnMessage = &fenixExecutionWorkerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   fmt.Sprintf("Couldn't set up connection to Worker with DomainUuid: %s", domainUuid),
+			ErrorCodes: errorCodes,
+		}
+
+		return returnMessage
 	}
 
 	// Do gRPC-call
 	//ctx := context.Background()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer func() {
-		fenixExecutionWorkerObject.logger.WithFields(logrus.Fields{
-			"ID": "c5ba19bd-75ff-4366-818d-745d4d7f1a52",
+		fenixExecutionWorkerObject.Logger.WithFields(logrus.Fields{
+			"ID": "ba28e796-6873-4e2a-b1b8-935fdd1a0e71",
 		}).Error("Running Defer Cancel function")
 		cancel()
 	}()
@@ -46,34 +56,85 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		// Add Access token
 		ctx, returnMessageAckNack, returnMessageString = fenixExecutionWorkerObject.generateGCPAccessToken(ctx, domainUuid)
 		if returnMessageAckNack == false {
-			return false, returnMessageString
+
+			// Set Error codes to return message
+			var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+			var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+
+			errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+			errorCodes = append(errorCodes, errorCode)
+
+			// Create Return message
+			returnMessage = &fenixExecutionWorkerGrpcApi.AckNackResponse{
+				AckNack:    false,
+				Comments:   returnMessageString,
+				ErrorCodes: errorCodes,
+			}
+
+			return returnMessage
+
 		}
 
 	}
 
-	returnMessage, err := workerVariables.FenixExecutionWorkerServerGrpcClient.AreYouAlive(ctx, emptyParameter)
+	// Create the message with all test data to be sent to Worker
+	emptyParameter := &fenixExecutionWorkerGrpcApi.EmptyParameter{
+
+		ProtoFileVersionUsedByClient: fenixExecutionWorkerGrpcApi.CurrentFenixExecutionWorkerProtoFileVersionEnum(common_config.GetHighestExecutionWorkerProtoFileVersion(domainUuid)),
+	}
+
+	// Do gRPC-call to Worker
+	returnMessage, err = workerVariables.FenixExecutionWorkerServerGrpcClient.AreYouAlive(ctx, emptyParameter)
 
 	// Shouldn't happen
 	if err != nil {
-		fenixExecutionWorkerObject.logger.WithFields(logrus.Fields{
+		fenixExecutionWorkerObject.Logger.WithFields(logrus.Fields{
 			"ID":         "818aaf0b-4112-4be4-97b9-21cc084c7b8b",
 			"error":      err,
 			"domainUuid": domainUuid,
-		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendAreYouAliveToFenixExecutionServer'")
+		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendAreYouAliveToExecutionWorkerServer'")
 
-		return false, err.Error()
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		returnMessage = &fenixExecutionWorkerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   err.Error(),
+			ErrorCodes: errorCodes,
+		}
+
+		return returnMessage
 
 	} else if returnMessage.AckNack == false {
 		// ExecutionWorker couldn't handle gPRC call
-		fenixExecutionWorkerObject.logger.WithFields(logrus.Fields{
+		fenixExecutionWorkerObject.Logger.WithFields(logrus.Fields{
 			"ID":                                  "2ecbc800-2fb6-4e88-858d-a421b61c5529",
 			"domainUuid":                          domainUuid,
 			"Message from Fenix Execution Server": returnMessage.Comments,
-		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendAreYouAliveToFenixExecutionServer'")
+		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendAreYouAliveToExecutionWorkerServer'")
 
-		return false, err.Error()
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		returnMessage = &fenixExecutionWorkerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   err.Error(),
+			ErrorCodes: errorCodes,
+		}
+
+		return returnMessage
 	}
 
-	return returnMessage.AckNack, returnMessage.Comments
+	return returnMessage
 
 }

@@ -1,7 +1,7 @@
 package common_config
 
 import (
-	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	"google.golang.org/grpc"
 )
 
@@ -19,7 +19,7 @@ type ExecutionWorkerVariablesStruct struct {
 	// Variables used for contacting Fenix Execution Worker Server
 	RemoteFenixExecutionWorkerServerConnection *grpc.ClientConn
 	FenixExecutionServerAddressToDial          string
-	FenixExecutionWorkerServerGrpcClient       fenixExecutionServerGrpcApi.FenixExecutionServerGrpcServicesClient
+	FenixExecutionWorkerServerGrpcClient       fenixExecutionWorkerGrpcApi.FenixExecutionWorkerGrpcServicesClient
 	FenixExecutionServerWorkerAddressToUse     string
 }
 
