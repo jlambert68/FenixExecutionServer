@@ -74,7 +74,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	} else {
 		common_config.Logger.WithFields(logrus.Fields{
 			"ID": "0c650bbc-45d0-4029-bd25-4ced9925a059",
-			"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerWorkerAddressToDial,
+			"workerVariables.FenixExecutionServerWorkerAddressToDial": workerVariables.FenixExecutionServerWorkerAddressToDial,
 			"domainUuid": domainUuid,
 		}).Info("gRPC connection OK to FenixExecutionWorkerServer")
 

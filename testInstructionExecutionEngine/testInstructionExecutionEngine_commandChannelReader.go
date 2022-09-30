@@ -20,6 +20,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 			executionEngine.initiateExecutionsForTestInstructionsOnExecutionQueue()
 
 		case ChannelCommandCheckNewTestInstructionExecutions:
+			executionEngine.checkNewExecutionsForTestInstructions()
 
 		case ChannelCommandCheckOngoingTestInstructionExecutions:
 			executionEngine.checkOngoingExecutionsForTestInstructions()

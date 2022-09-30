@@ -2,6 +2,7 @@ package testInstructionExecutionEngine
 
 import (
 	"FenixExecutionServer/common_config"
+	"FenixExecutionServer/messagesToExecutionWorker"
 	"context"
 	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
@@ -53,10 +54,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Transform Raw TestInstructions and Attributes, from DB, into messages ready to be sent over gRPC to Execution Workers
-	_, err = executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
-	//testInstructionsToBeSentToExecutionWorkers
+	testInstructionsToBeSentToExecutionWorkers, err := executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
 	if err != nil {
-
 		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "25cd9e94-76f6-40ca-8f4c-eed10b618224",
 			"error": err,
@@ -65,55 +64,54 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		return
 	}
 
-	// If there are no TestInstructions  the exit
+	// If there are no TestInstructions then exit
 	if rawTestInstructionsToBeSentToExecutionWorkers == nil {
 
 		return
 	}
 
-	/*
-		// Send TestInstructionExecutions with their attributes to correct Execution Worker
-		testInstructionExecutionsWithSendStatus, err = executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers)
-		if err != nil {
+	// Send TestInstructionExecutions with their attributes to correct Execution Worker
+	testInstructionExecutionsWithSendStatus, err = executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers)
+	if err != nil {
 
-			executionEngine.logger.WithFields(logrus.Fields{
-				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-				"error": err,
-			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+			"error": err,
+		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-			return
+		return
 
-		}
+	}
 
-		// Update status on TestInstructions that could be sent to workers
-		err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
-		if err != nil {
+	// Update status on TestInstructions that could be sent to workers
+	err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
+	if err != nil {
 
-			executionEngine.logger.WithFields(logrus.Fields{
-				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-				"error": err,
-			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+			"error": err,
+		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-			return
+		return
 
-		}
+	}
 
-		// Update status on TestCases that TestInstructions have been sent to workers
-		err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
-		if err != nil {
+	// Update status on TestCases that TestInstructions have been sent to workers
+	err = executionEngine.updateStatusOnTestCasesInCloudDB(txn, testInstructionExecutionQueueMessages)
+	if err != nil {
 
-			executionEngine.logger.WithFields(logrus.Fields{
-				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-				"error": err,
-			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+			"error": err,
+		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
 
-			return
+		return
 
-		}
+	}
 
-		// Commit every database change
-		doCommitNotRoleBack = true
-	*/
+	// Commit every database change
+	// TODO Remove after tests doCommitNotRoleBack = true
+
 	return
 }
 
@@ -279,6 +277,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 
 // Holds address, to the execution worker, and a message that will be sent to worker
 type processTestInstructionExecutionRequestMessageContainer struct {
+	domainUuid                             string
 	addressToExecutionWorker               string
 	ProcessTestInstructionExecutionRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest
 }
@@ -364,6 +363,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 		newProcessTestInstructionExecutionRequestMessageContainer = processTestInstructionExecutionRequestMessageContainer{
 			addressToExecutionWorker:               rawTestInstructionData.executionWorkerAddress,
 			ProcessTestInstructionExecutionRequest: newProcessTestInstructionExecutionReveredRequest,
+			domainUuid:                             rawTestInstructionData.domainUuid,
 		}
 
 		// Add the TestInstruction-container to slice of containers
@@ -372,4 +372,31 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 	}
 
 	return testInstructionsToBeSentToExecutionWorkers, err
+}
+
+// Type used for holding one TestInstructionExecution and the status if it could be sent, and was accepted, or not
+type testInstructionExecutionWithSendStatusStruct struct {
+	testInstructionExecutionUuid string
+	couldBeSentToWorker          bool
+}
+
+// Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
+func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers []processTestInstructionExecutionRequestMessageContainer) (testInstructionExecutionsWithSendStatus []testInstructionExecutionWithSendStatusStruct, err error) {
+
+	// If there are nothing to send then just exit
+	if len(testInstructionsToBeSentToExecutionWorkers) == 0 {
+		return nil, nil
+	}
+
+	// Set up instance to use for execution gPRC
+	var fenixExecutionWorkerObject *messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct
+	fenixExecutionWorkerObject = &messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct{Logger: s.logger}
+
+	// Loop all TestInstructionExecutions and send them to correct Worker for executions
+	for _, testInstructionToBeSentToExecutionWorkers := range testInstructionsToBeSentToExecutionWorkers {
+
+		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(testInstructionToBeSentToExecutionWorkers.domainUuid, testInstructionToBeSentToExecutionWorkers.ProcessTestInstructionExecutionRequest)
+
+	}
+	return testInstructionExecutionsWithSendStatus, err
 }

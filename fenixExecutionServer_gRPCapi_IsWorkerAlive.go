@@ -32,6 +32,7 @@ func (s *fenixExecutionServerGrpcServicesServer) IsWorkerAlive(ctx context.Conte
 		return returnMessage, nil
 	}
 
+	// Set up instance to use for execution gPRC
 	var fenixExecutionWorkerObject *messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct
 	fenixExecutionWorkerObject = &messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct{Logger: s.logger}
 
