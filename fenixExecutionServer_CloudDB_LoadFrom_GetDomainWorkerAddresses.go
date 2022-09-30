@@ -109,7 +109,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) storeDomainW
 		} else {
 			//Local
 			addressToDial = common_config.FenixExecutionWorkerAddress + ":" + strconv.Itoa(common_config.FenixExecutionWorkerServerPort)
-			addressToDial = common_config.FenixExecutionWorkerAddress
+			addressToUse = common_config.FenixExecutionWorkerAddress
 		}
 
 		var newExecutionWorkerVariables *common_config.ExecutionWorkerVariablesStruct

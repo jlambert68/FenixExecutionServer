@@ -59,12 +59,12 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionWorkerServerAddress, opts...)
 	} else {
 		// Run Local
-		workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerAddressToDial, grpc.WithInsecure())
+		workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerWorkerAddressToDial, grpc.WithInsecure())
 	}
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
 			"ID": "50b59b1b-57ce-4c27-aa84-617f0cde3100",
-			"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerAddressToDial,
+			"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerWorkerAddressToDial,
 			"error message": err,
 			"domainUuid":    domainUuid,
 		}).Error("Did not connect to FenixExecutionWorkerServer via gRPC")
@@ -74,7 +74,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	} else {
 		common_config.Logger.WithFields(logrus.Fields{
 			"ID": "0c650bbc-45d0-4029-bd25-4ced9925a059",
-			"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerAddressToDial,
+			"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerWorkerAddressToDial,
 			"domainUuid": domainUuid,
 		}).Info("gRPC connection OK to FenixExecutionWorkerServer")
 

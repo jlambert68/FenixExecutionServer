@@ -78,7 +78,8 @@ func init() {
 
 	}
 
-	common_config.FenixExecutionWorkerAddress, err = strconv.Atoi(mustGetenv("FenixExecutionWorkerServerAddress"))
+	// Address to Worker, when not run in cloud because then the address is coming from DB
+	common_config.FenixExecutionWorkerAddress = mustGetenv("FenixExecutionWorkerServerAddress")
 
 	// Port for Fenix Execution Worker Server
 	common_config.FenixExecutionWorkerServerPort, err = strconv.Atoi(mustGetenv("FenixExecutionWorkerServerPort"))
