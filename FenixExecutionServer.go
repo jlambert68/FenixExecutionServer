@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"os"
 )
 
 // Used for only process cleanup once
@@ -55,6 +56,17 @@ func fenixExecutionServerMain() {
 
 	// Start Receiver channel for Commands
 	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRef)
+
+	// Load Domain Worker Addresses
+	err := fenixExecutionServerObject.prepareGetDomainWorkerAddresses()
+	if err != nil {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":    "85824093-ae12-4d22-8f9e-1b66a1bf2bbd",
+			"Error": err,
+		}).Error("Couldn't load Domain Worker Data from Cloud-DB, exiting")
+
+		os.Exit(0)
+	}
 
 	// Start Backend gRPC-server
 	fenixExecutionServerObject.InitGrpcServer()
