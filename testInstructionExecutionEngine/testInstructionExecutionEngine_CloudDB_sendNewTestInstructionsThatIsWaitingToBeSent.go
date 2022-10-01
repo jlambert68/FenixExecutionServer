@@ -330,10 +330,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 					AttributeValueAsString:       attributeInSlice.attributeValueAsString,
 					AttributeValueUuid:           attributeInSlice.attributeValueUuid,
 				}
-			}
 
-			// Append to TestInstructionsAttributes-message
-			attributesForTestInstruction = append(attributesForTestInstruction, newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage)
+				// Append to TestInstructionsAttributes-message
+				attributesForTestInstruction = append(attributesForTestInstruction, newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage)
+			}
 		}
 
 		// Create The TestInstruction and its attributes object, to be sent late
