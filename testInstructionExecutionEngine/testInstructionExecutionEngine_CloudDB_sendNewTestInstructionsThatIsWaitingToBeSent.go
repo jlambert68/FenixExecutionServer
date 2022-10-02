@@ -5,9 +5,11 @@ import (
 	"FenixExecutionServer/messagesToExecutionWorker"
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v4"
 	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"strconv"
 )
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
@@ -55,12 +57,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Transform Raw TestInstructions and Attributes, from DB, into messages ready to be sent over gRPC to Execution Workers
-	testInstructionsToBeSentToExecutionWorkers, err := executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
+	testInstructionsToBeSentToExecutionWorkersAndTheResponse, err := executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "25cd9e94-76f6-40ca-8f4c-eed10b618224",
 			"error": err,
-		}).Error("Some problem when transforming raw TestInstruction- and Attributes-data into gRPC-messages")
+		}).Error("Some problem when transforming raw rawTestInstructionsToBeSentToExecutionWorkers- and Attributes-data into gRPC-messages")
 
 		return
 	}
@@ -72,50 +74,47 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Send TestInstructionExecutions with their attributes to correct Execution Worker
-	testInstructionExecutionsWithSendStatus, err := executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers)
-	fmt.Println(testInstructionExecutionsWithSendStatus)
+	err = executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkersAndTheResponse)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
+			"id":    "ef815265-3b67-4b59-862f-26d352795c95",
 			"error": err,
-		}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+		}).Error("Got some problem when sending sending TestInstructionExecutions to Worker")
 
 		return
 
 	}
-	/*
-		// Update status on TestInstructions that could be sent to workers
-		err = executionEngine.updateStatusOnTestInstructionsInCloudDB(txn, testInstructionExecutionQueueMessages)
-		if err != nil {
 
-			executionEngine.logger.WithFields(logrus.Fields{
-				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-				"error": err,
-			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+	// Update status on TestInstructions that could be sent to workers
+	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB(txn, testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+	if err != nil {
 
-			return
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "bdbc719a-d354-4ebb-9d4c-d002ec55426c",
+			"error": err,
+		}).Error("Couldn't update TestInstructionExecutionStatus in CloudDB")
 
-		}
+		return
 
-		// Update status on TestCases that TestInstructions have been sent to workers
-		err = executionEngine.updateStatusOnTestCasesInCloudDB(txn, testInstructionExecutionQueueMessages)
-		if err != nil {
+	}
 
-			executionEngine.logger.WithFields(logrus.Fields{
-				"id":    "8008cb96-cc39-4d43-9948-0246ef7d5aee",
-				"error": err,
-			}).Error("Couldn't clear TestInstructionExecutionQueue in CloudDB")
+	// Update status on TestCases that TestInstructions have been sent to workers
+	err = executionEngine.updateStatusOnTestCasesExecutionInCloudDB(txn, testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+	if err != nil {
 
-			return
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "89eb961b-413d-47d1-86b1-8fc1f51c564c",
+			"error": err,
+		}).Error("Couldn't TestCaseExecutionStatus in CloudDB")
 
-		}
+		return
 
-		// Commit every database change
-		// TODO Remove after tests doCommitNotRoleBack = true
+	}
 
+	// Commit every database change
+	doCommitNotRoleBack = true
 
-	*/
 	return
 }
 
@@ -130,6 +129,8 @@ type newTestInstructionToBeSentToExecutionWorkersStruct struct {
 	testInstructionMajorVersionNumber int
 	testInstructionMinorVersionNumber int
 	testDataSetUuid                   string
+	TestCaseExecutionUuid             string
+	testCaseExecutionVersion          int
 }
 
 // Hold one new TestInstructionAttribute to be sent to Execution Worker
@@ -154,7 +155,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	sqlToExecute = sqlToExecute + "SELECT DP.\"DomainUuid\", DP.\"DomainName\", DP.\"ExecutionWorker Address\", " +
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionOriginalUuid\", TIUE.\"TestInstructionName\", " +
 		"TIUE.\"TestInstructionMajorVersionNumber\", TIUE.\"TestInstructionMinorVersionNumber\", " +
-		"TIUE.\"TestDataSetUuid\" "
+		"TIUE.\"TestDataSetUuid\", TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE, " +
 		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = 0 AND "
@@ -193,6 +194,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			&tempTestInstructionAndAttributeData.testInstructionMajorVersionNumber,
 			&tempTestInstructionAndAttributeData.testInstructionMinorVersionNumber,
 			&tempTestInstructionAndAttributeData.testDataSetUuid,
+			&tempTestInstructionAndAttributeData.TestCaseExecutionUuid,
+			&tempTestInstructionAndAttributeData.testCaseExecutionVersion,
 		)
 
 		if err != nil {
@@ -280,14 +283,17 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 }
 
 // Holds address, to the execution worker, and a message that will be sent to worker
-type processTestInstructionExecutionRequestMessageContainer struct {
-	domainUuid                             string
-	addressToExecutionWorker               string
-	ProcessTestInstructionExecutionRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest
+type processTestInstructionExecutionRequestAndResponseMessageContainer struct {
+	domainUuid                              string
+	addressToExecutionWorker                string
+	testCaseExecutionUuid                   string
+	testCaseExecutionVersion                int
+	processTestInstructionExecutionRequest  *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest
+	processTestInstructionExecutionResponse *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse
 }
 
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
-func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct, rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct) (testInstructionsToBeSentToExecutionWorkers []processTestInstructionExecutionRequestMessageContainer, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct, rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct) (testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer, err error) {
 
 	attributesMap := make(map[string]*[]newTestInstructionAttributeToBeSentToExecutionWorkersStruct)
 
@@ -363,33 +369,29 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 		}
 
 		// Create one full TestInstruction-coontainer, including address to Worker, so TestInstruction can be sent to Execution Worker over gPRC
-		var newProcessTestInstructionExecutionRequestMessageContainer processTestInstructionExecutionRequestMessageContainer
-		newProcessTestInstructionExecutionRequestMessageContainer = processTestInstructionExecutionRequestMessageContainer{
+		var newProcessTestInstructionExecutionRequestMessageContainer processTestInstructionExecutionRequestAndResponseMessageContainer
+		newProcessTestInstructionExecutionRequestMessageContainer = processTestInstructionExecutionRequestAndResponseMessageContainer{
 			addressToExecutionWorker:               rawTestInstructionData.executionWorkerAddress,
-			ProcessTestInstructionExecutionRequest: newProcessTestInstructionExecutionReveredRequest,
+			processTestInstructionExecutionRequest: newProcessTestInstructionExecutionReveredRequest,
 			domainUuid:                             rawTestInstructionData.domainUuid,
+			testCaseExecutionUuid:                  rawTestInstructionData.TestCaseExecutionUuid,
+			testCaseExecutionVersion:               rawTestInstructionData.testCaseExecutionVersion,
 		}
 
 		// Add the TestInstruction-container to slice of containers
-		testInstructionsToBeSentToExecutionWorkers = append(testInstructionsToBeSentToExecutionWorkers, newProcessTestInstructionExecutionRequestMessageContainer)
+		testInstructionsToBeSentToExecutionWorkers = append(testInstructionsToBeSentToExecutionWorkers, &newProcessTestInstructionExecutionRequestMessageContainer)
 
 	}
 
 	return testInstructionsToBeSentToExecutionWorkers, err
 }
 
-// Type used for holding one TestInstructionExecution and the status if it could be sent, and was accepted, or not
-type testInstructionExecutionWithSendStatusStruct struct {
-	testInstructionExecutionUuid string
-	couldBeSentToWorker          bool
-}
-
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
-func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers []processTestInstructionExecutionRequestMessageContainer) (testInstructionExecutionsWithSendStatus []testInstructionExecutionWithSendStatusStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
 
 	// If there are nothing to send then just exit
 	if len(testInstructionsToBeSentToExecutionWorkers) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	// Set up instance to use for execution gPRC
@@ -399,8 +401,140 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 	// Loop all TestInstructionExecutions and send them to correct Worker for executions
 	for _, testInstructionToBeSentToExecutionWorkers := range testInstructionsToBeSentToExecutionWorkers {
 
-		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(testInstructionToBeSentToExecutionWorkers.domainUuid, testInstructionToBeSentToExecutionWorkers.ProcessTestInstructionExecutionRequest)
-		fmt.Println(responseFromWorker)
+		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(testInstructionToBeSentToExecutionWorkers.domainUuid, testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
+
+		testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionResponse = responseFromWorker
+
+		//fmt.Println(responseFromWorker)
 	}
-	return testInstructionExecutionsWithSendStatus, err
+	return err
+}
+
+// Update status on TestInstructions that could be sent to workers
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestInstructionsExecutionInCloudDB(dbTransaction pgx.Tx, testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+
+	// If there are nothing to update then just exit
+	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {
+		return nil
+	}
+
+	// Get a common dateTimeStamp to use
+	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+
+	// Create Update Statement for response regarding TestInstructionExecution
+	for _, testInstructionExecutionResponse := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
+
+		// Only save information about TestInstructionExecution if we got a positive response from Worker
+		if testInstructionExecutionResponse.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+
+			sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
+			sqlToExecute = sqlToExecute + fmt.Sprintf("SET \"ExpectedExecutionEndTimeStamp\" = '%s', ", common_config.ConvertGrpcTimeStampToStringForDB(testInstructionExecutionResponse.processTestInstructionExecutionResponse.ExpectedExecutionDuration))
+			sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" = '%s', ", "1") // TIE_EXECUTING
+			sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", currentDataTimeStamp)
+			sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionResponse.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+
+			sqlToExecute = sqlToExecute + "; "
+		}
+	}
+
+	// If no positive responses the just exit
+	if len(sqlToExecute) == 0 {
+		return nil
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "e2a88e5e-a3b0-47d4-b867-93324126fbe7",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	executionEngine.logger.WithFields(logrus.Fields{
+		"Id":                       "ffa5c358-ba6c-47bd-a828-d9e5d826f913",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return nil
+
+}
+
+// Update status on TestCases that TestInstructions have been sent to workers
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCasesExecutionInCloudDB(dbTransaction pgx.Tx, testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+
+	// If there are nothing to update then just exit
+	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {
+		return nil
+	}
+
+	// Get a common dateTimeStamp to use
+	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+
+	// Create Update Statement for response regarding TestInstructionExecution
+	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
+
+		// Only save information about TestInstructionExecution if we got a positive response from Worker
+		if testInstructionExecution.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+
+			sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
+			sqlToExecute = sqlToExecute + fmt.Sprintf("SET \"TestCaseExecutionStatus\" = '%s', ", "1") // TCE_EXECUTING
+			sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", currentDataTimeStamp)
+			sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' AND ", testInstructionExecution.testCaseExecutionUuid)
+			sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionVersion\" = '%s' ", strconv.Itoa(testInstructionExecution.testCaseExecutionVersion))
+			sqlToExecute = sqlToExecute + "; "
+		}
+	}
+
+	// If no positive responses the just exit
+	if len(sqlToExecute) == 0 {
+		return nil
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "8a1a5099-9383-4c7c-8fc9-58c3521912a4",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	executionEngine.logger.WithFields(logrus.Fields{
+		"Id":                       "433ccd0c-a7a7-4245-b346-b8efedefcfd8",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return nil
+
 }
