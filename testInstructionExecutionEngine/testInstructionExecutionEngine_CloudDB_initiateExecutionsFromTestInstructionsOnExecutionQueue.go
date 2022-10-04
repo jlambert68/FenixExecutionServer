@@ -141,10 +141,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT  DISTINCT ON (TIEQ.\"ExecutionPriority\", TIEQ.\"testCaseExecutionUuid\") "
+	sqlToExecute = sqlToExecute + "SELECT  DISTINCT ON (TIEQ.\"ExecutionPriority\", TIEQ.\"TestCaseExecutionUuid\") "
 	sqlToExecute = sqlToExecute + "TIEQ.* "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" TIEQ "
-	sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"testCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
+	sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
 
 	// Query DB
 	// Execute Query CloudDB
@@ -261,7 +261,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
 		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"SentTimeStamp\", \"TestInstructionExecutionStatus\", \"ExecutionStatusUpdateTimeStamp\", " +
-		" \"TestDataSetUuid\", \"testCaseExecutionUuid\", \"testCaseExecutionVersion\", \"TestInstructionInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", " +
+		" \"TestDataSetUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"TestInstructionInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", " +
 		"\"TestInstructionOriginalUuid\", \"TestInstructionExecutionHasFinished\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
@@ -271,7 +271,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":           "7b2447a0-5790-47b5-af28-5f069c80c88a",
+			"Id":           "d7cd6754-cf4c-43eb-8478-d6558e787dd0",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")

@@ -484,7 +484,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCase
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestSuiteUuid\", \"TestSuiteName\", \"TestSuiteVersion\", " +
 		"\"TestSuiteExecutionUuid\", \"TestSuiteExecutionVersion\", \"TestCaseUuid\", \"TestCaseName\", \"TestCaseVersion\"," +
-		" \"testCaseExecutionUuid\", \"testCaseExecutionVersion\", \"QueueTimeStamp\", \"TestDataSetUuid\", \"ExecutionPriority\", " +
+		" \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"QueueTimeStamp\", \"TestDataSetUuid\", \"ExecutionPriority\", " +
 		"\"ExecutionStartTimeStamp\", \"ExecutionStopTimeStamp\", \"TestCaseExecutionStatus\", \"ExecutionHasFinished\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
@@ -494,7 +494,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCase
 
 	if err != nil {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
-			"Id":           "7b2447a0-5790-47b5-af28-5f069c80c88a",
+			"Id":           "c7f30078-20ff-4a34-a066-fa49fa2ca475",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
@@ -797,8 +797,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" "
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
-		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"testCaseExecutionUuid\"," +
-		" \"TestDataSetUuid\", \"testCaseExecutionVersion\", \"TestInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\") "
+		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
+		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 

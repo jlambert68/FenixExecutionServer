@@ -1,7 +1,6 @@
 package testInstructionExecutionEngine
 
 import (
-	"fmt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,7 +38,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 // Check ExecutionQueue for TestInstructions and move them to ongoing Executions-table
 func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsForTestInstructionsOnExecutionQueue() {
 
-	fmt.Println("initiateExecutionsForTestInstructionsOnExecutionQueue")
 	executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB()
 }
 

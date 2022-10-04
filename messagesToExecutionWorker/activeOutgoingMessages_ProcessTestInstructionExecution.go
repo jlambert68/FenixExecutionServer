@@ -101,7 +101,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 			"ID":         "e0e2175f-6ea0-4437-92dd-5f83359c8ea5",
 			"error":      err,
 			"domainUuid": domainUuid,
-		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendAreYouAliveToExecutionWorkerServer'")
+		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'ProcessTestInstructionExecution'")
 
 		// Set Error codes to return message
 		var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
