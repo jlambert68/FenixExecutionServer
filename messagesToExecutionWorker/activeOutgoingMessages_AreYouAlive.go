@@ -12,6 +12,14 @@ import (
 // SendAreYouAliveToExecutionWorkerServer - Ask Fenix Execution Server to check if a certain Worker is up and running
 func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SendAreYouAliveToExecutionWorkerServer(domainUuid string) (returnMessage *fenixExecutionWorkerGrpcApi.AckNackResponse) {
 
+	common_config.Logger.WithFields(logrus.Fields{
+		"id": "230ffb54-d8b4-453b-80d8-2b626e1e4f8a",
+	}).Debug("Incoming 'SendAreYouAliveToExecutionWorkerServer'")
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id": "fa125592-f4a9-4f45-a412-a3fa9ac1c7c3",
+	}).Debug("Outgoing 'SendAreYouAliveToExecutionWorkerServer'")
+
 	var ctx context.Context
 	var returnMessageAckNack bool
 	var returnMessageString string

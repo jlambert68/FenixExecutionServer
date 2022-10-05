@@ -12,6 +12,14 @@ import (
 // SendAreYouAliveToExecutionWorkerServer - Ask Fenix Execution Server to check if a certain Worker is up and running
 func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SendProcessTestInstructionExecutionToExecutionWorkerServer(domainUuid string, processTestInstructionExecutionRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest) (processTestInstructionExecutionResponse *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse) {
 
+	common_config.Logger.WithFields(logrus.Fields{
+		"id": "3d3de917-77fe-4768-a5a5-7e107173d74f",
+	}).Debug("Incoming 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id": "787a2437-7a81-4629-a8ef-ca676a9e18d3",
+	}).Debug("Outgoing 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
+
 	var ctx context.Context
 	var returnMessageAckNack bool
 	var returnMessageString string
@@ -128,9 +136,9 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	} else if processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
 		// ExecutionWorker couldn't handle gPRC call
 		common_config.Logger.WithFields(logrus.Fields{
-			"ID":                                  "c104fc85-c6ca-4084-a756-409e53491bfe",
-			"domainUuid":                          domainUuid,
-			"Message from Fenix Execution Server": processTestInstructionExecutionResponse.AckNackResponse.Comments,
+			"ID":                  "c104fc85-c6ca-4084-a756-409e53491bfe",
+			"domainUuid":          domainUuid,
+			"Message from Worker": processTestInstructionExecutionResponse.AckNackResponse.Comments,
 		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
 
 		// Set Error codes to return message
@@ -143,7 +151,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		// Create Return message
 		ackNackResponse := &fenixExecutionWorkerGrpcApi.AckNackResponse{
 			AckNack:    false,
-			Comments:   fmt.Sprintf("AckNack=false when doing gRPC-call for Worker with DomainUuid: %s. Message is: '%s'", domainUuid, err.Error()),
+			Comments:   fmt.Sprintf("AckNack=false when doing gRPC-call for Worker with DomainUuid: %s. Message is: '%s'", domainUuid, processTestInstructionExecutionResponse.AckNackResponse.Comments),
 			ErrorCodes: errorCodes,
 		}
 		processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse{
