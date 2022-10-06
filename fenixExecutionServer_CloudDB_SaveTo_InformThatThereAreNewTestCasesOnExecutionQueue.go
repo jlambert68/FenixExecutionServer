@@ -21,10 +21,10 @@ import (
 	"time"
 )
 
-// After all stuff is done, then Commit or Rollback depending on result
-var doCommitNotRoleBack bool
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBack(dbTransactionReference *pgx.Tx, doCommitNotRoleBackReference *bool) {
+	dbTransaction := *dbTransactionReference
+	doCommitNotRoleBack := *doCommitNotRoleBackReference
 
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBack(dbTransaction pgx.Tx) {
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
@@ -71,9 +71,14 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 
 		return ackNackResponse
 	}
+
+	// After all stuff is done, then Commit or Rollback depending on result
+	var doCommitNotRoleBack bool
+
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
-	defer fenixExecutionServerObject.commitOrRoleBack(txn) //txn.Commit(context.Background())
+
+	defer fenixExecutionServerObject.commitOrRoleBack(&txn, &doCommitNotRoleBack) //txn.Commit(context.Background())
 
 	// Generate a new TestCaseExecution-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()

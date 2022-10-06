@@ -3,6 +3,7 @@ package main
 import (
 	"FenixExecutionServer/common_config"
 	"context"
+	"fmt"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 )
@@ -30,5 +31,9 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 		return returnMessage, nil
 	}
 
-	return &fenixExecutionServerGrpcApi.AckNackResponse{AckNack: true, Comments: ""}, nil
+	fmt.Println(finalTestInstructionExecutionResultMessage)
+
+	returnMessage = fenixExecutionServerObject.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage)
+
+	return returnMessage, nil
 }
