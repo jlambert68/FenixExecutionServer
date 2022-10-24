@@ -264,6 +264,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			&tempTestInstructionAttribute.attributeValueAsString,
 			&tempTestInstructionAttribute.attributeValueUuid,
 			&tempTestInstructionAttribute.testInstructionExecutionTypeUuid,
+			&tempTestInstructionAttribute.testInstructionExecutionTypeName,
 		)
 
 		if err != nil {

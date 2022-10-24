@@ -750,22 +750,26 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 
 				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_TEXTBOX:
 					attributeToStoreInDB = tempAttributeStruct{
-						testInstructionExecutionUuid: newTestInstructionExecutionUuid,
-						testInstructionAttributeType: int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
-						TestInstructionAttributeUuid: attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
-						TestInstructionAttributeName: attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoxName,
-						AttributeValueAsString:       attribute.AttributeInformation.InputTextBoxProperty.TextBoxAttributeValue,
-						AttributeValueUuid:           attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
+						testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
+						testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
+						TestInstructionAttributeUuid:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
+						TestInstructionAttributeName:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoxName,
+						AttributeValueAsString:           attribute.AttributeInformation.InputTextBoxProperty.TextBoxAttributeValue,
+						AttributeValueUuid:               attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
+						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
+						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
 					}
 
 				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_COMBOBOX:
 					attributeToStoreInDB = tempAttributeStruct{
-						testInstructionExecutionUuid: newTestInstructionExecutionUuid,
-						testInstructionAttributeType: int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
-						TestInstructionAttributeUuid: attribute.AttributeInformation.InputComboBoxProperty.TestInstructionAttributeComboBoxUuid,
-						TestInstructionAttributeName: attribute.AttributeInformation.InputComboBoxProperty.TestInstructionAttributeComboBoxName,
-						AttributeValueAsString:       attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValue,
-						AttributeValueUuid:           attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValueUuid,
+						testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
+						testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
+						TestInstructionAttributeUuid:     attribute.AttributeInformation.InputComboBoxProperty.TestInstructionAttributeComboBoxUuid,
+						TestInstructionAttributeName:     attribute.AttributeInformation.InputComboBoxProperty.TestInstructionAttributeComboBoxName,
+						AttributeValueAsString:           attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValue,
+						AttributeValueUuid:               attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValueUuid,
+						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
+						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
 					}
 
 				default:
