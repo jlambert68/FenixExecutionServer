@@ -6,7 +6,7 @@ require (
 	github.com/go-gota/gota v0.12.0
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.17.2
-	github.com/jlambert68/FenixGrpcApi v0.0.0-20221006075932-f3652b179e7c
+	github.com/jlambert68/FenixGrpcApi v0.0.0-20221024132730-198d27465688
 	github.com/jlambert68/FenixSyncShared v0.0.0-20220309201741-aa2c115e0cc1
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/net v0.0.0-20220909164309-bea034e7d591
@@ -35,5 +35,5 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	gonum.org/v1/gonum v0.9.1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220624142145-8cd45d7dbd1f // indirect
+	google.golang.org/genproto v0.0.0-20221010155953-15ba04fc1c0e // indirect
 )

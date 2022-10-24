@@ -135,12 +135,14 @@ type newTestInstructionToBeSentToExecutionWorkersStruct struct {
 
 // Hold one new TestInstructionAttribute to be sent to Execution Worker
 type newTestInstructionAttributeToBeSentToExecutionWorkersStruct struct {
-	testInstructionExecutionUuid string
-	testInstructionAttributeType int
-	testInstructionAttributeUuid string
-	testInstructionAttributeName string
-	attributeValueAsString       string
-	attributeValueUuid           string
+	testInstructionExecutionUuid     string
+	testInstructionAttributeType     int
+	testInstructionAttributeUuid     string
+	testInstructionAttributeName     string
+	attributeValueAsString           string
+	attributeValueUuid               string
+	testInstructionExecutionTypeUuid string
+	testInstructionExecutionTypeName string
 }
 
 // Load all New TestInstructions and their attributes to be sent to the Executions Workers over gRPC
@@ -224,7 +226,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	// *** Process TestInstructionAttributes ***
 	sqlToExecute = ""
 	sqlToExecute = sqlToExecute + "SELECT TIAUE.\"TestInstructionExecutionUuid\", TIAUE.\"TestInstructionAttributeType\", TIAUE.\"TestInstructionAttributeUuid\", " +
-		"TIAUE.\"TestInstructionAttributeName\", TIAUE.\"AttributeValueAsString\", TIAUE.\"AttributeValueUuid\" "
+		"TIAUE.\"TestInstructionAttributeName\", TIAUE.\"AttributeValueAsString\", TIAUE.\"AttributeValueUuid\", " +
+		"TIAUE.\"TestInstructionAttributeTypeUuid\", TIAUE.\"TestInstructionAttributeTypeName\" "
 
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionAttributesUnderExecution\" TIAUE "
 	sqlToExecute = sqlToExecute + "WHERE TIAUE.\"TestInstructionExecutionUuid\" IN " + common_config.GenerateSQLINArray(testInstructionExecutionUuids)
@@ -260,6 +263,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			&tempTestInstructionAttribute.testInstructionAttributeName,
 			&tempTestInstructionAttribute.attributeValueAsString,
 			&tempTestInstructionAttribute.attributeValueUuid,
+			&tempTestInstructionAttribute.testInstructionExecutionTypeUuid,
 		)
 
 		if err != nil {

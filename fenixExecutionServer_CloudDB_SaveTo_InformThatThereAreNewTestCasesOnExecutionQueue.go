@@ -325,12 +325,14 @@ type tempTestInstructionInTestCaseStruct struct {
 // Stores a slice of attributes to be stored in Cloud-DB
 type tempAttributesType []tempAttributeStruct
 type tempAttributeStruct struct {
-	testInstructionExecutionUuid string
-	testInstructionAttributeType int
-	TestInstructionAttributeUuid string
-	TestInstructionAttributeName string
-	AttributeValueAsString       string
-	AttributeValueUuid           string
+	testInstructionExecutionUuid     string
+	testInstructionAttributeType     int
+	TestInstructionAttributeUuid     string
+	TestInstructionAttributeName     string
+	AttributeValueAsString           string
+	AttributeValueUuid               string
+	testInstructionAttributeTypeUuid string
+	testInstructionAttributeTypeName string
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecution-table
@@ -875,6 +877,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestInst
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.TestInstructionAttributeName)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueAsString)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeName)
 
 			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
@@ -883,7 +887,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestInst
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionAttributesUnderExecution\" "
 	sqlToExecute = sqlToExecute + "(\"TestInstructionExecutionUuid\", \"TestInstructionAttributeType\", \"TestInstructionAttributeUuid\", " +
-		"\"TestInstructionAttributeName\", \"AttributeValueAsString\", \"AttributeValueUuid\") "
+		"\"TestInstructionAttributeName\", \"AttributeValueAsString\", \"AttributeValueUuid\", " +
+		"\"TestInstructionAttributeTypeUuid\", \"TestInstructionAttributeTypeName\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
