@@ -97,7 +97,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	// Shouldn't happen
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
-			"ID":         "818aaf0b-4112-4be4-97b9-21cc084c7b8b",
+			"ID":         "4b98f810-1a29-46f3-8ee5-bb1a41640753",
 			"error":      err,
 			"domainUuid": domainUuid,
 		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendAreYouAliveToExecutionWorkerServer'")
