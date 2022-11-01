@@ -127,7 +127,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	}
 
 	// Commit every database change
-	// doCommitNotRoleBack = true TODO uncomment this row
+	doCommitNotRoleBack = true
 
 	// Create Return message
 	ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{

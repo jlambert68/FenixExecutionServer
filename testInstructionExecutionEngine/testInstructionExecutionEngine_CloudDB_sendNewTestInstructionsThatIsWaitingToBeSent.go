@@ -113,7 +113,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Commit every database change
-	// TODO Uncomment this doCommitNotRoleBack = true
+	doCommitNotRoleBack = true
 
 	return
 }
