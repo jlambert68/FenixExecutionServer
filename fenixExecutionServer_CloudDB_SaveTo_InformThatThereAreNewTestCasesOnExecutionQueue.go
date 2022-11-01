@@ -711,6 +711,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 			testInstructionContainerMap[testInstructionContainer.MatureTestInstructionContainerInformation.MatureTestInstructionContainerInformation.TestInstructionContainerMatureUuid] = testInstructionContainer
 		}
 
+		// Initiate map for TestInstructionExecution Order
 		testInstructionExecutionOrder := make(map[string]*testInstructionsRawExecutionOrderStruct) //map[testInstructionUuid]*testInstructionsRawExecutionOrderStruct
 
 		err = fenixExecutionServerObject.testInstructionExecutionOrderCalculator(
@@ -960,7 +961,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) testInstruct
 
 	var sortedTestInstructionExecutionOrderSlice testInstructionsRawExecutionOrderSliceType
 
-	// Create the 'Processed ExecutionOrder'[001,011,403] and a temporary OrderNumber {1011403} from 'Raw ExecutionOrder'[1,11,403]
+	// Create the 'Processed ExecutionOrder'[001,011,403] and a then a temporary OrderNumber {1011403} from 'Raw ExecutionOrder'[1,11,403]
 	for _, testInstructionExecutionOrderRef := range testInstructionExecutionOrderMap {
 		testInstructionExecutionOrder := testInstructionExecutionOrderRef
 		var processExecutionOrder []string
@@ -1023,7 +1024,7 @@ func (e testInstructionsRawExecutionOrderSliceType) Len() int {
 }
 
 func (e testInstructionsRawExecutionOrderSliceType) Less(i, j int) bool {
-	return e[i].temporaryOrderNumber > e[j].temporaryOrderNumber
+	return e[i].temporaryOrderNumber < e[j].temporaryOrderNumber
 }
 
 func (e testInstructionsRawExecutionOrderSliceType) Swap(i, j int) {
@@ -1076,9 +1077,16 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 			return err
 		}
 
+		// Create new variable for current Execution
+		var tempCurrentExecutionOrder []int
+		for _, executionOrder := range currentExecutionOrder {
+			tempCurrentExecutionOrder = append(tempCurrentExecutionOrder, executionOrder)
+		}
+
+		// Add TestInstruction to execution order map
 		testInstructionExecutionOrderMap[elementsUuid] = &testInstructionsRawExecutionOrderStruct{
 			testInstructionUuid:     elementsUuid,
-			rawExecutionOrder:       currentExecutionOrder,
+			rawExecutionOrder:       tempCurrentExecutionOrder,
 			processedExecutionOrder: []string{},
 		}
 
@@ -1107,11 +1115,11 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 			return err
 		}
 
-		// Extract TTestInstructionContainer
+		// Extract TestInstructionContainer
 		testInstructionContainerMap := *testInstructionContainerMapReference
 		parentTestInstructionContainer, existInMap := testInstructionContainerMap[parentElement.MatureElementUuid]
 
-		// If the TIC doesn't exit then there is something really wrong
+		// If the TIC doesn't exist then there is something really wrong
 		if existInMap == false {
 			// This shouldn't happen
 			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
