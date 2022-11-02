@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// SendAreYouAliveToExecutionWorkerServer - Ask Fenix Execution Server to check if a certain Worker is up and running
+// SendProcessTestInstructionExecutionToExecutionWorkerServer - Fenix Execution Server send a task to execute to correct Worker
 func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SendProcessTestInstructionExecutionToExecutionWorkerServer(domainUuid string, processTestInstructionExecutionRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest) (processTestInstructionExecutionResponse *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse) {
 
 	common_config.Logger.WithFields(logrus.Fields{
@@ -100,68 +100,93 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	// Finalize message to be sent to Worker
 	processTestInstructionExecutionRequest.ProtoFileVersionUsedByClient = fenixExecutionWorkerGrpcApi.CurrentFenixExecutionWorkerProtoFileVersionEnum(common_config.GetHighestExecutionWorkerProtoFileVersion(domainUuid))
 
-	// Do gRPC-call to Worker
-	processTestInstructionExecutionResponse, err = workerVariables.FenixExecutionWorkerServerGrpcClient.ProcessTestInstructionExecution(ctx, processTestInstructionExecutionRequest)
+	// slice with sleep time, in milliseconds, between each attempt to do gRPC-call to Worker
+	var sleepTimeBetweenGrpcCallAttempts []int
+	sleepTimeBetweenGrpcCallAttempts = []int{100, 200, 300, 300, 500, 500, 1000, 1000, 1000, 1000} // Total: 5.9 seconds
 
-	// Shouldn't happen
-	if err != nil {
-		common_config.Logger.WithFields(logrus.Fields{
-			"ID":         "e0e2175f-6ea0-4437-92dd-5f83359c8ea5",
-			"error":      err,
-			"domainUuid": domainUuid,
-		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'ProcessTestInstructionExecution'")
+	// Do multiple attempts to do gRPC-call to Execution Worker, when it fails
+	var numberOfgRPCCallAttempts int
+	var gRPCCallAttemptCounter int
+	numberOfgRPCCallAttempts = len(sleepTimeBetweenGrpcCallAttempts)
+	gRPCCallAttemptCounter = 0
 
-		// Set Error codes to return message
-		var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+	for {
 
-		errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
-		errorCodes = append(errorCodes, errorCode)
+		// Do gRPC-call to Worker
+		processTestInstructionExecutionResponse, err = workerVariables.FenixExecutionWorkerServerGrpcClient.ProcessTestInstructionExecution(ctx, processTestInstructionExecutionRequest)
 
-		// Create Return message
-		ackNackResponse := &fenixExecutionWorkerGrpcApi.AckNackResponse{
-			AckNack:    false,
-			Comments:   fmt.Sprintf("Error when doing gRPC-call for Worker with DomainUuid: %s. Error message is: '%s'", domainUuid, err.Error()),
-			ErrorCodes: errorCodes,
+		// Add to counter for how many gRPC-call-attempts to Worker that have been done
+		gRPCCallAttemptCounter = gRPCCallAttemptCounter + 1
+
+		// Shouldn't happen
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"ID":         "e0e2175f-6ea0-4437-92dd-5f83359c8ea5",
+				"error":      err,
+				"domainUuid": domainUuid,
+			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'ProcessTestInstructionExecution'")
+
+			// Only return the error after last attempt
+			if gRPCCallAttemptCounter >= numberOfgRPCCallAttempts {
+
+				// Set Error codes to return message
+				var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+				var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+
+				errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+				errorCodes = append(errorCodes, errorCode)
+
+				// Create Return message
+				ackNackResponse := &fenixExecutionWorkerGrpcApi.AckNackResponse{
+					AckNack:    false,
+					Comments:   fmt.Sprintf("Error when doing gRPC-call for Worker with DomainUuid: %s. Error message is: '%s'", domainUuid, err.Error()),
+					ErrorCodes: errorCodes,
+				}
+				processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse{
+					AckNackResponse:                ackNackResponse,
+					TestInstructionExecutionUuid:   processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+					ExpectedExecutionDuration:      nil,
+					TestInstructionCanBeReExecuted: true, // Can be reprocessed because it was some problem doing the gRPC-call
+				}
+
+				return processTestInstructionExecutionResponse
+
+			}
+
+		} else if processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
+			// ExecutionWorker couldn't handle gPRC call
+			common_config.Logger.WithFields(logrus.Fields{
+				"ID":                  "c104fc85-c6ca-4084-a756-409e53491bfe",
+				"domainUuid":          domainUuid,
+				"Message from Worker": processTestInstructionExecutionResponse.AckNackResponse.Comments,
+			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
+
+			// Set Error codes to return message
+			var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+			var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+
+			errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+			errorCodes = append(errorCodes, errorCode)
+
+			// Create Return message
+			ackNackResponse := &fenixExecutionWorkerGrpcApi.AckNackResponse{
+				AckNack:    false,
+				Comments:   fmt.Sprintf("AckNack=false when doing gRPC-call for Worker with DomainUuid: %s. Message is: '%s'", domainUuid, processTestInstructionExecutionResponse.AckNackResponse.Comments),
+				ErrorCodes: errorCodes,
+			}
+			processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse{
+				AckNackResponse:                ackNackResponse,
+				TestInstructionExecutionUuid:   processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+				ExpectedExecutionDuration:      nil,
+				TestInstructionCanBeReExecuted: true, // Can be reprocessed because it was some problem doing the gRPC-call
+			}
+
+			return processTestInstructionExecutionResponse
+
 		}
-		processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse{
-			AckNackResponse:                ackNackResponse,
-			TestInstructionExecutionUuid:   processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-			ExpectedExecutionDuration:      nil,
-			TestInstructionCanBeReExecuted: true, // Can be reprocessed because it was some problem doing the gRPC-call
-		}
 
-		return processTestInstructionExecutionResponse
-
-	} else if processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
-		// ExecutionWorker couldn't handle gPRC call
-		common_config.Logger.WithFields(logrus.Fields{
-			"ID":                  "c104fc85-c6ca-4084-a756-409e53491bfe",
-			"domainUuid":          domainUuid,
-			"Message from Worker": processTestInstructionExecutionResponse.AckNackResponse.Comments,
-		}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
-
-		// Set Error codes to return message
-		var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
-
-		errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
-		errorCodes = append(errorCodes, errorCode)
-
-		// Create Return message
-		ackNackResponse := &fenixExecutionWorkerGrpcApi.AckNackResponse{
-			AckNack:    false,
-			Comments:   fmt.Sprintf("AckNack=false when doing gRPC-call for Worker with DomainUuid: %s. Message is: '%s'", domainUuid, processTestInstructionExecutionResponse.AckNackResponse.Comments),
-			ErrorCodes: errorCodes,
-		}
-		processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse{
-			AckNackResponse:                ackNackResponse,
-			TestInstructionExecutionUuid:   processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-			ExpectedExecutionDuration:      nil,
-			TestInstructionCanBeReExecuted: true, // Can be reprocessed because it was some problem doing the gRPC-call
-		}
-
-		return processTestInstructionExecutionResponse
+		// Sleep for some time before retrying to connect
+		time.Sleep(time.Millisecond * time.Duration(sleepTimeBetweenGrpcCallAttempts[gRPCCallAttemptCounter-1]))
 
 	}
 

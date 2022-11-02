@@ -33,55 +33,82 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) g
 	return executionWorkerVariablesReference
 }
 
-// SetConnectionToExecutionWorkerServer - Set upp connection and Dial to FenixExecutionServer
+// SetConnectionToExecutionWorkerServer - Set upp connection and Dial to correct FenixExecutionWorker
 func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SetConnectionToExecutionWorkerServer(domainUuid string) (err error) {
+
+	// slice with sleep time, in milliseconds, between each attempt to Dial to Worker
+	var sleepTimeBetweenDialAttempts []int
+	sleepTimeBetweenDialAttempts = []int{100, 100, 200, 200, 300, 300, 500, 500, 600, 1000} // Total: 3.6 seconds
 
 	// Get WorkerVariablesReference
 	workerVariables := fenixExecutionWorkerObject.getWorkerVariablesReference(domainUuid)
 
 	var opts []grpc.DialOption
 
-	//When running on GCP then use credential otherwise not
-	if common_config.ExecutionLocationForWorker == common_config.GCP {
-		creds := credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true,
-		})
+	// Do multiple attempts to do connection to Execution Worker
+	var numberOfDialAttempts int
+	var dialAttemptCounter int
+	numberOfDialAttempts = len(sleepTimeBetweenDialAttempts)
+	dialAttemptCounter = 0
 
-		opts = []grpc.DialOption{
-			grpc.WithTransportCredentials(creds),
+	for {
+
+		//When running on GCP then use credential otherwise not
+		if common_config.ExecutionLocationForWorker == common_config.GCP {
+			creds := credentials.NewTLS(&tls.Config{
+				InsecureSkipVerify: true,
+			})
+
+			opts = []grpc.DialOption{
+				grpc.WithTransportCredentials(creds),
+			}
 		}
+
+		// Set up connection to Fenix Worker Server
+		// When run on GCP, use credentials
+		if common_config.ExecutionLocationForWorker == common_config.GCP {
+			// Run on GCP
+			workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerWorkerAddressToDial, opts...)
+		} else {
+			// Run Local
+			workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerWorkerAddressToDial, grpc.WithInsecure())
+		}
+
+		// Add to counter for how many Dial attempts that have been done
+		dialAttemptCounter = dialAttemptCounter + 1
+
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"ID": "50b59b1b-57ce-4c27-aa84-617f0cde3100",
+				"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerWorkerAddressToDial,
+				"error message":      err,
+				"domainUuid":         domainUuid,
+				"dialAttemptCounter": dialAttemptCounter,
+			}).Error("Did not connect to FenixExecutionWorkerServer via gRPC")
+
+			// Only return the error after last attempt
+			if dialAttemptCounter >= numberOfDialAttempts {
+				return err
+			}
+
+		} else {
+			common_config.Logger.WithFields(logrus.Fields{
+				"ID": "0c650bbc-45d0-4029-bd25-4ced9925a059",
+				"workerVariables.FenixExecutionServerWorkerAddressToDial": workerVariables.FenixExecutionServerWorkerAddressToDial,
+				"domainUuid": domainUuid,
+			}).Info("gRPC connection OK to FenixExecutionWorkerServer")
+
+			// Creates a new Clients
+			workerVariables.FenixExecutionWorkerServerGrpcClient = fenixExecutionWorkerGrpcApi.NewFenixExecutionWorkerGrpcServicesClient(workerVariables.RemoteFenixExecutionWorkerServerConnection)
+
+			return err
+		}
+
+		// Sleep for some time before retrying to connect
+		time.Sleep(time.Millisecond * time.Duration(sleepTimeBetweenDialAttempts[dialAttemptCounter-1]))
+
 	}
 
-	// Set up connection to Fenix Worker Server
-	// When run on GCP, use credentials
-	if common_config.ExecutionLocationForWorker == common_config.GCP {
-		// Run on GCP
-		workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerWorkerAddressToDial, opts...)
-	} else {
-		// Run Local
-		workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerWorkerAddressToDial, grpc.WithInsecure())
-	}
-	if err != nil {
-		common_config.Logger.WithFields(logrus.Fields{
-			"ID": "50b59b1b-57ce-4c27-aa84-617f0cde3100",
-			"workerVariables.FenixExecutionServerAddressToDial": workerVariables.FenixExecutionServerWorkerAddressToDial,
-			"error message": err,
-			"domainUuid":    domainUuid,
-		}).Error("Did not connect to FenixExecutionWorkerServer via gRPC")
-
-		return err
-
-	} else {
-		common_config.Logger.WithFields(logrus.Fields{
-			"ID": "0c650bbc-45d0-4029-bd25-4ced9925a059",
-			"workerVariables.FenixExecutionServerWorkerAddressToDial": workerVariables.FenixExecutionServerWorkerAddressToDial,
-			"domainUuid": domainUuid,
-		}).Info("gRPC connection OK to FenixExecutionWorkerServer")
-
-		// Creates a new Clients
-		workerVariables.FenixExecutionWorkerServerGrpcClient = fenixExecutionWorkerGrpcApi.NewFenixExecutionWorkerGrpcServicesClient(workerVariables.RemoteFenixExecutionWorkerServerConnection)
-
-	}
 	return err
 }
 
