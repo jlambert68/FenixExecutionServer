@@ -12,7 +12,8 @@ import (
 func (s *fenixExecutionServerGrpcServicesServer) ReportProcessingCapability(ctx context.Context, processingCapabilityMessage *fenixExecutionServerGrpcApi.ProcessingCapabilityMessage) (*fenixExecutionServerGrpcApi.AckNackResponse, error) {
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
-		"id": "fd6f4e08-7708-454c-932c-231269628031",
+		"id":                          "fd6f4e08-7708-454c-932c-231269628031",
+		"processingCapabilityMessage": processingCapabilityMessage,
 	}).Debug("Incoming 'gRPC - ReportProcessingCapability'")
 
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{

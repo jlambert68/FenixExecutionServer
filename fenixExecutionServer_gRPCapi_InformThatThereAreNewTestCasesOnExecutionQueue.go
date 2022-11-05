@@ -2,6 +2,7 @@ package main
 
 import (
 	"FenixExecutionServer/common_config"
+	"FenixExecutionServer/testInstructionExecutionEngine"
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 
@@ -34,6 +35,18 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 	// Create TestInstructions to be saved on 'TestInstructionExecutionQueue'
 	returnMessage = fenixExecutionServerObject.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(emptyParameter)
 	if returnMessage != nil {
+		// No errors when moving TestCases from queue into executing TestCases, so then start process TestInstruction
+
+		go func() {
+			// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
+			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+				ChannelCommand: testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
+			}
+
+			// Send Message on Channel
+			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+		}()
+
 		return returnMessage, nil
 	}
 

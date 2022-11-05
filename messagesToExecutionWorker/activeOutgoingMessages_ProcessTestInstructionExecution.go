@@ -13,7 +13,9 @@ import (
 func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SendProcessTestInstructionExecutionToExecutionWorkerServer(domainUuid string, processTestInstructionExecutionRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest) (processTestInstructionExecutionResponse *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse) {
 
 	common_config.Logger.WithFields(logrus.Fields{
-		"id": "3d3de917-77fe-4768-a5a5-7e107173d74f",
+		"id":                                     "3d3de917-77fe-4768-a5a5-7e107173d74f",
+		"domainUuid":                             domainUuid,
+		"processTestInstructionExecutionRequest": processTestInstructionExecutionRequest,
 	}).Debug("Incoming 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
 
 	common_config.Logger.WithFields(logrus.Fields{
@@ -115,6 +117,11 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		// Do gRPC-call to Worker
 		processTestInstructionExecutionResponse, err = workerVariables.FenixExecutionWorkerServerGrpcClient.ProcessTestInstructionExecution(ctx, processTestInstructionExecutionRequest)
 
+		// Exit when there was a success call
+		if err == nil && processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+			return processTestInstructionExecutionResponse
+		}
+
 		// Add to counter for how many gRPC-call-attempts to Worker that have been done
 		gRPCCallAttemptCounter = gRPCCallAttemptCounter + 1
 
@@ -153,6 +160,9 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 
 			}
 
+			// Sleep for some time before retrying to connect
+			time.Sleep(time.Millisecond * time.Duration(sleepTimeBetweenGrpcCallAttempts[gRPCCallAttemptCounter-1]))
+
 		} else if processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
 			// ExecutionWorker couldn't handle gPRC call
 			common_config.Logger.WithFields(logrus.Fields{
@@ -184,9 +194,6 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 			return processTestInstructionExecutionResponse
 
 		}
-
-		// Sleep for some time before retrying to connect
-		time.Sleep(time.Millisecond * time.Duration(sleepTimeBetweenGrpcCallAttempts[gRPCCallAttemptCounter-1]))
 
 	}
 

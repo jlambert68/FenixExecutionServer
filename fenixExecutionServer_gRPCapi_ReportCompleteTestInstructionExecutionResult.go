@@ -14,6 +14,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "299bac9a-bb4c-4dcd-9ca6-e486efc9e112",
+		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
 	}).Debug("Incoming 'gRPC - ReportCompleteTestInstructionExecutionResult'")
 
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
