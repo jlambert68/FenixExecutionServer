@@ -39,6 +39,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsForTestInstructionsOnExecutionQueue(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
+
+	// Trigger TestInstructionEngine to check if there are TestInstructions that should be sent to workers
+	channelCommandMessage := ChannelCommandStruct{
+		ChannelCommand:                   ChannelCommandCheckNewTestInstructionExecutions,
+		ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
+	}
+
+	// Send Message on Channel
+	*executionEngine.CommandChannelReference <- channelCommandMessage
 }
 
 // Check for new executions for TestInstructions that should be sent to workers
