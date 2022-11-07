@@ -14,6 +14,15 @@ import (
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
+	executionEngine.logger.WithFields(logrus.Fields{
+		"id":                          "3bd9e5cf-d108-4d99-94fa-8dc673dfcb68",
+		"testCaseExecutionsToProcess": testCaseExecutionsToProcess,
+	}).Debug("Incoming 'prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB'")
+
+	defer executionEngine.logger.WithFields(logrus.Fields{
+		"id": "9e9c1445-f805-4e71-bff0-0ea60327a254",
+	}).Debug("Outgoing 'prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB'")
+
 	// After all stuff is done, then Commit or Rollback depending on result
 	var doCommitNotRoleBack bool
 
@@ -30,7 +39,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
-	defer executionEngine.commitOrRoleBackParallellSave(&txn, &doCommitNotRoleBack)
+	defer executionEngine.commitOrRoleBackParallellSave(
+		&txn,
+		&doCommitNotRoleBack)
 
 	// Generate a new TestCaseExecution-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
@@ -238,7 +249,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstructionsInOngoingExecutionsSaveToCloudDB(dbTransaction pgx.Tx, testInstructionExecutionQueueMessages []*tempTestInstructionExecutionQueueInformationStruct) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
-		"Id": "45351ff1-fd27-47ca-a5fb-91c85f94c535",
+		"Id":                                    "45351ff1-fd27-47ca-a5fb-91c85f94c535",
+		"testInstructionExecutionQueueMessages": testInstructionExecutionQueueMessages,
 	}).Debug("Entering: saveTestInstructionsInOngoingExecutionsSaveToCloudDB()")
 
 	defer func() {
@@ -328,7 +340,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 func (executionEngine *TestInstructionExecutionEngineStruct) clearTestInstructionExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testInstructionExecutionQueueMessages []*tempTestInstructionExecutionQueueInformationStruct) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
-		"Id": "536680e1-c646-4005-abd2-5870ffc9b634",
+		"Id":                                    "536680e1-c646-4005-abd2-5870ffc9b634",
+		"testInstructionExecutionQueueMessages": testInstructionExecutionQueueMessages,
 	}).Debug("Entering: clearTestInstructionExecutionQueueSaveToCloudDB()")
 
 	defer func() {

@@ -566,7 +566,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCase
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) clearTestCasesExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (err error) {
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
-		"Id": "7703b634-a46d-4494-897f-1f139b5858c5",
+		"Id":                             "7703b634-a46d-4494-897f-1f139b5858c5",
+		"testCaseExecutionQueueMessages": testCaseExecutionQueueMessages,
 	}).Debug("Entering: clearTestCasesExecutionQueueSaveToCloudDB()")
 
 	defer func() {
@@ -885,6 +886,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestInst
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"Id": "23993342-01dc-40b5-b3c0-b83d1d0b2eb7",
+		"testInstructionAttributesForInstructionExecutionUuidMap": testInstructionAttributesForInstructionExecutionUuidMap,
 	}).Debug("Entering: saveTestInstructionAttributesUnderExecutionSaveToCloudDB()")
 
 	defer func() {

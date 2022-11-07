@@ -43,6 +43,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsF
 
 // Check for new executions for TestInstructions that should be sent to workers
 func (executionEngine *TestInstructionExecutionEngineStruct) checkNewExecutionsForTestInstructions(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+
 	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker(channelCommandTestCasesExecution)
 }
 

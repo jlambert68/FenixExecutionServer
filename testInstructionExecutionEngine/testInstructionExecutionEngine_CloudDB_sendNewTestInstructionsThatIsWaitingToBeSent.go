@@ -15,6 +15,15 @@ import (
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorker(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
+	executionEngine.logger.WithFields(logrus.Fields{
+		"id":                          "ffd43120-ad83-4f38-9ff5-877c572cc08e",
+		"testCaseExecutionsToProcess": testCaseExecutionsToProcess,
+	}).Debug("Incoming 'sendNewTestInstructionsThatIsWaitingToBeSentWorker'")
+
+	defer executionEngine.logger.WithFields(logrus.Fields{
+		"id": "9787e64a-63c6-46e4-8008-06966a77614e",
+	}).Debug("Outgoing 'sendNewTestInstructionsThatIsWaitingToBeSentWorker'")
+
 	// After all stuff is done, then Commit or Rollback depending on result
 	var doCommitNotRoleBack bool
 
@@ -30,7 +39,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
-	defer executionEngine.commitOrRoleBackParallellSave(&txn, &doCommitNotRoleBack)
+	defer executionEngine.commitOrRoleBackParallellSave(
+		&txn,
+		&doCommitNotRoleBack)
 
 	// Generate a new TestCaseExecution-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
@@ -50,8 +61,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		return
 	}
 
-	// If there are no TestInstructions  the exit
+	// If there are no TestInstructions Check if there are TestInstructions waitin in TestInstructionExecution-queue
 	if rawTestInstructionsToBeSentToExecutionWorkers == nil {
+
+		// Trigger TestInstructionEngine to check if there are more TestInstructions on the ExecutionQueue
+		channelCommandMessage := ChannelCommandStruct{
+			ChannelCommand:                   ChannelCommandCheckTestInstructionExecutionQueue,
+			ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
+		}
+
+		*executionEngine.CommandChannelReference <- channelCommandMessage
 
 		return
 	}
