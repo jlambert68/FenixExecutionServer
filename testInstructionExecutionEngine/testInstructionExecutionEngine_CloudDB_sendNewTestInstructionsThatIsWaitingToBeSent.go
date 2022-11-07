@@ -13,7 +13,7 @@ import (
 )
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorker() {
+func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorker(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
 	// After all stuff is done, then Commit or Rollback depending on result
 	var doCommitNotRoleBack bool
@@ -39,7 +39,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Load all TestInstructions and their attributes to be sent to the Executions Workers over gRPC
-	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err := executionEngine.loadNewTestInstructionToBeSentToExecutionWorkers() //(txn)
+	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err := executionEngine.loadNewTestInstructionToBeSentToExecutionWorkers(testCaseExecutionsToProcess) //(txn)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -146,11 +146,36 @@ type newTestInstructionAttributeToBeSentToExecutionWorkersStruct struct {
 }
 
 // Load all New TestInstructions and their attributes to be sent to the Executions Workers over gRPC
-func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstructionToBeSentToExecutionWorkers() (rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct, rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstructionToBeSentToExecutionWorkers(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct, rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	var testInstructionExecutionUuids []string
+
+	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar string
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
+	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
+			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+				"TIUE.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
+
+		switch testCaseExecutionCounter {
+		case 0:
+			// When this is the first then we need to add 'AND before'
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars = "AND "
+
+		default:
+			// When this is not the first then we need to add 'OR' after previous
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
+				correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + "OR "
+		}
+
+		// Add the WHERE-values
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar
+
+	}
 
 	// *** Process TestInstructions ***
 	sqlToExecute := ""
@@ -162,6 +187,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = 0 AND "
 	sqlToExecute = sqlToExecute + "DP.\"DomainUuid\" = TIUE.\"DomainUuid\" "
+	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
 	sqlToExecute = sqlToExecute + "ORDER BY DP.\"DomainUuid\" ASC, TIUE.\"TestInstructionExecutionUuid\" ASC "
 	sqlToExecute = sqlToExecute + "; "
 

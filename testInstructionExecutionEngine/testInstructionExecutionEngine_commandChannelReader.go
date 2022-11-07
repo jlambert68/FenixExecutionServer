@@ -16,10 +16,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		switch incomingChannelCommand.ChannelCommand {
 
 		case ChannelCommandCheckTestInstructionExecutionQueue:
-			executionEngine.initiateExecutionsForTestInstructionsOnExecutionQueue()
+			executionEngine.initiateExecutionsForTestInstructionsOnExecutionQueue(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		case ChannelCommandCheckNewTestInstructionExecutions:
-			executionEngine.checkNewExecutionsForTestInstructions()
+			executionEngine.checkNewExecutionsForTestInstructions(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		case ChannelCommandCheckOngoingTestInstructionExecutions:
 			executionEngine.checkOngoingExecutionsForTestInstructions()
@@ -36,14 +36,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 }
 
 // Check ExecutionQueue for TestInstructions and move them to ongoing Executions-table
-func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsForTestInstructionsOnExecutionQueue() {
+func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsForTestInstructionsOnExecutionQueue(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
-	executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB()
+	executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
 }
 
 // Check for new executions for TestInstructions that should be sent to workers
-func (executionEngine *TestInstructionExecutionEngineStruct) checkNewExecutionsForTestInstructions() {
-	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker()
+func (executionEngine *TestInstructionExecutionEngineStruct) checkNewExecutionsForTestInstructions(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker(channelCommandTestCasesExecution)
 }
 
 // Check for ongoing executions  for TestInstructions for change in status that should be propagated to other places

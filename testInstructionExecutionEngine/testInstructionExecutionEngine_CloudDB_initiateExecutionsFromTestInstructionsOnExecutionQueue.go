@@ -7,11 +7,12 @@ import (
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"strconv"
 	"time"
 )
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB() {
+func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
 	// After all stuff is done, then Commit or Rollback depending on result
 	var doCommitNotRoleBack bool
@@ -38,7 +39,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
-	testInstructionExecutionQueueMessages, err := executionEngine.loadTestInstructionExecutionQueueMessages() //(txn)
+	testInstructionExecutionQueueMessages, err := executionEngine.loadTestInstructionExecutionQueueMessages(testCaseExecutionsToProcess) //(txn)
 	if err != nil {
 
 		return
@@ -136,14 +137,42 @@ type tempTestInstructionInTestCaseStruct struct {
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecution-table
-func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionQueueMessages() (testInstructionExecutionQueueInformation []*tempTestInstructionExecutionQueueInformationStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionQueueMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (testInstructionExecutionQueueInformation []*tempTestInstructionExecutionQueueInformationStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar string
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
+	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
+			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+				"TIUE.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
+
+		switch testCaseExecutionCounter {
+		case 0:
+			// When this is the first then we need to add 'AND before'
+			// *NOT NEEDED* in this query
+			// correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars = "AND "
+
+		default:
+			// When this is not the first then we need to add 'OR' after previous
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
+				correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + "OR "
+		}
+
+		// Add the WHERE-values
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar
+
+	}
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT  DISTINCT ON (TIEQ.\"ExecutionPriority\", TIEQ.\"TestCaseExecutionUuid\") "
 	sqlToExecute = sqlToExecute + "TIEQ.* "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" TIEQ "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
 	sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
 
 	// Query DB

@@ -44,7 +44,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 }
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(emptyParameter *fenixExecutionServerGrpcApi.EmptyParameter) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
@@ -87,7 +87,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
-	testCaseExecutionQueueMessages, err := fenixExecutionServerObject.loadTestCaseExecutionQueueMessages() //(txn)
+	testCaseExecutionQueueMessages, err := fenixExecutionServerObject.loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess) //(txn)
 	if err != nil {
 
 		// Set Error codes to return message
@@ -336,13 +336,41 @@ type tempAttributeStruct struct {
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecution-table
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCaseExecutionQueueMessages() (testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) (testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar string
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
+	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
+			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+				"TIUE.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
+
+		switch testCaseExecutionCounter {
+		case 0:
+			// When this is the first then we need to add 'AND before'
+			// *NOT NEEDED* in this Query
+			//correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars = "AND "
+
+		default:
+			// When this is not the first then we need to add 'OR' after previous
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
+				correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + "OR "
+		}
+
+		// Add the WHERE-values
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar
+
+	}
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT TCEQ.* "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestCaseExecutionQueue\" TCEQ "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
 	sqlToExecute = sqlToExecute + "ORDER BY TCEQ.\"QueueTimeStamp\" ASC; "
 
 	// Query DB

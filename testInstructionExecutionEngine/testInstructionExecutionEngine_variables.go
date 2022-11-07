@@ -21,5 +21,11 @@ const (
 )
 
 type ChannelCommandStruct struct {
-	ChannelCommand ChannelCommandType
+	ChannelCommand                   ChannelCommandType
+	ChannelCommandTestCaseExecutions []ChannelCommandTestCaseExecutionStruct
+}
+
+type ChannelCommandTestCaseExecutionStruct struct {
+	TestCaseExecution        string
+	TestCaseExecutionVersion int32
 }

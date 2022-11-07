@@ -10,7 +10,7 @@ import (
 
 // InformThatThereAreNewTestCasesOnExecutionQueue - *********************************************************************
 // ExecutionServerGui-server inform ExecutionServer that there is a new TestCase that is ready on the Execution-queue
-func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestInstructionsOnExecutionQueue(ctx context.Context, emptyParameter *fenixExecutionServerGrpcApi.EmptyParameter) (*fenixExecutionServerGrpcApi.AckNackResponse, error) {
+func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestInstructionsOnExecutionQueue(ctx context.Context, testCaseExecutionsToProcessMessage *fenixExecutionServerGrpcApi.TestCaseExecutionsToProcessMessage) (*fenixExecutionServerGrpcApi.AckNackResponse, error) {
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "7ceb7c60-e90e-40ea-92c7-7cc5becb0d98",
@@ -24,16 +24,28 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestInstru
 	userID := "gRPC-api doesn't support UserId"
 
 	// Check if Client is using correct proto files version
-	returnMessage := common_config.IsClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(emptyParameter.ProtoFileVersionUsedByClient))
+	returnMessage := common_config.IsClientUsingCorrectTestDataProtoFileVersion(userID, fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(testCaseExecutionsToProcessMessage.ProtoFileVersionUsedByClient))
 	if returnMessage != nil {
 
 		// Exiting
 		return returnMessage, nil
 	}
 
+	// Convert TestCaseExecutions to process from gRPC-format into message format used within channel
+	var channelCommandTestCasesExecution []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
+	for _, testCaseExecutionToProcessMessage := range testCaseExecutionsToProcessMessage.TestCaseExecutionsToProcess {
+		var channelCommandTestCaseExecution testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
+		channelCommandTestCaseExecution = testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct{
+			TestCaseExecution:        testCaseExecutionToProcessMessage.TestCaseExecutionsUuid,
+			TestCaseExecutionVersion: testCaseExecutionToProcessMessage.TestCaseExecutionVersion,
+		}
+		channelCommandTestCasesExecution = append(channelCommandTestCasesExecution, channelCommandTestCaseExecution)
+	}
+
 	// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 	channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-		ChannelCommand: testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+		ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+		ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
 	}
 
 	// Send Message on Channel
