@@ -146,8 +146,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
 	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
-			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
-				"TIUE.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
+			"(TIEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+				"TIEQ.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
 
 		switch testCaseExecutionCounter {
 		case 0:

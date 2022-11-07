@@ -115,7 +115,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	// TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
 	var testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
 
-	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(&txn, &doCommitNotRoleBack, &testCaseExecutionsToProcess) //txn.Commit(context.Background())
+	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
+		&txn,
+		&doCommitNotRoleBack,
+		&testCaseExecutionsToProcess) //txn.Commit(context.Background())
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	err = fenixExecutionServerObject.updateStatusOnTestInstructionsExecutionInCloudDB(txn, finalTestInstructionExecutionResultMessage)

@@ -21,9 +21,14 @@ import (
 	"time"
 )
 
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBack(dbTransactionReference *pgx.Tx, doCommitNotRoleBackReference *bool) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBack(
+	dbTransactionReference *pgx.Tx,
+	doCommitNotRoleBackReference *bool,
+	testCaseExecutionsToProcessReference *[]testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) {
+
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
+	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
@@ -31,7 +36,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 		go func() {
 			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-				ChannelCommand: testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 
 			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
@@ -78,7 +84,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 
-	defer fenixExecutionServerObject.commitOrRoleBack(&txn, &doCommitNotRoleBack) //txn.Commit(context.Background())
+	defer fenixExecutionServerObject.commitOrRoleBack(
+		&txn,
+		&doCommitNotRoleBack,
+		&testCaseExecutionsToProcess) //txn.Commit(context.Background())
 
 	// Generate a new TestCaseExecution-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
@@ -345,8 +354,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
 	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
-			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
-				"TIUE.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
+			"(TCEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+				"TCEQ.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
 
 		switch testCaseExecutionCounter {
 		case 0:
