@@ -13,9 +13,14 @@ import (
 	"strconv"
 )
 
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBackReportCompleteTestInstructionExecutionResult(dbTransactionReference *pgx.Tx, doCommitNotRoleBackReference *bool) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBackReportCompleteTestInstructionExecutionResult(
+	dbTransactionReference *pgx.Tx,
+	doCommitNotRoleBackReference *bool,
+	testCaseExecutionsToProcessReference *[]testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) {
+
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
+	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
@@ -23,7 +28,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 		go func() {
 			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-				ChannelCommand: testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 
 			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
@@ -41,10 +47,14 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	// Verify that the ExecutionStatus is a final status
 	// (0, 'TIE_INITIATED') -> NOT OK
 	// (1, 'TIE_EXECUTING') -> NOT OK
-	// (2, 'TIE_CONTROLLED_INTERRUPTION') -> OK
-	// (3, 'TIE_FINISHED_OK') -> OK
-	// (4, 'TIE_FINISHED_NOT_OK') -> OK
-	// (5, 'TIE_UNEXPECTED_INTERRUPTION' -> OK
+	// (2, 'TIE_CONTROLLED_INTERRUPTION' -> OK
+	// (3, 'TIE_CONTROLLED_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (4, 'TIE_FINISHED_OK' -> OK
+	// (5, 'TIE_FINISHED_OK_CAN_BE_RERUN' -> OK
+	// (6, 'TIE_FINISHED_NOT_OK' -> OK
+	// (7, 'TIE_FINISHED_NOT_OK_CAN_BE_RERUN' -> OK
+	// (8, 'TIE_UNEXPECTED_INTERRUPTION' -> OK
+	// (9, 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' -> OK
 	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < 2 {
 
 		common_config.Logger.WithFields(logrus.Fields{
@@ -102,7 +112,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 
-	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(&txn, &doCommitNotRoleBack) //txn.Commit(context.Background())
+	// TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
+	var testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
+
+	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(&txn, &doCommitNotRoleBack, &testCaseExecutionsToProcess) //txn.Commit(context.Background())
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	err = fenixExecutionServerObject.updateStatusOnTestInstructionsExecutionInCloudDB(txn, finalTestInstructionExecutionResultMessage)
@@ -119,6 +132,28 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
 			AckNack:                      false,
 			Comments:                     "Problem when Updating TestInstructionExecutionStatus in database: " + err.Error(),
+			ErrorCodes:                   errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+	}
+
+	// Load TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
+	testCaseExecutionsToProcess, err = fenixExecutionServerObject.loadTestCaseExecutionAndTestCaseExecutionVersion(finalTestInstructionExecutionResultMessage)
+	if err != nil {
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:                      false,
+			Comments:                     "Problem when loading TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage, from database: " + err.Error(),
 			ErrorCodes:                   errorCodes,
 			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
 		}
@@ -218,5 +253,72 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) updateStatus
 
 	// No errors occurred
 	return err
+
+}
+
+// Load TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCaseExecutionAndTestCaseExecutionVersion(finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct, err error) {
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
+	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + "'; "
+
+	// Query DB
+	// Execute Query CloudDB
+	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+
+	if err != nil {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":           "f0fbac73-b7e6-4eea-9932-4ce49d690fd8",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	// Variable to store TestCaseExecutionUUID and its TestCaseExecutionVersion
+	var channelCommandTestCaseExecutions []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
+
+	// Extract data from DB result set
+	for rows.Next() {
+		var channelCommandTestCaseExecution testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
+
+		err := rows.Scan(
+			&channelCommandTestCaseExecution.TestCaseExecution,
+			&channelCommandTestCaseExecution.TestCaseExecutionVersion,
+		)
+
+		if err != nil {
+
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+				"Id":           "ab5ec697-c33e-49d1-8f03-e297a05ffccc",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+
+		// Add TestCaseExecutionUUID and its TestCaseExecutionVersion to slice of messages
+		channelCommandTestCaseExecutions = append(channelCommandTestCaseExecutions, channelCommandTestCaseExecution)
+
+	}
+
+	// Verify that we got exactly one row from database
+	if len(channelCommandTestCaseExecutions) != 1 {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":                               "84270631-b49c-486a-9ea9-704979d6b387",
+			"channelCommandTestCaseExecutions": channelCommandTestCaseExecutions,
+			"Number of Rows":                   len(channelCommandTestCaseExecutions),
+		}).Error("The result gave not exactly one row from database")
+
+	}
+
+	return channelCommandTestCaseExecutions, err
 
 }
