@@ -48,7 +48,7 @@ func fenixExecutionServerMain() {
 	defer cleanup()
 
 	// Create Channel used for sending Commands to TestInstructionExecutionCommandsEngine
-	testInstructionExecutionEngine.ExecutionEngineCommandChannel = make(chan testInstructionExecutionEngine.ChannelCommandStruct)
+	testInstructionExecutionEngine.ExecutionEngineCommandChannel = make(chan testInstructionExecutionEngine.ChannelCommandStruct, 2)
 	myCommandChannelRef := &testInstructionExecutionEngine.ExecutionEngineCommandChannel
 	fenixExecutionServerObject.executionEngineChannelRef = myCommandChannelRef
 

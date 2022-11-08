@@ -26,6 +26,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		dbTransaction.Commit(context.Background())
 
 		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
+
 		go func() {
 			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
 				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
@@ -163,6 +164,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 
 		return ackNackResponse
 	}
+
+	// Update Status on TestCaseExecution
 
 	// Commit every database change
 	doCommitNotRoleBack = true

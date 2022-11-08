@@ -48,18 +48,20 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 	returnMessage = fenixExecutionServerObject.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
 	if returnMessage != nil {
 		// No errors when moving TestCases from queue into executing TestCases, so then start process TestInstruction
+		/*
+			defer func() {
+				// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
+				channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+					ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
+				}
 
-		go func() {
-			// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
-			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
-				ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
-			}
+				// Send Message on Channel
+				*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+			}()
 
-			// Send Message on Channel
-			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
-		}()
 
+		*/
 		return returnMessage, nil
 	}
 

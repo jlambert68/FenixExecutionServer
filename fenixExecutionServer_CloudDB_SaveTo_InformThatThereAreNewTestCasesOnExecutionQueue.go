@@ -43,7 +43,6 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
 		}()
-
 	} else {
 		dbTransaction.Rollback(context.Background())
 	}
@@ -191,7 +190,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 
 	}
 
-	//Load all data around TestCase to bes used for putting TestInstructions on the TestInstructionExecutionQueue
+	//Load all data around TestCase to be used for putting TestInstructions on the TestInstructionExecutionQueue
 	allDataAroundAllTestCase, err := fenixExecutionServerObject.loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages)
 	if err != nil {
 

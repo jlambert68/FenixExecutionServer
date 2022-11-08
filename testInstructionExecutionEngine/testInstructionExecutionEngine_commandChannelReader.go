@@ -24,6 +24,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		case ChannelCommandCheckOngoingTestInstructionExecutions:
 			executionEngine.checkOngoingExecutionsForTestInstructions()
 
+		case ChannelCommandUpdateStatusOnTestCaseExecution:
+			executionEngine.updateStatusOnTestCaseExecution(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+
 		// No other command is supported
 		default:
 			executionEngine.logger.WithFields(logrus.Fields{
@@ -39,24 +42,31 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsForTestInstructionsOnExecutionQueue(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
+	/*
+		// Trigger TestInstructionEngine to check if there are TestInstructions that should be sent to workers
+		channelCommandMessage := ChannelCommandStruct{
+			ChannelCommand:                   ChannelCommandCheckNewTestInstructionExecutions,
+			ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
+		}
 
-	// Trigger TestInstructionEngine to check if there are TestInstructions that should be sent to workers
-	channelCommandMessage := ChannelCommandStruct{
-		ChannelCommand:                   ChannelCommandCheckNewTestInstructionExecutions,
-		ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
-	}
-
-	// Send Message on Channel
-	*executionEngine.CommandChannelReference <- channelCommandMessage
+		// Send Message on Channel
+		*executionEngine.CommandChannelReference <- channelCommandMessage
+	*/
 }
 
 // Check for new executions for TestInstructions that should be sent to workers
-func (executionEngine *TestInstructionExecutionEngineStruct) checkNewExecutionsForTestInstructions(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecution(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
-	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker(channelCommandTestCasesExecution)
+	executionEngine.xxxx(channelCommandTestCasesExecution)
 }
 
 // Check for ongoing executions  for TestInstructions for change in status that should be propagated to other places
 func (executionEngine *TestInstructionExecutionEngineStruct) checkOngoingExecutionsForTestInstructions() {
 
+}
+
+// Update TestCaseExecutionStatus based on result on individual TestInstructionExecution-results
+func (executionEngine *TestInstructionExecutionEngineStruct) checkNewExecutionsForTestInstructions(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+
+	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker(channelCommandTestCasesExecution)
 }

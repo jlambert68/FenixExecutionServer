@@ -11,6 +11,47 @@ import (
 	"time"
 )
 
+func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
+	dbTransactionReference *pgx.Tx,
+	doCommitNotRoleBackReference *bool,
+	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
+	updateTestCaseExecutionWithStatusReference *bool) {
+
+	dbTransaction := *dbTransactionReference
+	doCommitNotRoleBack := *doCommitNotRoleBackReference
+	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
+	updateTestCaseExecutionWithStatus := *updateTestCaseExecutionWithStatusReference
+
+	if doCommitNotRoleBack == true {
+		dbTransaction.Commit(context.Background())
+		// Only trigger 'To send TestInstructions' when are were some waiting on TestInstructionExecutionQueue
+		if testCaseExecutionsToProcess != nil {
+
+			// Trigger TestInstructionEngine to check if there are TestInstructions on the TestInstructionQueue waiting to be moved to Ongoing TestInstructionExecution
+			channelCommandMessage := ChannelCommandStruct{
+				ChannelCommand:                   ChannelCommandCheckNewTestInstructionExecutions,
+				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
+			}
+
+			// Send Message on Channel
+			*executionEngine.CommandChannelReference <- channelCommandMessage
+		} else if updateTestCaseExecutionWithStatus == true {
+
+			// Trigger TestInstructionEngine to update TestCaseExecution based on all finished individual TestInstructionExecutions
+			channelCommandMessage := ChannelCommandStruct{
+				ChannelCommand:                   ChannelCommandStatusOnTestCaseExecutionExecutions,
+				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
+			}
+
+			// Send Message on Channel
+			*executionEngine.CommandChannelReference <- channelCommandMessage
+		}
+
+	} else {
+		dbTransaction.Rollback(context.Background())
+	}
+}
+
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
@@ -26,6 +67,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 	// After all stuff is done, then Commit or Rollback depending on result
 	var doCommitNotRoleBack bool
 
+	// After all stuff is done, this one is used to decide if the TestCaseExecution status should be updated or not
+	var triggerUpdateTestCaseExecutionWithStatus bool
+
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
 	if err != nil {
@@ -39,9 +83,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
-	defer executionEngine.commitOrRoleBackParallellSave(
+
+	// Standard is not to update TestCaseExecution with Execution Status from TestInstructionExecutions
+	triggerUpdateTestCaseExecutionWithStatus = false
+
+	defer executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
 		&txn,
-		&doCommitNotRoleBack)
+		&doCommitNotRoleBack,
+		&testCaseExecutionsToProcess,
+		&triggerUpdateTestCaseExecutionWithStatus)
 
 	// Generate a new TestCaseExecution-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
@@ -58,6 +108,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 	// If there are no TestInstructions on Queue the exit
 	if testInstructionExecutionQueueMessages == nil {
+
+		// Set 'testCaseExecutionsToProcess' to nil to inform Defered function not to trigger SendToWorker
+		testCaseExecutionsToProcess = []ChannelCommandTestCaseExecutionStruct{}
 
 		return
 	}

@@ -61,10 +61,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		return
 	}
 
-	// If there are no TestInstructions Check if there are TestInstructions waitin in TestInstructionExecution-queue
+	// If there are no TestInstructions in the 'ongoing' then check if there are any on the TestInstructionExecution-queue
 	if rawTestInstructionsToBeSentToExecutionWorkers == nil {
 
-		// Trigger TestInstructionEngine to check if there are more TestInstructions on the ExecutionQueue
+		// Trigger TestInstructionEngine to check if there are more TestInstructions that is waiting to be sent from 'Ongoing'
 		channelCommandMessage := ChannelCommandStruct{
 			ChannelCommand:                   ChannelCommandCheckTestInstructionExecutionQueue,
 			ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,

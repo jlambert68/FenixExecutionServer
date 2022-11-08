@@ -41,15 +41,17 @@ func (s *fenixExecutionServerGrpcServicesServer) TriggerSendNewTestInstructionsT
 		}
 		channelCommandTestCasesExecution = append(channelCommandTestCasesExecution, channelCommandTestCaseExecution)
 	}
+	/*
+		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
+		channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+			ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
+			ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
+		}
 
-	// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
-	channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-		ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
-		ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
-	}
+		// Send Message on Channel
+		*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
-	// Send Message on Channel
-	*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
+	*/
 	return &fenixExecutionServerGrpcApi.AckNackResponse{AckNack: true, Comments: ""}, nil
 }

@@ -18,6 +18,7 @@ const (
 	ChannelCommandCheckTestInstructionExecutionQueue ChannelCommandType = iota
 	ChannelCommandCheckNewTestInstructionExecutions
 	ChannelCommandCheckOngoingTestInstructionExecutions
+	ChannelCommandStatusOnTestCaseExecutionExecutions
 )
 
 type ChannelCommandStruct struct {
