@@ -18,11 +18,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
-	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
+	//testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
-
+/*
 		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 		go func() {
 			channelCommandMessage := ChannelCommandStruct{
@@ -32,6 +32,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 			*executionEngine.executionEngineChannelRef <- channelCommandMessage
 
+
+ */
 		}()
 	} else {
 		dbTransaction.Rollback(context.Background())
@@ -77,80 +79,29 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess) //txn.Commit(context.Background())
 
-	// Get a common dateTimeStamp to use
-	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
-
 	// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
 	var loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct
 	loadTestInstructionExecutionStatusMessages, err = executionEngine.loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess)
 
-	// Exit when there was a problem reading database
+	// Exit when there was a problem reading  the database
 	if err != nil {
 		return err
 	}
 
-	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+	// Transform TestInstructionExecutionStatus into correct prioritized TestCaseExecutionStatus
+	var testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct
+	testCaseExecutionStatusMessages, err = executionEngine.transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus(loadTestInstructionExecutionStatusMessages)
 
-	sqlToExecute := ""
-
-	testInstructionExecutionUuid := finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid
-
-	var testInstructionExecutionStatus string
-	testInstructionExecutionStatus = strconv.Itoa(int(finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus))
-	testInstructionExecutionEndTimeStamp := common_config.ConvertGrpcTimeStampToStringForDB(finalTestInstructionExecutionResultMessage.TestInstructionExecutionEndTimeStamp)
-
-	// Create Update Statement  TestInstructionExecution
-
-	sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
-	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
-	sqlToExecute = sqlToExecute + "\"TestInstructionExecutionStatus\" = " + testInstructionExecutionStatus + ", " // TIE_EXECUTING
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s', ", currentDataTimeStamp)
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionHasFinished\" = '%s', ", "true")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionEndTimeStamp\" = '%s' ", testInstructionExecutionEndTimeStamp)
-	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionUuid)
-
-	sqlToExecute = sqlToExecute + "; "
-
-	// If no positive responses the just exit
-	if len(sqlToExecute) == 0 {
-		return nil
-	}
-
-	// Execute Query CloudDB
-	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-
+	// Exit when there was a problem when converting into TestCaseExecutionStatus
 	if err != nil {
-		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "e2a88e5e-a3b0-47d4-b867-93324126fbe7",
-			"Error":        err,
-			"sqlToExecute": sqlToExecute,
-		}).Error("Something went wrong when executing SQL")
-
 		return err
 	}
 
-	// Log response from CloudDB
-	common_config.Logger.WithFields(logrus.Fields{
-		"Id":                       "ffa5c358-ba6c-47bd-a828-d9e5d826f913",
-		"comandTag.Insert()":       comandTag.Insert(),
-		"comandTag.Delete()":       comandTag.Delete(),
-		"comandTag.Select()":       comandTag.Select(),
-		"comandTag.Update()":       comandTag.Update(),
-		"comandTag.RowsAffected()": comandTag.RowsAffected(),
-		"comandTag.String()":       comandTag.String(),
-	}).Debug("Return data for SQL executed in database")
+	// Update TestExecutions in database with the new TestCaseExecutionStatus
+	err = executionEngine.updateTestExecutionsWithNewTestCaseExecutionStatus(txn, testCaseExecutionStatusMessages)
 
-	// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
-	if comandTag.RowsAffected() != 1 {
-		errorId := "89e28340-64cd-40f3-921f-caa7729c5d0b"
-		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' is missing in Table [ErroId: %s]", testInstructionExecutionUuid, errorId))
-
-		common_config.Logger.WithFields(logrus.Fields{
-			"Id":                           "e2a88e5e-a3b0-47d4-b867-93324126fbe7",
-			"testInstructionExecutionUuid": testInstructionExecutionUuid,
-			"sqlToExecute":                 sqlToExecute,
-		}).Error("TestInstructionExecutionUuid is missing in Table")
-
+	// Exit when there was a problem updating the database
+	if err != nil {
 		return err
 	}
 
@@ -265,6 +216,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 }
 
+// Transform TestInstructionExecutionStatus into correct prioritized TestCaseExecutionStatus
 func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus(testInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct) (testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct, err error) {
 	// For each combination 'TestCaseExecutionUuid && TestCaseExecutionVersion' create correct TestCaseExecutionStatus
 	// Generate Map that decides what Status that 'overwrite' other status
@@ -280,6 +232,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 	// (8, 'TIE_UNEXPECTED_INTERRUPTION' -> OK
 
 	// Inparameter for Map is 'Current Status' and the value for the Map prioritized Order for that Status
+	// map[TestInstructionExecutionStatus]=PrioritizationOrder
 	var statusOrderDecisionMap = map[int]int{
 		0: 0,
 		1: 1,
@@ -411,5 +364,89 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 	}
 
 	return testCaseExecutionStatusMessages, err
+
+}
+
+// Update TestExecutions in database with the new TestCaseExecutionStatus
+func (executionEngine *TestInstructionExecutionEngineStruct) updateTestExecutionsWithNewTestCaseExecutionStatus(dbTransaction pgx.Tx, testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct) (err error) {
+
+	// If there are nothing to update then exit
+	if len(testCaseExecutionStatusMessages) == 0 {
+		return err
+	}
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	// Generate TimeStamp used in SQL
+	testCaseExecutionUpdateTimeStamp := common_config.GenerateDatetimeTimeStampForDB()
+
+	// Loop all TestCaseExecutions and execute SQL-Update
+	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
+
+		var testCaseExecutionStatusAsString string
+		testCaseExecutionStatusAsString = strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionStatus)
+
+
+		// Create Update Statement for each TestCaseExecution update
+		sqlToExecute := ""
+		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
+		sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStopTimeStamp\" = '%s', ", testCaseExecutionUpdateTimeStamp)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionStatus\" = '%s', ", testCaseExecutionStatusAsString)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionHasFinished\" = '%s', ", "true")
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", testCaseExecutionUpdateTimeStamp)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' ", testCaseExecutionStatusMessage.TestCaseExecutionUuid)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("AND \"TestCaseExecutionVersion\" = '%s' ", testCaseExecutionStatusMessage.TestCaseExecutionVersion)
+		sqlToExecute = sqlToExecute + "; "
+
+		// If no positive responses the just exit
+		if len(sqlToExecute) == 0 {
+			return nil
+		}
+
+		// Execute Query CloudDB
+		comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "34b9c93b-a94a-4a65-8ccf-041bfae4b250",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when executing SQL")
+
+			return err
+		}
+
+		// Log response from CloudDB
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":                       "dd728940-319c-466f-9422-373deae31523",
+			"comandTag.Insert()":       comandTag.Insert(),
+			"comandTag.Delete()":       comandTag.Delete(),
+			"comandTag.Select()":       comandTag.Select(),
+			"comandTag.Update()":       comandTag.Update(),
+			"comandTag.RowsAffected()": comandTag.RowsAffected(),
+			"comandTag.String()":       comandTag.String(),
+		}).Debug("Return data for SQL executed in database")
+
+		// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
+		if comandTag.RowsAffected() != 1 {
+			errorId := "e3df8260-d463-4644-b999-6e6e94b54956"
+
+			err = errors.New(fmt.Sprintf("TestICaseExecutionUuid '%s' with Execution Version Number '%s' is missing in Table [ErroId: %s]", testCaseExecutionStatusMessage.TestCaseExecutionUuid, testCaseExecutionStatusMessage.TestCaseExecutionVersion, errorId))
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                           "76be13be-8649-41e2-b7f2-3b5e54e26192",
+				"testCaseExecutionStatusMessage.TestCaseExecutionUuid": testCaseExecutionStatusMessage.TestCaseExecutionUuid,
+				"testCaseExecutionStatusMessage.TestCaseExecutionVersion": testCaseExecutionStatusMessage.TestCaseExecutionVersion
+
+				"sqlToExecute":                 sqlToExecute,
+			}).Error("TestInstructionExecutionUuid is missing in Table")
+
+			return err
+		}
+	}
+
+	// No errors occurred
+	return err
 
 }

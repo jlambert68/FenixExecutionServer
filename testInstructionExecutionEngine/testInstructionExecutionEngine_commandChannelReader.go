@@ -24,7 +24,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		case ChannelCommandCheckOngoingTestInstructionExecutions:
 			executionEngine.checkOngoingExecutionsForTestInstructions()
 
-		case ChannelCommandUpdateStatusOnTestCaseExecution:
+		case ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions:
 			executionEngine.updateStatusOnTestCaseExecution(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		// No other command is supported
@@ -57,7 +57,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsF
 // Check for new executions for TestInstructions that should be sent to workers
 func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecution(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
-	executionEngine.xxxx(channelCommandTestCasesExecution)
+	_ = executionEngine.updateStatusOnTestCaseExecutionInCloudDB(channelCommandTestCasesExecution)
 }
 
 // Check for ongoing executions  for TestInstructions for change in status that should be propagated to other places

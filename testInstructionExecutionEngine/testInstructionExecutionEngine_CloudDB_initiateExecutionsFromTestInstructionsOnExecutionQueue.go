@@ -39,7 +39,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 			// Trigger TestInstructionEngine to update TestCaseExecution based on all finished individual TestInstructionExecutions
 			channelCommandMessage := ChannelCommandStruct{
-				ChannelCommand:                   ChannelCommandStatusOnTestCaseExecutionExecutions,
+				ChannelCommand:                   ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions,
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 
