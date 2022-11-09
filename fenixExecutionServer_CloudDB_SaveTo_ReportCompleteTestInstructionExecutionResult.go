@@ -16,26 +16,29 @@ import (
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
-	testCaseExecutionsToProcessReference *[]testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) {
+	testCaseExecutionsToProcessReference *[]testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct,
+	stopAllProcessingReference *bool) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
+	stopAllProcessing := *stopAllProcessingReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
-		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
+		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue, If we got an OK as respons from TestInstruction
+		if stopAllProcessing == false {
+			go func() {
+				channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
+					ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
+				}
 
-		go func() {
-			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
-				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
-			}
+				*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
-			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
-
-		}()
+			}()
+		}
 
 	} else {
 		dbTransaction.Rollback(context.Background())
@@ -116,10 +119,18 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	// TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
 	var testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
 
+	// TestInstructionExecution didn't end with an OK(4, 'TIE_FINISHED_OK' or 5, 'TIE_FINISHED_OK_CAN_BE_RERUN') then Stop further processing
+	var stopAllProcessing bool
+	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < 4 &&
+		finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus > 5 {
+		stopAllProcessing = true
+	}
+
 	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,
 		&doCommitNotRoleBack,
-		&testCaseExecutionsToProcess) //txn.Commit(context.Background())
+		&testCaseExecutionsToProcess,
+		&stopAllProcessing) //txn.Commit(context.Background())
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	err = fenixExecutionServerObject.updateStatusOnTestInstructionsExecutionInCloudDB(txn, finalTestInstructionExecutionResultMessage)
