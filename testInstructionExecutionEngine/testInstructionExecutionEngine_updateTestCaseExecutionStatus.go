@@ -22,19 +22,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
-/*
-		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
-		go func() {
-			channelCommandMessage := ChannelCommandStruct{
-				ChannelCommand:                   ChannelCommandCheckTestInstructionExecutionQueue,
-				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
-			}
+		/*
+			// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
+			go func() {
+				channelCommandMessage := ChannelCommandStruct{
+					ChannelCommand:                   ChannelCommandCheckTestInstructionExecutionQueue,
+					ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
+				}
 
-			*executionEngine.executionEngineChannelRef <- channelCommandMessage
+				*executionEngine.executionEngineChannelRef <- channelCommandMessage
 
 
- */
-		}()
+
+			}()
+
+		*/
 	} else {
 		dbTransaction.Rollback(context.Background())
 	}
@@ -105,7 +107,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		return err
 	}
 
-	// No errors occurred
+	// No errors occurred so secure that commit is done
+	doCommitNotRoleBack = true
+
 	return err
 
 }
@@ -384,19 +388,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestExecution
 	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
 
 		var testCaseExecutionStatusAsString string
+		var testCaseExecutionVersionAsString string
 		testCaseExecutionStatusAsString = strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionStatus)
-
+		testCaseExecutionVersionAsString = strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion)
 
 		// Create Update Statement for each TestCaseExecution update
 		sqlToExecute := ""
 		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
 		sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStopTimeStamp\" = '%s', ", testCaseExecutionUpdateTimeStamp)
-		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionStatus\" = '%s', ", testCaseExecutionStatusAsString)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionStatus\" = %s, ", testCaseExecutionStatusAsString)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionHasFinished\" = '%s', ", "true")
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", testCaseExecutionUpdateTimeStamp)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' ", testCaseExecutionStatusMessage.TestCaseExecutionUuid)
-		sqlToExecute = sqlToExecute + fmt.Sprintf("AND \"TestCaseExecutionVersion\" = '%s' ", testCaseExecutionStatusMessage.TestCaseExecutionVersion)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("AND \"TestCaseExecutionVersion\" = %s ", testCaseExecutionVersionAsString)
 		sqlToExecute = sqlToExecute + "; "
 
 		// If no positive responses the just exit
@@ -435,11 +440,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestExecution
 			err = errors.New(fmt.Sprintf("TestICaseExecutionUuid '%s' with Execution Version Number '%s' is missing in Table [ErroId: %s]", testCaseExecutionStatusMessage.TestCaseExecutionUuid, testCaseExecutionStatusMessage.TestCaseExecutionVersion, errorId))
 
 			common_config.Logger.WithFields(logrus.Fields{
-				"Id":                           "76be13be-8649-41e2-b7f2-3b5e54e26192",
-				"testCaseExecutionStatusMessage.TestCaseExecutionUuid": testCaseExecutionStatusMessage.TestCaseExecutionUuid,
-				"testCaseExecutionStatusMessage.TestCaseExecutionVersion": testCaseExecutionStatusMessage.TestCaseExecutionVersion
+				"Id": "76be13be-8649-41e2-b7f2-3b5e54e26192",
+				"testCaseExecutionStatusMessage.TestCaseExecutionUuid":    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
+				"testCaseExecutionStatusMessage.TestCaseExecutionVersion": testCaseExecutionStatusMessage.TestCaseExecutionVersion,
 
-				"sqlToExecute":                 sqlToExecute,
+				"sqlToExecute": sqlToExecute,
 			}).Error("TestInstructionExecutionUuid is missing in Table")
 
 			return err

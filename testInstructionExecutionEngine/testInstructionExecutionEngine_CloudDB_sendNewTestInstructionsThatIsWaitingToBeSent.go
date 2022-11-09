@@ -12,6 +12,21 @@ import (
 	"strconv"
 )
 
+func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
+	dbTransactionReference *pgx.Tx,
+	doCommitNotRoleBackReference *bool) {
+
+	dbTransaction := *dbTransactionReference
+	doCommitNotRoleBack := *doCommitNotRoleBackReference
+
+	if doCommitNotRoleBack == true {
+		dbTransaction.Commit(context.Background())
+
+	} else {
+		dbTransaction.Rollback(context.Background())
+	}
+}
+
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorker(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
@@ -39,7 +54,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
-	defer executionEngine.commitOrRoleBackParallellSave(
+	defer executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
 		&txn,
 		&doCommitNotRoleBack)
 

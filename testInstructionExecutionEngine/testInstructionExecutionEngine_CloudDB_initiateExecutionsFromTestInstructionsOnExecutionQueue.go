@@ -22,10 +22,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
 	updateTestCaseExecutionWithStatus := *updateTestCaseExecutionWithStatusReference
 
-	if doCommitNotRoleBack == true {
-		dbTransaction.Commit(context.Background())
+	if doCommitNotRoleBack == true || updateTestCaseExecutionWithStatus == true {
+
+		if doCommitNotRoleBack == true {
+
+			dbTransaction.Commit(context.Background())
+		}
+
 		// Only trigger 'To send TestInstructions' when are were some waiting on TestInstructionExecutionQueue
-		if testCaseExecutionsToProcess != nil {
+		if updateTestCaseExecutionWithStatus == false {
 
 			// Trigger TestInstructionEngine to check if there are TestInstructions on the TestInstructionQueue waiting to be moved to Ongoing TestInstructionExecution
 			channelCommandMessage := ChannelCommandStruct{
@@ -35,7 +40,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 			// Send Message on Channel
 			*executionEngine.CommandChannelReference <- channelCommandMessage
-		} else if updateTestCaseExecutionWithStatus == true {
+		} else {
+
+			dbTransaction.Rollback(context.Background())
 
 			// Trigger TestInstructionEngine to update TestCaseExecution based on all finished individual TestInstructionExecutions
 			channelCommandMessage := ChannelCommandStruct{
@@ -110,7 +117,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 	if testInstructionExecutionQueueMessages == nil {
 
 		// Set 'testCaseExecutionsToProcess' to nil to inform Defered function not to trigger SendToWorker
-		testCaseExecutionsToProcess = []ChannelCommandTestCaseExecutionStruct{}
+		triggerUpdateTestCaseExecutionWithStatus = true
+		//testCaseExecutionsToProcess = []ChannelCommandTestCaseExecutionStruct{}
 
 		return
 	}
