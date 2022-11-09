@@ -3,6 +3,7 @@ package testInstructionExecutionEngine
 import (
 	"FenixExecutionServer/common_config"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
@@ -81,15 +82,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
 	var loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct
-	loadTestInstructionExecutionStatusMessages , err = executionEngine.loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess)
+	loadTestInstructionExecutionStatusMessages, err = executionEngine.loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess)
 
 	// Exit when there was a problem reading database
 	if err != nil {
 		return err
 	}
-
-	 // For each combination 'TestCaseExecutionUuid && TestCaseExecutionVersion' create correct TestCaseExecutionStatus
-fortsätt här....
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -170,6 +168,13 @@ type loadTestInstructionExecutionStatusMessagesStruct struct {
 	TestInstructionExecutionStatus int
 }
 
+// Used as type when deciding what End-status a TestCaseExecution should have depending on its TestInstructionExecutions End-status
+type testCaseExecutionStatusStruct struct {
+	TestCaseExecutionUuid    string
+	TestCaseExecutionVersion int
+	TestCaseExecutionStatus  int
+}
+
 // Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct, err error) {
 
@@ -231,7 +236,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	// Extract data from DB result set
 	for rows.Next() {
 
-
 		err := rows.Scan(
 			&loadTestInstructionExecutionStatusMessage.TestCaseExecutionUuid,
 			&loadTestInstructionExecutionStatusMessage.TestCaseExecutionVersion,
@@ -258,5 +262,154 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	}
 
 	return loadTestInstructionExecutionStatusMessages, err
+
+}
+
+func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus(testInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct) (testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct, err error) {
+	// For each combination 'TestCaseExecutionUuid && TestCaseExecutionVersion' create correct TestCaseExecutionStatus
+	// Generate Map that decides what Status that 'overwrite' other status
+	// (0, 'TIE_INITIATED') -> NOT OK
+	// (1, 'TIE_EXECUTING') -> NOT OK
+	// (4, 'TIE_FINISHED_OK' -> OK
+	// (5, 'TIE_FINISHED_OK_CAN_BE_RERUN' -> OK
+	// (7, 'TIE_FINISHED_NOT_OK_CAN_BE_RERUN' -> OK
+	// (3, 'TIE_CONTROLLED_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (9, 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (6, 'TIE_FINISHED_NOT_OK' -> OK
+	// (2, 'TIE_CONTROLLED_INTERRUPTION' -> OK
+	// (8, 'TIE_UNEXPECTED_INTERRUPTION' -> OK
+
+	// Inparameter for Map is 'Current Status' and the value for the Map prioritized Order for that Status
+	var statusOrderDecisionMap = map[int]int{
+		0: 0,
+		1: 1,
+		4: 2,
+		5: 3,
+		7: 4,
+		3: 5,
+		9: 6,
+		6: 7,
+		2: 8,
+		8: 9}
+
+	var currentTestCaseExecutionUuid string
+	var previousTestCaseExecutionUuid string
+	var currentTestCaseExecutionVersion int
+	var previousTestCaseExecutionVersion int
+	var currentStatus int
+	var currentStatusOrder int
+	var savedStatusOrder int
+	var existInMap bool
+	type ruleType int
+	var ruleResult ruleType
+	var foundRule bool
+	const (
+		ruleFirstTestCaseExecution ruleType = iota
+		ruleSameTestCaseExecution
+		ruleNewTestCaseExecutionButNotTheFirstOne
+	)
+
+	// Loop all TestInstructionExecutions and extract the highest end-status based on rules in 'statusOrderDecisionMap', for each TestCaseExecution
+	for testInstructionExecutionCounter, testInstructionExecution := range testInstructionExecutionStatusMessages {
+
+		currentTestCaseExecutionUuid = testInstructionExecution.TestCaseExecutionUuid
+		currentTestCaseExecutionVersion = testInstructionExecution.TestCaseExecutionVersion
+		currentStatus = testInstructionExecution.TestInstructionExecutionStatus
+		foundRule = false
+
+		//
+		currentStatusOrder, existInMap = statusOrderDecisionMap[currentStatus]
+		if existInMap == false {
+			// Status must exist in map
+			executionEngine.logger.WithFields(logrus.Fields{
+				"id":            "5f662a03-5fd2-41ec-a4bf-a91f6676aad8",
+				"currentStatus": currentStatus,
+			}).Error(fmt.Sprintf("Couldn't find TestInstructionExecutionStatus in 'statusOrderDecisionMap'"))
+
+			errorId := "859de457-d6d8-4e23-8691-7581adfb7738"
+			err = errors.New(fmt.Sprintf("Couldn't find TestInstructionExecutionStatus, '%s', in 'statusOrderDecisionMap'. [ErrorID='%s']", currentStatus, errorId))
+
+			return nil, err
+		}
+
+		// First TestCaseExecution in the list
+		if testInstructionExecutionCounter == 0 {
+
+			foundRule = true
+			ruleResult = ruleFirstTestCaseExecution
+		}
+
+		// Not the first TestCaseExecution, but the same TestCaseExecution as previous one
+		if foundRule == false &&
+			currentTestCaseExecutionUuid == previousTestCaseExecutionUuid &&
+			currentTestCaseExecutionVersion == previousTestCaseExecutionVersion {
+
+			foundRule = true
+			ruleResult = ruleSameTestCaseExecution
+		}
+
+		// Not the first TestCaseExecution, but a new TestCaseExecution compared to previous TestCaseExecution
+		if foundRule == false &&
+			currentTestCaseExecutionUuid != previousTestCaseExecutionUuid &&
+			currentTestCaseExecutionVersion != previousTestCaseExecutionVersion {
+
+			foundRule = true
+			ruleResult = ruleNewTestCaseExecutionButNotTheFirstOne
+		}
+
+		switch ruleResult {
+
+		case ruleFirstTestCaseExecution:
+			// First TestCaseExecution in the list
+
+			// Create TestCaseExecutionStatus
+			var testCaseExecutionStatus *testCaseExecutionStatusStruct
+			testCaseExecutionStatus = &testCaseExecutionStatusStruct{
+				TestCaseExecutionUuid:    currentTestCaseExecutionUuid,
+				TestCaseExecutionVersion: currentTestCaseExecutionVersion,
+				TestCaseExecutionStatus:  currentStatus,
+			}
+
+			// Add the TestCaseExecution with status based on status from   first TestInstructionExecution
+			testCaseExecutionStatusMessages = append(testCaseExecutionStatusMessages, testCaseExecutionStatus)
+
+		case ruleSameTestCaseExecution:
+			// Not the first TestCaseExecution, but the same TestCaseExecution as previous one
+
+			// Check if 'currentStatusOrder' is higher than previous saved StatusOrder
+			savedStatusOrder, _ = statusOrderDecisionMap[testCaseExecutionStatusMessages[len(testCaseExecutionStatusMessages)-1].TestCaseExecutionStatus]
+			if currentStatusOrder > savedStatusOrder {
+				// Replace previous Status
+				testCaseExecutionStatusMessages[len(testCaseExecutionStatusMessages)-1].TestCaseExecutionStatus = currentStatus
+			}
+
+		case ruleNewTestCaseExecutionButNotTheFirstOne:
+			// Not the first TestCaseExecution, but a new TestCaseExecution compared to previous TestCaseExecution
+			// Create TestCaseExecutionStatus
+			var testCaseExecutionStatus *testCaseExecutionStatusStruct
+			testCaseExecutionStatus = &testCaseExecutionStatusStruct{
+				TestCaseExecutionUuid:    currentTestCaseExecutionUuid,
+				TestCaseExecutionVersion: currentTestCaseExecutionVersion,
+				TestCaseExecutionStatus:  currentStatus,
+			}
+
+			// Add the TestCaseExecution with status based on status from  new TestInstructionExecution
+			testCaseExecutionStatusMessages = append(testCaseExecutionStatusMessages, testCaseExecutionStatus)
+
+		default:
+			// Unhandled ruleResult
+			errorId := "d3ce2635-cb4e-4574-a4ce-a791bac049ed"
+			err = errors.New(fmt.Sprintf("Unhandled ruleResult: '%s'. [ErrorID='%s']", ruleResult, errorId))
+
+			return nil, err
+
+		}
+
+		// Move 'current' values to 'previous'
+		previousTestCaseExecutionUuid = currentTestCaseExecutionUuid
+		previousTestCaseExecutionVersion = currentTestCaseExecutionVersion
+	}
+
+	return testCaseExecutionStatusMessages, err
 
 }
