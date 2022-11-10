@@ -32,12 +32,12 @@ GuiExeSer <-- ExeSerG: AckNack
 deactivate ExeSerG
 deactivate GuiExeSer
 
-ChEngine -> ChDbEngi: (A) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB
+ChEngine -> ChDbEngi: (A) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB\n(testCaseExecutionsToProcess)
 
-ChDbEngi -> ChDbEngi: 1) loadTestInstructionExecutionQueueMessages \n2) saveTestInstructionsInOngoingExecutionsSaveToCloudDB \n3) clearTestInstructionExecutionQueueSaveToCloudDB
+ChDbEngi -> ChDbEngi: 1) loadTestInstructionExecutionQueueMessages\n(testCaseExecutionsToProcess)  \n2) saveTestInstructionsInOngoingExecutionsSaveToCloudDB\n(testInstructionExecutionQueueMessages) \n3) clearTestInstructionExecutionQueueSaveToCloudDB\n(testInstructionExecutionQueueMessages)
 
 alt:  TestInstructionExecutions, under execution, are waiting to be sent to Worker
-ChEngine <<-- ChDbEngi :1) DB-Commit \n2) ***ChannelCommandCheckNewTestInstructionExecutions*** Triggers (B)
+ChEngine <<-- ChDbEngi : ***ChannelCommandCheckNewTestInstructionExecutions*** Triggers (B)
 
 ChEngine -> ChDbEngi :(B) sendNewTestInstructionsThatIsWaitingToBeSentWorker
 
@@ -52,7 +52,7 @@ ChDbEngi -> ChDbEngi: 4) updateStatusOnTestInstructionsExecutionInCloudDB \n5) u
 ChEngine <-- ChDbEngi :(AckNack)
 
 else: All individual TestInstructionExecutions have been executed and are finished
-ChEngine <<-- ChDbEngi :.\n1) DB-Rollback \n2) ***ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions*** Trigger (C)
+ChEngine <<-- ChDbEngi :***ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions*** Trigger (C)
 
 ChEngine -> ChDbEngi :(C) updateStatusOnTestCaseExecutionInCloudDB
 
@@ -86,7 +86,7 @@ ExeSerG <- Worker: gRPC-call ReportCompleteTestInstructionExecutionResult\n(fina
 activate DbEngine
 ExeSerG -> DbEngine: prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB\n(finalTestInstructionExecutionResultMessage)
 
-DbEngine -> DbEngine: 1) updateStatusOnTestInstructionsExecutionInCloudDB \n2) loadTestCaseExecutionAndTestCaseExecutionVersion
+DbEngine -> DbEngine: 1) updateStatusOnTestInstructionsExecutionInCloudDB\n(finalTestInstructionExecutionResultMessage) \n2) loadTestCaseExecutionAndTestCaseExecutionVersion\n(finalTestInstructionExecutionResultMessage)
 
 opt: TestInstructionExecution ended with a 'OK End-status'
 
@@ -121,53 +121,7 @@ else: There are No ongoing TestInstructionExecution waiting to be sent to Worker
 
 ChDbEngi ->> ChEngine: ***ChannelCommandCheckTestInstructionExecutionQueue*** Triggers (A)
 
-ChEngine -> ChDbEngi: (A) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB\n(testCaseExecutionsToProcess)
-
-ChDbEngi -> ChDbEngi: 1) loadTestInstructionExecutionQueueMessages\n(testCaseExecutionsToProcess) \n2) saveTestInstructionsInOngoingExecutionsSaveToCloudDB\n(testInstructionExecutionQueueMessages) \n3) clearTestInstructionExecutionQueueSaveToCloudDB\n(testInstructionExecutionQueueMessages)
-
-alt:  TestInstructionExecutions, under execution, are waiting to be sent to Worker
-ChEngine <<-- ChDbEngi :1) DB-Commit \n2) ***ChannelCommandCheckNewTestInstructionExecutions*** Triggers (B)
-
-ChEngine -> ChDbEngi :(B) sendNewTestInstructionsThatIsWaitingToBeSentWorker\n(testCaseExecutionsToProcess)
-
-ChDbEngi -> ChDbEngi: 1) loadNewTestInstructionToBeSentToExecutionWorkers\n(testCaseExecutionsToProcess)
-
-alt: There is no waiting ingoing TestInstructionExecutions waiting for to be sent to Worker
-
-ChDbEngi ->> ChEngine: ***ChannelCommandCheckTestInstructionExecutionQueue*** Triggers (B)
-
-else: Send waiting ingoing TestInstructionExecutions to Worker
-
-ChDbEngi -> ChDbEngi: 2) transformRawTestInstructionsAndAttributeIntoGrpcMessages\n(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers)
-
-ChDbEngi -> Worker: 3) sendTestInstructionExecutionsToWorker
-ChDbEngi <-- Worker: AnkNack
-deactivate Worker
-
-end
-
-
-ChDbEngi -> ChDbEngi: 4) updateStatusOnTestInstructionsExecutionInCloudDB \n5) updateStatusOnTestCasesExecutionInCloudDB (To 'Executing')
-
-ChEngine <-- ChDbEngi :(AckNack)
-
-else: All individual TestInstructionExecutions have been executed and are finished
-ChEngine <<-- ChDbEngi :.\n1) DB-Rollback \n2) ***ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions*** Trigger (C)
-
-ChEngine -> ChDbEngi :(C) updateStatusOnTestCaseExecutionInCloudDB
-
-ChDbEngi -> ChDbEngi: 1) loadTestInstructionExecutionStatusMessages \n2) transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus \n3) updateTestCaseExecutionsWithNewTestCaseExecutionStatus
-
-ChEngine <-- ChDbEngi :(AckNack)
-
-end
-
 ChEngine <-- ChDbEngi :(AckNack)
 end
-
-
-deactivate Worker
-
-ChEngine <-- ChDbEngi :(AckNack)
 
 
