@@ -100,7 +100,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	}
 
 	// Update TestExecutions in database with the new TestCaseExecutionStatus
-	err = executionEngine.updateTestExecutionsWithNewTestCaseExecutionStatus(txn, testCaseExecutionStatusMessages)
+	err = executionEngine.updateTestCaseExecutionsWithNewTestCaseExecutionStatus(txn, testCaseExecutionStatusMessages)
 
 	// Exit when there was a problem updating the database
 	if err != nil {
@@ -372,7 +372,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 }
 
 // Update TestExecutions in database with the new TestCaseExecutionStatus
-func (executionEngine *TestInstructionExecutionEngineStruct) updateTestExecutionsWithNewTestCaseExecutionStatus(dbTransaction pgx.Tx, testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecutionsWithNewTestCaseExecutionStatus(dbTransaction pgx.Tx, testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct) (err error) {
 
 	// If there are nothing to update then exit
 	if len(testCaseExecutionStatusMessages) == 0 {

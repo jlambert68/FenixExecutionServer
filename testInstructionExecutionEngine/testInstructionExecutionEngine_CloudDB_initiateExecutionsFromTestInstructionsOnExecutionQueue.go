@@ -32,7 +32,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 		// Only trigger 'To send TestInstructions' when are were some waiting on TestInstructionExecutionQueue
 		if updateTestCaseExecutionWithStatus == false {
 
-			// Trigger TestInstructionEngine to check if there are TestInstructions on the TestInstructionQueue waiting to be moved to Ongoing TestInstructionExecution
+			// Trigger TestInstructionEngine to check if there are TestInstructionExecutions, in under Execution, waiting to be sent to Worker
 			channelCommandMessage := ChannelCommandStruct{
 				ChannelCommand:                   ChannelCommandCheckNewTestInstructionExecutions,
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,

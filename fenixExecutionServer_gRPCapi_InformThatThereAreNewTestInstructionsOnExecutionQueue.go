@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// InformThatThereAreNewTestCasesOnExecutionQueue - *********************************************************************
+// InformThatThereAreNewTestInstructionsOnExecutionQueue - *********************************************************************
 // ExecutionServerGui-server inform ExecutionServer that there is a new TestCase that is ready on the Execution-queue
 func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestInstructionsOnExecutionQueue(ctx context.Context, testCaseExecutionsToProcessMessage *fenixExecutionServerGrpcApi.TestCaseExecutionsToProcessMessage) (*fenixExecutionServerGrpcApi.AckNackResponse, error) {
 
