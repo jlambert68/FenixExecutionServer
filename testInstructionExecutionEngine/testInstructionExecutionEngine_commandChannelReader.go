@@ -15,16 +15,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 
 		switch incomingChannelCommand.ChannelCommand {
 
-		case ChannelCommandCheckTestInstructionExecutionQueue:
+		case ChannelCommandCheckTestInstructionExecutionQueue: //(A)
 			executionEngine.initiateExecutionsForTestInstructionsOnExecutionQueue(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
-		case ChannelCommandCheckNewTestInstructionExecutions:
+		case ChannelCommandCheckNewTestInstructionExecutions: //(B)
 			executionEngine.checkNewExecutionsForTestInstructions(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
-		case ChannelCommandCheckOngoingTestInstructionExecutions:
+		case ChannelCommandCheckOngoingTestInstructionExecutions: // NOT USED FOR NOW
 			executionEngine.checkOngoingExecutionsForTestInstructions()
 
-		case ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions:
+		case ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions: // (C)
 			executionEngine.updateStatusOnTestCaseExecution(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		// No other command is supported

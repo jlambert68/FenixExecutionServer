@@ -41,6 +41,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 			// Send Message on Channel
 			*executionEngine.CommandChannelReference <- channelCommandMessage
 		} else {
+			// No TestInstructionExecutions are waiting in ExecutionQueue, updateTestCaseExecutionWithStatus == true
 
 			dbTransaction.Rollback(context.Background())
 

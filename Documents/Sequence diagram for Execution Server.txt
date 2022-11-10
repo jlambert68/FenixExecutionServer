@@ -1,4 +1,6 @@
 ' Set up Roles
+opt: gRPC-call: InformThatThereAreNewTestCasesOnExecutionQueue\n(A) ChannelCommandCheckTestInstructionExecutionQueue
+
 activate GuiExeSer
 note over GuiExeSer: GuiExecutionServer
 
@@ -34,43 +36,51 @@ deactivate GuiExeSer
 
 ChEngine -> ChDbEngi: (A) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB\n(testCaseExecutionsToProcess)
 
-ChDbEngi -> ChDbEngi: 1) loadTestInstructionExecutionQueueMessages\n(testCaseExecutionsToProcess)  \n2) saveTestInstructionsInOngoingExecutionsSaveToCloudDB\n(testInstructionExecutionQueueMessages) \n3) clearTestInstructionExecutionQueueSaveToCloudDB\n(testInstructionExecutionQueueMessages)
+ChDbEngi -> ChDbEngi: 1) loadTestInstructionExecutionQueueMessages\n(testCaseExecutionsToProcess)
 
-alt:  TestInstructionExecutions, under execution, are waiting to be sent to Worker
-ChEngine <<-- ChDbEngi : ***ChannelCommandCheckNewTestInstructionExecutions*** Triggers (B)
+alt: There were TestInstructionExecutions on Queue so TestInstructionExecutions are waiting in TestInstructionExecutionQueue
+ChEngine <<-- ChDbEngi : ***ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions*** Triggers (C)
 
-ChEngine -> ChDbEngi :(B) sendNewTestInstructionsThatIsWaitingToBeSentWorker
-
-ChDbEngi -> ChDbEngi: 1) loadNewTestInstructionToBeSentToExecutionWorkers \n2) transformRawTestInstructionsAndAttributeIntoGrpcMessages
-
-ChDbEngi -> Worker: 3) sendTestInstructionExecutionsToWorker
-ChDbEngi <-- Worker: AnkNack
 deactivate Worker
-
-ChDbEngi -> ChDbEngi: 4) updateStatusOnTestInstructionsExecutionInCloudDB \n5) updateStatusOnTestCasesExecutionInCloudDB (To 'Executing')
 
 ChEngine <-- ChDbEngi :(AckNack)
 
-else: All individual TestInstructionExecutions have been executed and are finished
-ChEngine <<-- ChDbEngi :***ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions*** Trigger (C)
+else: There were TestInstructionExecutions on queue, so check for ongoing TestInstructionExecution to be sent to Worker
+ChDbEngi -> ChDbEngi: 2) saveTestInstructionsInOngoingExecutionsSaveToCloudDB\n(testInstructionExecutionQueueMessages) \n3) clearTestInstructionExecutionQueueSaveToCloudDB\n(testInstructionExecutionQueueMessages)
 
-ChEngine -> ChDbEngi :(C) updateStatusOnTestCaseExecutionInCloudDB
-
-ChDbEngi -> ChDbEngi: 1) loadTestInstructionExecutionStatusMessages \n2) transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus \n3) updateTestCaseExecutionsWithNewTestCaseExecutionStatus
+ChEngine <<-- ChDbEngi :***ChannelCommandCheckNewTestInstructionExecutions*** Trigger (B)
 
 ChEngine <-- ChDbEngi :(AckNack)
 
 end
 
-ChEngine <-- ChDbEngi :(AckNack)
 deactivate ChDbEngi
 deactivate Worker
 deactivate ChDbEngi
 deactivate ChEngine
+end
+'*****************************************************************
+' updateStatusOnTestCaseExecutionInCloudDB (C)
+opt : (C) ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions (C)
+activate ChEngine
+activate ChDbEngi
 
+note over ChEngine: ChannelExecutionEngine
+
+note over ChDbEngi: ChannelDatabaseEngine
+ChEngine -> ChDbEngi: (C) updateStatusOnTestCaseExecutionInCloudDB\n(testCaseExecutionsToProcess)
+
+ChDbEngi -> ChDbEngi: 1) loadTestInstructionExecutionStatusMessages\n(testCaseExecutionsToProcess) \n2) transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus\n(loadTestInstructionExecutionStatusMessages) \n3) updateTestCaseExecutionsWithNewTestCaseExecutionStatus\n(testCaseExecutionStatusMessages)
+
+ChEngine <-- ChDbEngi :(AckNack)
+
+deactivate ChEngine
+deactivate ChDbEngi
+end
 ' *************************************************************
 ' *** gRPC-call - ReportCompleteTestInstructionExecutionResult ***
-'note over Worker: ExecutionWorker
+
+opt: gRPC-Call: ReportCompleteTestInstructionExecutionResult\n(B) ChannelCommandCheckNewTestInstructionExecutions
 
 note over ExeSerG: ExecutionServer-gRPC
 
@@ -97,8 +107,6 @@ end
 
 ExeSerG <-- DbEngine :AckNack
 
-Worker <-- ExeSerG :AckNack
-
 activate ChDbEngi
 
 ChEngine -> ChDbEngi :(B) sendNewTestInstructionsThatIsWaitingToBeSentWorker\n(testCaseExecutionsToProcess)
@@ -107,6 +115,9 @@ ChDbEngi -> ChDbEngi: 1) loadNewTestInstructionToBeSentToExecutionWorkers\n(test
 
 alt: There are ongoing TestInstructionExecution waiting to be sent to Worker
 ChDbEngi -> ChDbEngi: 2) transformRawTestInstructionsAndAttributeIntoGrpcMessages \n(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers)
+
+activate Worker
+note over Worker: ExecutionWorker
 
 ChDbEngi -> ChDbEngi: 3) sendTestInstructionExecutionsToWorker\n(testInstructionsToBeSentToExecutionWorkersAndTheResponse)
 ChDbEngi -> Worker: 3.1) SendProcessTestInstructionExecutionToExecutionWorkerServer\n(processTestInstructionExecutionRequest)
@@ -123,5 +134,5 @@ ChDbEngi ->> ChEngine: ***ChannelCommandCheckTestInstructionExecutionQueue*** Tr
 
 ChEngine <-- ChDbEngi :(AckNack)
 end
-
+end
 
