@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	uuidGenerator "github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
@@ -17,27 +18,53 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testCaseExecutionsToProcessReference *[]testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct,
-	stopAllProcessingReference *bool) {
+	stopProcessingOfNewTestInstructionExecutionsOnQueueReference *bool,
+	triggerSetTestCaseExecutionStatusReference *bool) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
-	stopAllProcessing := *stopAllProcessingReference
+	stopProcessingOfNewTestInstructionExecutionsOnQueue := *stopProcessingOfNewTestInstructionExecutionsOnQueueReference
+	triggerSetTestCaseExecutionStatus := *triggerSetTestCaseExecutionStatusReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
+		// Create response channel to be able to get response when ChannelCommand has finished
+		var returnChannelWithDBError testInstructionExecutionEngine.ExecutionEngineChannelType
+		returnChannelWithDBError = make(chan testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct)
+
+		// Update status for TestCaseExecution, based on incoming TestInstructionExecution
+		if triggerSetTestCaseExecutionStatus == true {
+			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+				ChannelCommand:                    testInstructionExecutionEngine.ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
+				ChannelCommandTestCaseExecutions:  testCaseExecutionsToProcess,
+				ReturnChannelWithDBErrorReference: &returnChannelWithDBError,
+			}
+
+			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+
+		}
+
 		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue, If we got an OK as respons from TestInstruction
-		if stopAllProcessing == false {
-			go func() {
+		if stopProcessingOfNewTestInstructionExecutionsOnQueue == false {
+			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker,
+				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
+			}
+
+			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+
+		} else {
+			// This is the last ongoing TestInstructionExecution ended any of the ongoing TestInstructionExecutions ended with a 'Non-OK-status'.
+			if triggerSetTestCaseExecutionStatus == true {
 				channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
+					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
 					ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 				}
-
 				*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
-			}()
+			}
 		}
 
 	} else {
@@ -120,17 +147,18 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	var testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
 
 	// TestInstructionExecution didn't end with an OK(4, 'TIE_FINISHED_OK' or 5, 'TIE_FINISHED_OK_CAN_BE_RERUN') then Stop further processing
-	var stopAllProcessing bool
-	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < 4 &&
-		finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus > 5 {
-		stopAllProcessing = true
-	}
+	var stopProcessingOfNewTestInstructionExecutionsOnQueue bool
+	stopProcessingOfNewTestInstructionExecutionsOnQueue = true
+
+	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecution-status
+	var triggerSetTestCaseExecutionStatus bool
 
 	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess,
-		&stopAllProcessing) //txn.Commit(context.Background())
+		&stopProcessingOfNewTestInstructionExecutionsOnQueue,
+		&triggerSetTestCaseExecutionStatus) //txn.Commit(context.Background())
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	err = fenixExecutionServerObject.updateStatusOnTestInstructionsExecutionInCloudDB(txn, finalTestInstructionExecutionResultMessage)
@@ -176,6 +204,31 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 		return ackNackResponse
 	}
 
+	// If this is the last on TestInstructionExecution and any of them ended with a 'Non-OK-status' then stop pick new TestInstructionExecutions from Queue
+	var testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct
+	testInstructionExecutionSiblingsStatus, err = fenixExecutionServerObject.areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(finalTestInstructionExecutionResultMessage)
+
+	// When there are TestInstructionExecutions in result set then they can have been ended with a Non-OK-status or that they are ongoing in their executions
+	if len(testInstructionExecutionSiblingsStatus) != 0 {
+
+		for _, testInstructionExecution := range testInstructionExecutionSiblingsStatus {
+			// Is this any ongoing TestInstructionExecutions?
+			if testInstructionExecution.testInstructionExecutionStatus < 2 {
+				stopProcessingOfNewTestInstructionExecutionsOnQueue = false
+				break
+			}
+		}
+
+		// All TestInstructionExecutions are finished and some ended with a Non-OK-status
+		if stopProcessingOfNewTestInstructionExecutionsOnQueue == true {
+			triggerSetTestCaseExecutionStatus = true
+		}
+
+	} else {
+		// All TestInstructionsExecution ended with an OK-status
+		triggerSetTestCaseExecutionStatus = true
+	}
+
 	// Update Status on TestCaseExecution
 
 	// Commit every database change
@@ -190,6 +243,14 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	}
 
 	return ackNackResponse
+}
+
+type testInstructionExecutionSiblingsStatusStruct struct {
+	testCaseExecutionUuid                      string
+	testCaseExecutionVersion                   int
+	testInstructionExecutionUuid               string
+	testInstructionInstructionExecutionVersion int
+	testInstructionExecutionStatus             int
 }
 
 // Update status, which came from Connector/Worker, on ongoing TestInstructionExecution
@@ -337,5 +398,81 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 	}
 
 	return channelCommandTestCaseExecutions, err
+
+}
+
+// Verify if siblings to current finsihed TestInstructionExecutions are all finished and if any of them ended with a Non-OK-status
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct, err error) {
+
+	// Generate UUID as part of name for Temp-table AND
+	tempTableUuid := uuidGenerator.New().String()
+	tempTableName := "tempTable_" + tempTableUuid
+
+	//usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	// Create SQL that only List TestInstructionExecutions that did not end with a OK-status
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "CREATE TEMP TABLE " + tempTableName + " AS "
+
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\",  TIUE.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
+	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + " AND "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionInstructionExecutionVersion\" = 1; "
+
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", " +
+		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", " +
+		"TIUE.\"TestInstructionExecutionStatus\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE, tempTableName "
+	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestCaseExecutionUuid\" = " + tempTableName + ".\"TestCaseExecutionUuid\" AND "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestCaseExecutionVersion\" = " + tempTableName + ".\"TestCaseExecutionVersion\" AND "
+	sqlToExecute = sqlToExecute + "(TIUE.\"TestInstructionExecutionStatus\" < 4 OR "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\" > 5);"
+
+	sqlToExecute = sqlToExecute + "DROP TABLE " + tempTableName + ";"
+
+	// Query DB
+	// Execute Query CloudDB
+	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+
+	if err != nil {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":           "a414a9b3-bed8-49ed-9ec4-b2077725f7fd",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	// Extract data from DB result
+	for rows.Next() {
+		var testInstructionExecutionSiblingStatus *testInstructionExecutionSiblingsStatusStruct
+
+		err = rows.Scan(
+			&testInstructionExecutionSiblingStatus.testCaseExecutionUuid,
+			&testInstructionExecutionSiblingStatus.testCaseExecutionVersion,
+			&testInstructionExecutionSiblingStatus.testInstructionExecutionUuid,
+			&testInstructionExecutionSiblingStatus.testInstructionInstructionExecutionVersion,
+			&testInstructionExecutionSiblingStatus.testInstructionExecutionStatus,
+		)
+
+		if err != nil {
+
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+				"Id":           "0c30827d-e9e1-4962-b28b-ea74b05e4dc7",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+
+		// Add status for TestInstructionExecution-sibling to slice
+		testInstructionExecutionSiblingsStatus = append(testInstructionExecutionSiblingsStatus, testInstructionExecutionSiblingStatus)
+
+	}
+
+	return testInstructionExecutionSiblingsStatus, err
 
 }

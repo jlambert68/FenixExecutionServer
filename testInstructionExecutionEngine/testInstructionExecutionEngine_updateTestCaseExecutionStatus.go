@@ -26,7 +26,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 			// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 			go func() {
 				channelCommandMessage := ChannelCommandStruct{
-					ChannelCommand:                   ChannelCommandCheckTestInstructionExecutionQueue,
+					ChannelCommand:                   ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue,
 					ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 				}
 

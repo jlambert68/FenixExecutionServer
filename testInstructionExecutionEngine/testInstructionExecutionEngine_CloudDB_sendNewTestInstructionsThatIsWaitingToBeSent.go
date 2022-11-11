@@ -81,7 +81,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 
 		// Trigger TestInstructionEngine to check if there are more TestInstructions that is waiting to be sent from 'Ongoing'
 		channelCommandMessage := ChannelCommandStruct{
-			ChannelCommand:                   ChannelCommandCheckTestInstructionExecutionQueue,
+			ChannelCommand:                   ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue,
 			ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 		}
 

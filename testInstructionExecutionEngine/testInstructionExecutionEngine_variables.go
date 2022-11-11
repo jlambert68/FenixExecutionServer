@@ -15,18 +15,25 @@ type ExecutionEngineChannelType chan ChannelCommandStruct
 type ChannelCommandType uint8
 
 const (
-	ChannelCommandCheckTestInstructionExecutionQueue ChannelCommandType = iota
-	ChannelCommandCheckNewTestInstructionExecutions
+	ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue ChannelCommandType = iota
+	ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker
 	ChannelCommandCheckOngoingTestInstructionExecutions
-	ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions
+	ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions
 )
 
 type ChannelCommandStruct struct {
-	ChannelCommand                   ChannelCommandType
-	ChannelCommandTestCaseExecutions []ChannelCommandTestCaseExecutionStruct
+	ChannelCommand                    ChannelCommandType
+	ChannelCommandTestCaseExecutions  []ChannelCommandTestCaseExecutionStruct
+	ReturnChannelWithDBErrorReference *ReturnChannelWithDBErrorType
 }
 
 type ChannelCommandTestCaseExecutionStruct struct {
 	TestCaseExecution        string
 	TestCaseExecutionVersion int32
+}
+
+// Channel used for response from ExecutionEngine when one command has finished and there is another command waiting for it to finsig
+type ReturnChannelWithDBErrorType chan ReturnChannelWithDBErrorStruct
+type ReturnChannelWithDBErrorStruct struct {
+	err error
 }

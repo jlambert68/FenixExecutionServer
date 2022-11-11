@@ -52,7 +52,7 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 			defer func() {
 				// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 				channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue,
 					ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
 				}
 

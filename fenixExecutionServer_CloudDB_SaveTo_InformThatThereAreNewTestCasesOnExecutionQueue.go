@@ -36,7 +36,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 		go func() {
 			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckTestInstructionExecutionQueue,
+				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue,
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 

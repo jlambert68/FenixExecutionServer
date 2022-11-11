@@ -44,7 +44,7 @@ func (s *fenixExecutionServerGrpcServicesServer) TriggerSendNewTestInstructionsT
 	/*
 		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 		channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-			ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckNewTestInstructionExecutions,
+			ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker,
 			ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
 		}
 

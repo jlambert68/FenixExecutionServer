@@ -15,16 +15,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 
 		switch incomingChannelCommand.ChannelCommand {
 
-		case ChannelCommandCheckTestInstructionExecutionQueue: //(A)
-			executionEngine.initiateExecutionsForTestInstructionsOnExecutionQueue(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+		case ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue: //(A)
+			executionEngine.moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutions(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
-		case ChannelCommandCheckNewTestInstructionExecutions: //(B)
-			executionEngine.checkNewExecutionsForTestInstructions(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+		case ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker: //(B)
+			executionEngine.checkForTestInstructionsExecutionsWaitingToBeSentToWorker(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		case ChannelCommandCheckOngoingTestInstructionExecutions: // NOT USED FOR NOW
 			executionEngine.checkOngoingExecutionsForTestInstructions()
 
-		case ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions: // (C)
+		case ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions: // (C)
 			executionEngine.updateStatusOnTestCaseExecution(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		// No other command is supported
@@ -39,13 +39,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 }
 
 // Check ExecutionQueue for TestInstructions and move them to ongoing Executions-table
-func (executionEngine *TestInstructionExecutionEngineStruct) initiateExecutionsForTestInstructionsOnExecutionQueue(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutions(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
-	executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
+	executionEngine.moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB(channelCommandTestCasesExecution)
 	/*
 		// Trigger TestInstructionEngine to check if there are TestInstructions that should be sent to workers
 		channelCommandMessage := ChannelCommandStruct{
-			ChannelCommand:                   ChannelCommandCheckNewTestInstructionExecutions,
+			ChannelCommand:                   ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker,
 			ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
 		}
 
@@ -66,7 +66,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) checkOngoingExecuti
 }
 
 // Update TestCaseExecutionStatus based on result on individual TestInstructionExecution-results
-func (executionEngine *TestInstructionExecutionEngineStruct) checkNewExecutionsForTestInstructions(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) checkForTestInstructionsExecutionsWaitingToBeSentToWorker(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker(channelCommandTestCasesExecution)
 }

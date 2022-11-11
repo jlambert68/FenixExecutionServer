@@ -34,7 +34,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 			// Trigger TestInstructionEngine to check if there are TestInstructionExecutions, in under Execution, waiting to be sent to Worker
 			channelCommandMessage := ChannelCommandStruct{
-				ChannelCommand:                   ChannelCommandCheckNewTestInstructionExecutions,
+				ChannelCommand:                   ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker,
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 
@@ -47,7 +47,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 			// Trigger TestInstructionEngine to update TestCaseExecution based on all finished individual TestInstructionExecutions
 			channelCommandMessage := ChannelCommandStruct{
-				ChannelCommand:                   ChannelCommandUpdateFinalExecutionStatusOnTestCaseExecutionExecutions,
+				ChannelCommand:                   ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 
@@ -61,16 +61,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 }
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id":                          "3bd9e5cf-d108-4d99-94fa-8dc673dfcb68",
 		"testCaseExecutionsToProcess": testCaseExecutionsToProcess,
-	}).Debug("Incoming 'prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB'")
+	}).Debug("Incoming 'moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB'")
 
 	defer executionEngine.logger.WithFields(logrus.Fields{
 		"id": "9e9c1445-f805-4e71-bff0-0ea60327a254",
-	}).Debug("Outgoing 'prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB'")
+	}).Debug("Outgoing 'moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB'")
 
 	// After all stuff is done, then Commit or Rollback depending on result
 	var doCommitNotRoleBack bool
@@ -84,7 +84,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "2effe457-d6b4-47d6-989c-5b4107e52077",
 			"error": err,
-		}).Error("Problem to do 'DbPool.Begin'  in 'prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDB'")
+		}).Error("Problem to do 'DbPool.Begin'  in 'moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB'")
 
 		return
 	}
