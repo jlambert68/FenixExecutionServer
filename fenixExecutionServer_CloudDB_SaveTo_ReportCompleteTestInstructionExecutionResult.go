@@ -6,13 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	uuidGenerator "github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
-	"strings"
 )
 
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBackReportCompleteTestInstructionExecutionResult(
@@ -231,7 +229,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 
 	// If this is the last on TestInstructionExecution and any of them ended with a 'Non-OK-status' then stop pick new TestInstructionExecutions from Queue
 	var testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct
-	testInstructionExecutionSiblingsStatus, err = fenixExecutionServerObject.areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(finalTestInstructionExecutionResultMessage)
+	testInstructionExecutionSiblingsStatus, err = fenixExecutionServerObject.areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(txn, finalTestInstructionExecutionResultMessage)
 
 	if err != nil {
 
@@ -283,6 +281,11 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	}
 
 	return ackNackResponse
+}
+
+type currentTestCaseExecutionStruct struct {
+	testCaseExecutionUuid    string
+	testCaseExecutionVersion int
 }
 
 type testInstructionExecutionSiblingsStatusStruct struct {
@@ -442,55 +445,113 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 }
 
 // Verify if siblings to current finsihed TestInstructionExecutions are all finished and if any of them ended with a Non-OK-status
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct, err error) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(dbTransaction pgx.Tx, finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct, err error) {
 
 	// Generate UUID as part of name for Temp-table AND
-	tempTableUuid := uuidGenerator.New().String()
-	tempTableUuidNoDashes := strings.ReplaceAll(tempTableUuid, "-", "")
-	tempTableName := "tempTable_" + tempTableUuidNoDashes
+	//tempTableUuid := uuidGenerator.New().String()
+	//tempTableUuidNoDashes := strings.ReplaceAll(tempTableUuid, "-", "")
+	//tempTableName := "tempTable_" + tempTableUuidNoDashes
 
 	//usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	// Create SQL that only List TestInstructionExecutions that did not end with a OK-status
-	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "CREATE TEMP TABLE " + tempTableName + " AS "
+	sqlToExecute_part1 := ""
+	//sqlToExecute_part1 = sqlToExecute_part1 + "CREATE TEMP TABLE " + tempTableName + " AS "
 
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\",  TIUE.\"TestCaseExecutionVersion\" "
-	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
-	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + " AND "
-	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionInstructionExecutionVersion\" = 1; "
+	sqlToExecute_part1 = sqlToExecute_part1 + "SELECT TIUE.\"TestCaseExecutionUuid\",  TIUE.\"TestCaseExecutionVersion\" "
+	sqlToExecute_part1 = sqlToExecute_part1 + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
+	sqlToExecute_part1 = sqlToExecute_part1 + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + "' AND "
+	sqlToExecute_part1 = sqlToExecute_part1 + "TIUE.\"TestInstructionInstructionExecutionVersion\" = 1; "
 
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", " +
-		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", " +
-		"TIUE.\"TestInstructionExecutionStatus\" "
-	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE, tempTableName "
-	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestCaseExecutionUuid\" = " + tempTableName + ".\"TestCaseExecutionUuid\" AND "
-	sqlToExecute = sqlToExecute + "TIUE.\"TestCaseExecutionVersion\" = " + tempTableName + ".\"TestCaseExecutionVersion\" AND "
-	sqlToExecute = sqlToExecute + "(TIUE.\"TestInstructionExecutionStatus\" < 4 OR "
-	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\" > 5);"
-
-	sqlToExecute = sqlToExecute + "DROP TABLE " + tempTableName + ";"
+	//sqlToExecute = sqlToExecute + "DROP TABLE " + tempTableName + ";"
 
 	// Query DB
 	// Execute Query CloudDB
 	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute_part1)
 
 	if err != nil {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"Id":           "a414a9b3-bed8-49ed-9ec4-b2077725f7fd",
 			"Error":        err,
-			"sqlToExecute": sqlToExecute,
+			"sqlToExecute": sqlToExecute_part1,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	var currentTestCaseExecution currentTestCaseExecutionStruct
+	var currentTestCaseExecutions []currentTestCaseExecutionStruct
+	// Extract data from DB result
+	for rows.Next() {
+
+		err = rows.Scan(
+			&currentTestCaseExecution.testCaseExecutionUuid,
+			&currentTestCaseExecution.testCaseExecutionVersion,
+		)
+
+		if err != nil {
+
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+				"Id":           "0c30827d-e9e1-4962-b28b-ea74b05e4dc7",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute_part1,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+
+		// Add TestCaseExecution to slice
+		currentTestCaseExecutions = append(currentTestCaseExecutions, currentTestCaseExecution)
+
+	}
+
+	// Exact one TestCaseExecution should be found
+	if len(currentTestCaseExecutions) != 1 {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":                        "22a56463-b892-4732-803a-11a69140e555",
+			"sqlToExecute":              sqlToExecute_part1,
+			"currentTestCaseExecutions": currentTestCaseExecutions,
+		}).Error("Did not found exact one TestCaseExecution")
+
+		err = errors.New("Did not found exact one TestCaseExecution")
+
+		return nil, err
+	}
+
+	var testCaseExecutionVersionAsString string
+	testCaseExecutionVersionAsString = strconv.Itoa(currentTestCaseExecution.testCaseExecutionVersion)
+
+	sqlToExecute_part2 := ""
+	sqlToExecute_part2 = sqlToExecute_part2 + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", " +
+		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", " +
+		"TIUE.\"TestInstructionExecutionStatus\" "
+	sqlToExecute_part2 = sqlToExecute_part2 + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
+	sqlToExecute_part2 = sqlToExecute_part2 + "WHERE TIUE.\"TestCaseExecutionUuid\" = '" + currentTestCaseExecution.testCaseExecutionUuid + "' AND "
+	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestCaseExecutionVersion\" = " + testCaseExecutionVersionAsString + " AND "
+	sqlToExecute_part2 = sqlToExecute_part2 + "(TIUE.\"TestInstructionExecutionStatus\" < 4 OR "
+	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestInstructionExecutionStatus\" > 5);"
+
+	// Query DB
+	// Execute Query CloudDB
+	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+	rows2, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute_part2)
+
+	if err != nil {
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"Id":           "a414a9b3-bed8-49ed-9ec4-b2077725f7fd",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute_part2,
 		}).Error("Something went wrong when executing SQL")
 
 		return nil, err
 	}
 
 	// Extract data from DB result
-	for rows.Next() {
+	for rows2.Next() {
 		var testInstructionExecutionSiblingStatus *testInstructionExecutionSiblingsStatusStruct
 
-		err = rows.Scan(
+		err = rows2.Scan(
 			&testInstructionExecutionSiblingStatus.testCaseExecutionUuid,
 			&testInstructionExecutionSiblingStatus.testCaseExecutionVersion,
 			&testInstructionExecutionSiblingStatus.testInstructionExecutionUuid,
@@ -503,7 +564,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoin
 			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 				"Id":           "0c30827d-e9e1-4962-b28b-ea74b05e4dc7",
 				"Error":        err,
-				"sqlToExecute": sqlToExecute,
+				"sqlToExecute": sqlToExecute_part2,
 			}).Error("Something went wrong when processing result from database")
 
 			return nil, err
