@@ -25,7 +25,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 			executionEngine.checkOngoingExecutionsForTestInstructions()
 
 		case ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions: // (C)
-			executionEngine.updateStatusOnTestCaseExecution(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+			executionEngine.updateStatusOnTestCaseExecution(incomingChannelCommand)
 
 		// No other command is supported
 		default:
@@ -55,9 +55,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 }
 
 // Check for new executions for TestInstructions that should be sent to workers
-func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecution(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecution(incomingChannelCommand ChannelCommandStruct) {
 
-	_ = executionEngine.updateStatusOnTestCaseExecutionInCloudDB(channelCommandTestCasesExecution)
+	err := executionEngine.updateStatusOnTestCaseExecutionInCloudDB(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+
+	// If there is a Channel reference present then send back Error-message from DB-update
+	if incomingChannelCommand.ReturnChannelWithDBErrorReference != nil {
+
+		var returnChannelWithDBError ReturnChannelWithDBErrorStruct
+		returnChannelWithDBError = ReturnChannelWithDBErrorStruct{
+			Err: err}
+
+		*incomingChannelCommand.ReturnChannelWithDBErrorReference <- returnChannelWithDBError
+	}
 }
 
 // Check for ongoing executions  for TestInstructions for change in status that should be propagated to other places
