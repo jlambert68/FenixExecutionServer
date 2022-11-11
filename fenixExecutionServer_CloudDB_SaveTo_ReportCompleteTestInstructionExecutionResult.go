@@ -18,14 +18,14 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testCaseExecutionsToProcessReference *[]testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct,
-	stopProcessingOfNewTestInstructionExecutionsOnQueueReference *bool,
-	triggerSetTestCaseExecutionStatusReference *bool) {
+	thereExistsOnGoingTestInstructionExecutionsReference *bool,
+	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference *bool) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
-	stopProcessingOfNewTestInstructionExecutionsOnQueue := *stopProcessingOfNewTestInstructionExecutionsOnQueueReference
-	triggerSetTestCaseExecutionStatus := *triggerSetTestCaseExecutionStatusReference
+	thereExistsOnGoingTestInstructionExecutions := *thereExistsOnGoingTestInstructionExecutionsReference
+	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions := *triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
@@ -35,7 +35,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		returnChannelWithDBError = make(chan testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct)
 
 		// Update status for TestCaseExecution, based on incoming TestInstructionExecution
-		if triggerSetTestCaseExecutionStatus == true {
+		if triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions == true {
 			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
 				ChannelCommand:                    testInstructionExecutionEngine.ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
 				ChannelCommandTestCaseExecutions:  testCaseExecutionsToProcess,
@@ -44,11 +44,18 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 
 			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
-		}
+			// Wait for errReturnMessage in return channel
+			var returnChannelMessage testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct
+			returnChannelMessage = <-returnChannelWithDBError
 
-		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue, If we got an OK as respons from TestInstruction
-		if stopProcessingOfNewTestInstructionExecutionsOnQueue == false {
-			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+			//Check if there was an error in previous ChannelCommand, if so then exit
+			if returnChannelMessage.Err != nil {
+				return
+			}
+
+			// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue, If we got an OK as respons from TestInstruction
+
+			channelCommandMessage = testInstructionExecutionEngine.ChannelCommandStruct{
 				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker,
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
@@ -56,17 +63,35 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
 		} else {
-			// This is the last ongoing TestInstructionExecution ended any of the ongoing TestInstructionExecutions ended with a 'Non-OK-status'.
-			if triggerSetTestCaseExecutionStatus == true {
-				channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
+
+			// Update status for TestCaseExecution, based on incoming TestInstructionExecution
+			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+				ChannelCommand:                    testInstructionExecutionEngine.ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
+				ChannelCommandTestCaseExecutions:  testCaseExecutionsToProcess,
+				ReturnChannelWithDBErrorReference: &returnChannelWithDBError,
+			}
+
+			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+
+			// Wait for errReturnMessage in return channel
+			var returnChannelMessage testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct
+			returnChannelMessage = <-returnChannelWithDBError
+
+			//Check if there was an error in previous ChannelCommand, if so then exit
+			if returnChannelMessage.Err != nil {
+				return
+			}
+
+			// If there are Ongoing TestInstructionsExecutions then secure that they are triggered to be sent to Worker
+			if thereExistsOnGoingTestInstructionExecutions == true {
+				channelCommandMessage = testInstructionExecutionEngine.ChannelCommandStruct{
+					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckOngoingTestInstructionExecutions,
 					ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 				}
 				*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
 			}
 		}
-
 	} else {
 		dbTransaction.Rollback(context.Background())
 	}
@@ -147,18 +172,17 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	var testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
 
 	// TestInstructionExecution didn't end with an OK(4, 'TIE_FINISHED_OK' or 5, 'TIE_FINISHED_OK_CAN_BE_RERUN') then Stop further processing
-	var stopProcessingOfNewTestInstructionExecutionsOnQueue bool
-	stopProcessingOfNewTestInstructionExecutionsOnQueue = true
+	var thereExistsOnGoingTestInstructionExecutionsOnQueue bool
 
 	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecution-status
-	var triggerSetTestCaseExecutionStatus bool
+	var triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions bool
 
 	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess,
-		&stopProcessingOfNewTestInstructionExecutionsOnQueue,
-		&triggerSetTestCaseExecutionStatus) //txn.Commit(context.Background())
+		&thereExistsOnGoingTestInstructionExecutionsOnQueue,
+		&triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions) //txn.Commit(context.Background())
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	err = fenixExecutionServerObject.updateStatusOnTestInstructionsExecutionInCloudDB(txn, finalTestInstructionExecutionResultMessage)
@@ -214,19 +238,14 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 		for _, testInstructionExecution := range testInstructionExecutionSiblingsStatus {
 			// Is this any ongoing TestInstructionExecutions?
 			if testInstructionExecution.testInstructionExecutionStatus < 2 {
-				stopProcessingOfNewTestInstructionExecutionsOnQueue = false
+				thereExistsOnGoingTestInstructionExecutionsOnQueue = true
 				break
 			}
 		}
 
-		// All TestInstructionExecutions are finished and some ended with a Non-OK-status
-		if stopProcessingOfNewTestInstructionExecutionsOnQueue == true {
-			triggerSetTestCaseExecutionStatus = true
-		}
-
 	} else {
-		// All TestInstructionsExecution ended with an OK-status
-		triggerSetTestCaseExecutionStatus = true
+		// All TestInstructionsExecution ended with an OK-status so Update TestCaseExecutionStatus and Check for New TestInstructionExecutions on Queue
+		triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions = true
 	}
 
 	// Update Status on TestCaseExecution

@@ -37,5 +37,5 @@ type ChannelCommandTestCaseExecutionStruct struct {
 // Channel used for response from ExecutionEngine when one command has finished and there is another command waiting for it to finsig
 type ReturnChannelWithDBErrorType chan ReturnChannelWithDBErrorStruct
 type ReturnChannelWithDBErrorStruct struct {
-	err error
+	Err error
 }
