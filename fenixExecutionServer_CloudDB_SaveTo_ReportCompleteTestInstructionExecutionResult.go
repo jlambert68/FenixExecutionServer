@@ -31,7 +31,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		dbTransaction.Commit(context.Background())
 
 		// Create response channel to be able to get response when ChannelCommand has finished
-		var returnChannelWithDBError testInstructionExecutionEngine.ExecutionEngineChannelType
+		var returnChannelWithDBError testInstructionExecutionEngine.ReturnChannelWithDBErrorType
 		returnChannelWithDBError = make(chan testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct)
 
 		// Update status for TestCaseExecution, based on incoming TestInstructionExecution
