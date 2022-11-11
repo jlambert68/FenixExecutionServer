@@ -29,12 +29,13 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
-		// Create response channel to be able to get response when ChannelCommand has finished
-		var returnChannelWithDBError testInstructionExecutionEngine.ReturnChannelWithDBErrorType
-		returnChannelWithDBError = make(chan testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct)
-
 		// Update status for TestCaseExecution, based on incoming TestInstructionExecution
 		if triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions == true {
+
+			// Create response channel to be able to get response when ChannelCommand has finished
+			var returnChannelWithDBError testInstructionExecutionEngine.ReturnChannelWithDBErrorType
+			returnChannelWithDBError = make(chan testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct)
+
 			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
 				ChannelCommand:                    testInstructionExecutionEngine.ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
 				ChannelCommandTestCaseExecutions:  testCaseExecutionsToProcess,
@@ -62,6 +63,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
 
 		} else {
+
+			// Create response channel to be able to get response when ChannelCommand has finished
+			var returnChannelWithDBError testInstructionExecutionEngine.ReturnChannelWithDBErrorType
+			returnChannelWithDBError = make(chan testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct)
 
 			// Update status for TestCaseExecution, based on incoming TestInstructionExecution
 			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
@@ -535,7 +540,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoin
 	// Query DB
 	// Execute Query CloudDB
 	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows2, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute_part2)
+	rows2, err := dbTransaction.Query(context.Background(), sqlToExecute_part2) // fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute_part2)
 
 	if err != nil {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
@@ -549,7 +554,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoin
 
 	// Extract data from DB result
 	for rows2.Next() {
-		var testInstructionExecutionSiblingStatus *testInstructionExecutionSiblingsStatusStruct
+		var testInstructionExecutionSiblingStatus testInstructionExecutionSiblingsStatusStruct
 
 		err = rows2.Scan(
 			&testInstructionExecutionSiblingStatus.testCaseExecutionUuid,
@@ -571,7 +576,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoin
 		}
 
 		// Add status for TestInstructionExecution-sibling to slice
-		testInstructionExecutionSiblingsStatus = append(testInstructionExecutionSiblingsStatus, testInstructionExecutionSiblingStatus)
+		testInstructionExecutionSiblingsStatus = append(testInstructionExecutionSiblingsStatus, &testInstructionExecutionSiblingStatus)
 
 	}
 
