@@ -12,6 +12,7 @@ import (
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 )
 
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBackReportCompleteTestInstructionExecutionResult(
@@ -232,6 +233,26 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	var testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct
 	testInstructionExecutionSiblingsStatus, err = fenixExecutionServerObject.areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(finalTestInstructionExecutionResultMessage)
 
+	if err != nil {
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:                      false,
+			Comments:                     "Problem when Checking Database for ongoing end NonOKExecutions: " + err.Error(),
+			ErrorCodes:                   errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+	}
+
 	// When there are TestInstructionExecutions in result set then they can have been ended with a Non-OK-status or that they are ongoing in their executions
 	if len(testInstructionExecutionSiblingsStatus) != 0 {
 
@@ -425,7 +446,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoin
 
 	// Generate UUID as part of name for Temp-table AND
 	tempTableUuid := uuidGenerator.New().String()
-	tempTableName := "tempTable_" + tempTableUuid
+	tempTableUuidNoDashes := strings.ReplaceAll(tempTableUuid, "-", "")
+	tempTableName := "tempTable_" + tempTableUuidNoDashes
 
 	//usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
