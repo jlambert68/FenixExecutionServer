@@ -240,12 +240,24 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	}
 
+	/*
+		sqlToExecute := ""
+		sqlToExecute = sqlToExecute + "SELECT  DISTINCT ON (TIEQ.\"ExecutionPriority\", TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestInstructionExecutionOrder\") "
+		sqlToExecute = sqlToExecute + "TIEQ.* "
+		sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" TIEQ "
+		sqlToExecute = sqlToExecute + "WHERE "
+		sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
+		sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
+	*/
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT  DISTINCT ON (TIEQ.\"ExecutionPriority\", TIEQ.\"TestCaseExecutionUuid\") "
-	sqlToExecute = sqlToExecute + "TIEQ.* "
+	sqlToExecute = sqlToExecute + "SELECT TIEQ.* "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" TIEQ "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
+	sqlToExecute = sqlToExecute + "AND "
+	sqlToExecute = sqlToExecute + "TIEQ.\"TestInstructionExecutionOrder\" =  (SELECT DISTINCT ON (TIEQ2.\"ExecutionPriority\", TIEQ2.\"TestCaseExecutionUuid\") TIEQ2.\"TestInstructionExecutionOrder\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ2 "
+	sqlToExecute = sqlToExecute + "ORDER BY TIEQ2.\"ExecutionPriority\" ASC, TIEQ2.\"TestCaseExecutionUuid\" ASC, TIEQ2.\"TestInstructionExecutionOrder\" ASC, TIEQ2.\"QueueTimeStamp\" ASC) "
 	sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
 
 	// Query DB

@@ -28,7 +28,7 @@ func GenerateSQLInsertValues(testdata [][]interface{}) (sqlInsertValuesString st
 			case bool:
 				sqlInsertValuesString = sqlInsertValuesString + fmt.Sprint(value)
 
-			case int, uint32:
+			case int, uint32, int64:
 				sqlInsertValuesString = sqlInsertValuesString + fmt.Sprint(value)
 
 			case string:
