@@ -391,6 +391,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		testCaseExecutionStatusAsString = strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionStatus)
 		testCaseExecutionVersionAsString = strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion)
 
+		//LOCK TABLE 'TestCasesUnderExecution' IN ROW EXCLUSIVE MODE;
+
+		SqlToExecuteRowLock := ""
+		SqlToExecuteRowLock = SqlToExecuteRowLock + "SELECT TCEUE.* "
+		SqlToExecuteRowLock = SqlToExecuteRowLock + "FROM \"FenixExecution\".\"TestCasesUnderExecution\" TCEUE "
+		SqlToExecuteRowLock = SqlToExecuteRowLock + "WHERE TCEUE.\"TestCaseExecutionUuid\" = '" + testCaseExecutionStatusMessage.TestCaseExecutionUuid + "' AND "
+		SqlToExecuteRowLock = SqlToExecuteRowLock + "WHERE TCEUE.\"TestCaseExecutionVersion\" = '" + testCaseExecutionVersionAsString + " "
+		SqlToExecuteRowLock = SqlToExecuteRowLock + "FOR UPDATE; "
+
 		// Create Update Statement for each TestCaseExecution update
 		sqlToExecute := ""
 		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
