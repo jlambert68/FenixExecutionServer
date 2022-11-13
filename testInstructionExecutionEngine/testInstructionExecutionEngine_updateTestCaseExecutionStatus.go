@@ -397,8 +397,49 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		SqlToExecuteRowLock = SqlToExecuteRowLock + "SELECT TCEUE.* "
 		SqlToExecuteRowLock = SqlToExecuteRowLock + "FROM \"FenixExecution\".\"TestCasesUnderExecution\" TCEUE "
 		SqlToExecuteRowLock = SqlToExecuteRowLock + "WHERE TCEUE.\"TestCaseExecutionUuid\" = '" + testCaseExecutionStatusMessage.TestCaseExecutionUuid + "' AND "
-		SqlToExecuteRowLock = SqlToExecuteRowLock + "WHERE TCEUE.\"TestCaseExecutionVersion\" = '" + testCaseExecutionVersionAsString + " "
+		SqlToExecuteRowLock = SqlToExecuteRowLock + "TCEUE.\"TestCaseExecutionVersion\" = " + testCaseExecutionVersionAsString + " "
 		SqlToExecuteRowLock = SqlToExecuteRowLock + "FOR UPDATE; "
+
+		// Execute Query CloudDB
+		comandTagRowLock, err := dbTransaction.Exec(context.Background(), SqlToExecuteRowLock)
+
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                  "87de5b59-dd8b-4256-9973-1c422fd890be",
+				"Error":               err,
+				"SqlToExecuteRowLock": SqlToExecuteRowLock,
+			}).Error("Something went wrong when executing SQL")
+
+			return err
+		}
+
+		// Log response from CloudDB
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":                       "ca11702a-2876-4558-bf05-bee83c435ede",
+			"comandTag.Insert()":       comandTagRowLock.Insert(),
+			"comandTag.Delete()":       comandTagRowLock.Delete(),
+			"comandTag.Select()":       comandTagRowLock.Select(),
+			"comandTag.Update()":       comandTagRowLock.Update(),
+			"comandTag.RowsAffected()": comandTagRowLock.RowsAffected(),
+			"comandTag.String()":       comandTagRowLock.String(),
+		}).Debug("Return data for SQL executed in database")
+
+		// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
+		if comandTagRowLock.RowsAffected() != 1 {
+			errorId := "cc47776a-959f-496a-821b-8a6e6e711549"
+
+			err = errors.New(fmt.Sprintf("TestICaseExecutionUuid '%s' with Execution Version Number '%s' is missing in Table [ErroId: %s]", testCaseExecutionStatusMessage.TestCaseExecutionUuid, testCaseExecutionStatusMessage.TestCaseExecutionVersion, errorId))
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id": "99420b20-0bbc-420d-8123-b7b7e5f8eac7",
+				"testCaseExecutionStatusMessage.TestCaseExecutionUuid":    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
+				"testCaseExecutionStatusMessage.TestCaseExecutionVersion": testCaseExecutionStatusMessage.TestCaseExecutionVersion,
+
+				"SqlToExecuteRowLock": SqlToExecuteRowLock,
+			}).Error("TestInstructionExecutionUuid is missing in Table")
+
+			return err
+		}
 
 		// Create Update Statement for each TestCaseExecution update
 		sqlToExecute := ""
