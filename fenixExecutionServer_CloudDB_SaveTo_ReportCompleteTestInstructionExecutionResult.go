@@ -115,6 +115,16 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	// (7, 'TIE_FINISHED_NOT_OK_CAN_BE_RERUN' -> OK
 	// (8, 'TIE_UNEXPECTED_INTERRUPTION' -> OK
 	// (9, 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' -> OK
+
+	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		"id": "3e7a261e-96d4-419c-83d6-2de95bda4102",
+		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+	}).Debug("Incoming 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
+
+	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		"id": "215ea93d-2ac2-4d21-b573-72f120c4e885",
+	}).Debug("Outgoing 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
+
 	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < 2 {
 
 		common_config.Logger.WithFields(logrus.Fields{

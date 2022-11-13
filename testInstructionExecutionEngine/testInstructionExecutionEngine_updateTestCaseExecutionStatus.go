@@ -186,10 +186,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		return []*loadTestInstructionExecutionStatusMessagesStruct{}, err
 	}
 
-	var loadTestInstructionExecutionStatusMessage loadTestInstructionExecutionStatusMessagesStruct
-
 	// Extract data from DB result set
 	for rows.Next() {
+		var loadTestInstructionExecutionStatusMessage loadTestInstructionExecutionStatusMessagesStruct
 
 		err := rows.Scan(
 			&loadTestInstructionExecutionStatusMessage.TestCaseExecutionUuid,
