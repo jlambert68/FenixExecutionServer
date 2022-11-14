@@ -36,7 +36,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		// Create message to be sent to BroadcastEngine
 		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
 		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
-			BroadcastTimeStamp:        time.Now(),
+			BroadcastTimeStamp:        time.Now().String(),
 			TestCaseExecutions:        nil,
 			TestInstructionExecutions: []broadcastingEngine.TestInstructionExecutionStruct{testInstructionExecution},
 		}
@@ -206,6 +206,11 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecution-status
 	var triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions bool
 	var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
+
+	testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
+		TestInstructionExecutionUuid:   finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
+		TestInstructionExecutionStatus: fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus)],
+	}
 
 	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,

@@ -1,27 +1,44 @@
 package testInstructionExecutionEngine
 
 import (
+	"FenixExecutionServer/broadcastingEngine"
 	"FenixExecutionServer/common_config"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
+	"time"
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecutionInCloudDBCommitOrRoleBack(
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
-	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct) {
+	//testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
+	testCaseExecutionsReference *[]broadcastingEngine.TestCaseExecutionStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	//testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
+	testCaseExecutions := *testCaseExecutionsReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
+
+		// Create message to be sent to BroadcastEngine
+		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
+		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
+			BroadcastTimeStamp:        time.Now().String(),
+			TestCaseExecutions:        testCaseExecutions,
+			TestInstructionExecutions: nil,
+		}
+
+		// Send message to BroadcastEngine over channel
+		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+
 		/*
 			// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 			go func() {
@@ -76,10 +93,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 
+	// All TestCaseExecutions
+	var testCaseExecutions []broadcastingEngine.TestCaseExecutionStruct
+
 	defer executionEngine.updateStatusOnTestCaseExecutionInCloudDBCommitOrRoleBack(
 		&txn,
 		&doCommitNotRoleBack,
-		&testCaseExecutionsToProcess) //txn.Commit(context.Background())
+		//&testCaseExecutionsToProcess,
+		&testCaseExecutions) //txn.Commit(context.Background())
 
 	// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
 	var loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct
@@ -99,8 +120,30 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		return err
 	}
 
+	// Prepare message data to be sent over Broadcast system
+	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
+
+		var testCaseExecution broadcastingEngine.TestCaseExecutionStruct
+		testCaseExecution = broadcastingEngine.TestCaseExecutionStruct{
+			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
+			TestCaseExecutionVersion: testCaseExecutionStatusMessage.TestCaseExecutionVersion,
+			TestCaseExecutionStatus:  fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
+		}
+
+		// Add TestCaseExecution to slice of executions to be sent over Broadcast system
+		testCaseExecutions = append(testCaseExecutions, testCaseExecution)
+	}
+
+	// Get number of TestInstructionExecutions that is waiting on TestInstructionExecutionQueue
+	var numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType
+	numberOfTestInstructionExecutionsOnExecutionQueueMap, err = executionEngine.loadNumberOfTestInstructionExecutionsOnExecutionQueue(txn, testCaseExecutionsToProcess)
+	// Exit when there was a problem updating the database
+	if err != nil {
+		return err
+	}
+
 	// Update TestExecutions in database with the new TestCaseExecutionStatus
-	err = executionEngine.updateTestCaseExecutionsWithNewTestCaseExecutionStatus(txn, testCaseExecutionStatusMessages)
+	err = executionEngine.updateTestCaseExecutionsWithNewTestCaseExecutionStatus(txn, testCaseExecutionStatusMessages, numberOfTestInstructionExecutionsOnExecutionQueueMap)
 
 	// Exit when there was a problem updating the database
 	if err != nil {
@@ -129,6 +172,16 @@ type testCaseExecutionStatusStruct struct {
 	TestCaseExecutionVersion int
 	TestCaseExecutionStatus  int
 }
+
+// used as type when getting number of TestInstructionExecutions on TestInstructionExecutionQueue
+type numberOfTestInstructionExecutionsOnQueueStruct struct {
+	numberOfTestInstructionExecutionsOnQueue int
+	TestInstructionExecutionUuid             string
+	TestInstructionExecutionVersion          int
+}
+
+// Type used when to store Map with TestInstructionsExecutions from ExecutionQueue
+type numberOfTestInstructionExecutionsOnQueueMapType map[string]*numberOfTestInstructionExecutionsOnQueueStruct
 
 // Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct, err error) {
@@ -238,9 +291,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 	// map[TestInstructionExecutionStatus]=PrioritizationOrder
 	var statusOrderDecisionMap = map[int]int{
 		0: 0,
-		1: 1,
-		4: 2,
-		5: 3,
+		4: 1,
+		5: 2,
+		1: 3,
 		7: 4,
 		3: 5,
 		9: 6,
@@ -370,13 +423,105 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 
 }
 
+// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
+func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestInstructionExecutionsOnExecutionQueue(dbTransaction pgx.Tx, testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType, err error) {
+
+	// Initiate response map
+	numberOfTestInstructionExecutionsOnExecutionQueueMap = make(numberOfTestInstructionExecutionsOnQueueMapType)
+	var mapKey string
+
+	//usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar string
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
+	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
+			"(TIEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+				"TIEQ.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
+
+		switch testCaseExecutionCounter {
+		case 0:
+			// When this is the first then we need to add 'AND before'
+			// *NOT NEEDED* in this Query
+			//correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars = "AND "
+
+		default:
+			// When this is not the first then we need to add 'OR' after previous
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
+				correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + "OR "
+		}
+
+		// Add the WHERE-values
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar
+
+	}
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT COUNT(TIEQ.*), TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
+	sqlToExecute = sqlToExecute + "GROUP BY TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + ";"
+
+	// Query DB
+	// Execute Query CloudDB
+	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "21aa22c2-8b39-4c9c-ace0-3ef8354f61af",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	// Extract data from DB result set
+	for rows.Next() {
+		var numberOfTestInstructionExecutionOnExecutionQueue numberOfTestInstructionExecutionsOnQueueStruct
+
+		err := rows.Scan(
+			&numberOfTestInstructionExecutionOnExecutionQueue.numberOfTestInstructionExecutionsOnQueue,
+			&numberOfTestInstructionExecutionOnExecutionQueue.TestInstructionExecutionUuid,
+			&numberOfTestInstructionExecutionOnExecutionQueue.TestInstructionExecutionVersion,
+		)
+
+		if err != nil {
+
+			executionEngine.logger.WithFields(logrus.Fields{
+				"Id":           "ac7cd745-63b5-4484-9092-1cb8471d0bb5",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+
+		// Add TestInstructionExecutionStatus-message to map of messages
+		mapKey = numberOfTestInstructionExecutionOnExecutionQueue.TestInstructionExecutionUuid + strconv.Itoa(numberOfTestInstructionExecutionOnExecutionQueue.TestInstructionExecutionVersion)
+		numberOfTestInstructionExecutionsOnExecutionQueueMap[mapKey] = &numberOfTestInstructionExecutionOnExecutionQueue
+
+	}
+
+	return numberOfTestInstructionExecutionsOnExecutionQueueMap, err
+
+}
+
 // Update TestExecutions in database with the new TestCaseExecutionStatus
-func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecutionsWithNewTestCaseExecutionStatus(dbTransaction pgx.Tx, testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecutionsWithNewTestCaseExecutionStatus(dbTransaction pgx.Tx, testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct, numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType) (err error) {
 
 	// If there are nothing to update then exit
 	if len(testCaseExecutionStatusMessages) == 0 {
 		return err
 	}
+
+	var mapKey string
+	var existsInMap bool
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -385,6 +530,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 
 	// Loop all TestCaseExecutions and execute SQL-Update
 	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
+
+		// If there are any TestInstructionExecutions on the ExecutionQueue, then Upgrade status From 'OK', if so is the Case, to Ongoing Execution
+		mapKey = testCaseExecutionStatusMessage.TestCaseExecutionUuid + strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion)
+		_, existsInMap = numberOfTestInstructionExecutionsOnExecutionQueueMap[mapKey]
+		if existsInMap == true {
+
+			// If Current Reported TestCaseStatus is "TCE_FINISHED_OK" or "TCE_FINISHED_OK_CAN_BE_RERUN" then change status to "TCE_EXECUTING"
+			if int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus) == int32(fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_FINISHED_OK) ||
+				int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus) == int32(fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_FINISHED_OK_CAN_BE_RERUN) {
+				testCaseExecutionStatusMessage.TestCaseExecutionStatus = int(fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_EXECUTING)
+			}
+		}
 
 		var testCaseExecutionStatusAsString string
 		var testCaseExecutionVersionAsString string
