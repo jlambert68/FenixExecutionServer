@@ -120,20 +120,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		return err
 	}
 
-	// Prepare message data to be sent over Broadcast system
-	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
-
-		var testCaseExecution broadcastingEngine.TestCaseExecutionStruct
-		testCaseExecution = broadcastingEngine.TestCaseExecutionStruct{
-			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
-			TestCaseExecutionVersion: testCaseExecutionStatusMessage.TestCaseExecutionVersion,
-			TestCaseExecutionStatus:  fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
-		}
-
-		// Add TestCaseExecution to slice of executions to be sent over Broadcast system
-		testCaseExecutions = append(testCaseExecutions, testCaseExecution)
-	}
-
 	// Get number of TestInstructionExecutions that is waiting on TestInstructionExecutionQueue
 	var numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType
 	numberOfTestInstructionExecutionsOnExecutionQueueMap, err = executionEngine.loadNumberOfTestInstructionExecutionsOnExecutionQueue(txn, testCaseExecutionsToProcess)
@@ -148,6 +134,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	// Exit when there was a problem updating the database
 	if err != nil {
 		return err
+	}
+
+	// Prepare message data to be sent over Broadcast system
+	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
+
+		var testCaseExecution broadcastingEngine.TestCaseExecutionStruct
+		testCaseExecution = broadcastingEngine.TestCaseExecutionStruct{
+			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
+			TestCaseExecutionVersion: testCaseExecutionStatusMessage.TestCaseExecutionVersion,
+			TestCaseExecutionStatus:  fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
+		}
+
+		// Add TestCaseExecution to slice of executions to be sent over Broadcast system
+		testCaseExecutions = append(testCaseExecutions, testCaseExecution)
 	}
 
 	// No errors occurred so secure that commit is done
