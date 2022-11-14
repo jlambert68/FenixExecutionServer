@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FenixExecutionServer/broadcastingEngine"
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
@@ -71,6 +72,10 @@ func fenixExecutionServerMain() {
 
 		os.Exit(0)
 	}
+
+	// Start BroadcastingEngine, for sending info about when a TestCaseExecution or TestInstructionExecution has updated
+	//its status. Messages are sent to BroadcastEngine using channels
+	go broadcastingEngine.InitiateAndStartBroadcastNotifyEngine()
 
 	// Start Backend gRPC-server
 	fenixExecutionServerObject.InitGrpcServer()

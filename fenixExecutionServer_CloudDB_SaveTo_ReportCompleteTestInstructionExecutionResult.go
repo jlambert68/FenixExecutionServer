@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FenixExecutionServer/broadcastingEngine"
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	"context"
@@ -11,6 +12,7 @@ import (
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
+	"time"
 )
 
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBackReportCompleteTestInstructionExecutionResult(
@@ -18,16 +20,29 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 	doCommitNotRoleBackReference *bool,
 	testCaseExecutionsToProcessReference *[]testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct,
 	thereExistsOnGoingTestInstructionExecutionsReference *bool,
-	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference *bool) {
+	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference *bool,
+	testInstructionExecutionReference *broadcastingEngine.TestInstructionExecutionStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
 	thereExistsOnGoingTestInstructionExecutions := *thereExistsOnGoingTestInstructionExecutionsReference
 	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions := *triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference
+	testInstructionExecution := *testInstructionExecutionReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
+
+		// Create message to be sent to BroadcastEngine
+		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
+		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
+			BroadcastTimeStamp:        time.Now(),
+			TestCaseExecutions:        nil,
+			TestInstructionExecutions: []broadcastingEngine.TestInstructionExecutionStruct{testInstructionExecution},
+		}
+
+		// Send message to BroadcastEngine over channel
+		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
 		// Update status for TestCaseExecution, based on incoming TestInstructionExecution
 		if triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions == true {
@@ -190,13 +205,15 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 
 	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecution-status
 	var triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions bool
+	var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
 
 	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess,
 		&thereExistsOnGoingTestInstructionExecutionsOnQueue,
-		&triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions) //txn.Commit(context.Background())
+		&triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions,
+		&testInstructionExecution) //txn.Commit(context.Background())
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	err = fenixExecutionServerObject.updateStatusOnTestInstructionsExecutionInCloudDB(txn, finalTestInstructionExecutionResultMessage)
