@@ -142,7 +142,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		var testCaseExecution broadcastingEngine.TestCaseExecutionStruct
 		testCaseExecution = broadcastingEngine.TestCaseExecutionStruct{
 			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
-			TestCaseExecutionVersion: testCaseExecutionStatusMessage.TestCaseExecutionVersion,
+			TestCaseExecutionVersion: strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion),
 			TestCaseExecutionStatus:  fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
 		}
 

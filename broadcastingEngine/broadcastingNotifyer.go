@@ -25,6 +25,8 @@ type TestCaseExecutionStruct struct {
 }
 
 type TestInstructionExecutionStruct struct {
+	TestCaseExecutionUuid           string `json:"testcaseexecutionuuid"`
+	TestCaseExecutionVersion        string `json:"testcaseexecutionversion"`
 	TestInstructionExecutionUuid    string `json:"testinstructionexecutionuuid"`
 	TestInstructionExecutionVersion string `json:"testinstructionexecutionversion"`
 	TestInstructionExecutionStatus  string `json:"testinstructionexecutionstatus"`

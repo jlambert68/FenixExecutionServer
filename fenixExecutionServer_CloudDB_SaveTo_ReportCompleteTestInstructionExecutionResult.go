@@ -207,11 +207,6 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	var triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions bool
 	var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
 
-	testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
-		TestInstructionExecutionUuid:   finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
-		TestInstructionExecutionStatus: fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus)],
-	}
-
 	defer fenixExecutionServerObject.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,
 		&doCommitNotRoleBack,
@@ -262,6 +257,15 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 		}
 
 		return ackNackResponse
+	}
+
+	// Create the BroadCastMessage for the TestInstructionExecution
+	testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
+		TestCaseExecutionUuid:           testCaseExecutionsToProcess[0].TestCaseExecution,
+		TestCaseExecutionVersion:        strconv.Itoa(int(testCaseExecutionsToProcess[0].TestCaseExecutionVersion)),
+		TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
+		TestInstructionExecutionVersion: "1", // TODO fix to dynamic value if this is needed
+		TestInstructionExecutionStatus:  fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus)],
 	}
 
 	// If this is the last on TestInstructionExecution and any of them ended with a 'Non-OK-status' then stop pick new TestInstructionExecutions from Queue
