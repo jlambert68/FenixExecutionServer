@@ -20,13 +20,14 @@ type BroadcastingMessageForExecutionsStruct struct {
 
 type TestCaseExecutionStruct struct {
 	TestCaseExecutionUuid    string `json:"testcaseexecutionuuid"`
-	TestCaseExecutionVersion int    `json:"testcaseexecutionversion"`
+	TestCaseExecutionVersion string `json:"testcaseexecutionversion"`
 	TestCaseExecutionStatus  string `json:"testcaseexecutionstatus"`
 }
 
 type TestInstructionExecutionStruct struct {
-	TestInstructionExecutionUuid   string `json:"testinstructionuuid"`
-	TestInstructionExecutionStatus string `json:"testinstructionstatus"`
+	TestInstructionExecutionUuid    string `json:"testinstructionexecutionuuid"`
+	TestInstructionExecutionVersion string `json:"testinstructionexecutionversion"`
+	TestInstructionExecutionStatus  string `json:"testinstructionexecutionstatus"`
 }
 
 var err error
