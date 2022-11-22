@@ -40,6 +40,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		// Send message to BroadcastEngine over channel
 		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
+		defer executionEngine.logger.WithFields(logrus.Fields{
+			"id":                               "6ad2a565-bd85-4e69-a677-9212beddd94f",
+			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
+		}).Debug("Sent message on Broadcast channel")
+
 		/*
 			// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 			go func() {

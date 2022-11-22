@@ -45,6 +45,11 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		// Send message to BroadcastEngine over channel
 		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
+		defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			"id":                               "33c99b10-33e2-4eb2-a74f-275b65a5387c",
+			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
+		}).Debug("Sent message on Broadcast channel")
+
 		// Update status for TestCaseExecution, based on incoming TestInstructionExecution
 		if triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions == true {
 
