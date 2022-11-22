@@ -12,6 +12,7 @@ import (
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -36,7 +37,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		// Create message to be sent to BroadcastEngine
 		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
 		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
-			BroadcastTimeStamp:        time.Now().String(),
+			BroadcastTimeStamp:        strings.Split(time.Now().String(), " m=")[0],
 			TestCaseExecutions:        nil,
 			TestInstructionExecutions: []broadcastingEngine.TestInstructionExecutionStruct{testInstructionExecution},
 		}
