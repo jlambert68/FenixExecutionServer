@@ -8,6 +8,7 @@ import (
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -240,6 +241,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	}
 
+	// Create 2nd SQLs WHERE-values from first part
+	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionParsSecondPart string
+	correctTestCaseExecutionUuidAndTestCaseExecutionVersionParsSecondPart = strings.ReplaceAll(
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars, "TIEQ", "TIEQ2")
+
 	/*
 		sqlToExecute := ""
 		sqlToExecute = sqlToExecute + "SELECT  DISTINCT ON (TIEQ.\"ExecutionPriority\", TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestInstructionExecutionOrder\") "
@@ -257,6 +263,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	sqlToExecute = sqlToExecute + "AND "
 	sqlToExecute = sqlToExecute + "TIEQ.\"TestInstructionExecutionOrder\" =  (SELECT DISTINCT ON (TIEQ2.\"ExecutionPriority\", TIEQ2.\"TestCaseExecutionUuid\") TIEQ2.\"TestInstructionExecutionOrder\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ2 "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionParsSecondPart
 	sqlToExecute = sqlToExecute + "ORDER BY TIEQ2.\"ExecutionPriority\" ASC, TIEQ2.\"TestCaseExecutionUuid\" ASC, TIEQ2.\"TestInstructionExecutionOrder\" ASC, TIEQ2.\"QueueTimeStamp\" ASC) "
 	sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
 

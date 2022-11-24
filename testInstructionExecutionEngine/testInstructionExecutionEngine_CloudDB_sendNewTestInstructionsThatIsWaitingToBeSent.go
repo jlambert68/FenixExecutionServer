@@ -454,6 +454,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
 func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
 
+	executionEngine.logger.WithFields(logrus.Fields{
+		"id": "79164f56-efe1-4700-910d-4f6783e305bd",
+		"testInstructionsToBeSentToExecutionWorkers": testInstructionsToBeSentToExecutionWorkers,
+	}).Debug("Incoming 'sendTestInstructionExecutionsToWorker'")
+
+	defer executionEngine.logger.WithFields(logrus.Fields{
+		"id": "c54008e1-2ec9-491a-946a-cacd2ddacdbd",
+	}).Debug("Outgoing 'sendTestInstructionExecutionsToWorker'")
+
 	// If there are nothing to send then just exit
 	if len(testInstructionsToBeSentToExecutionWorkers) == 0 {
 		return nil
