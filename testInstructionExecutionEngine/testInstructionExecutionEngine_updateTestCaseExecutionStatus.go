@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGuiGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"strconv"
 	"strings"
 	"time"
@@ -150,6 +152,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
 			TestCaseExecutionVersion: strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion),
 			TestCaseExecutionStatus:  fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
+
+			ExecutionStartTimeStamp: testCaseExecutionStatusMessage.ExecutionStartTimeStampAsString,
+
+			ExecutionHasFinished:           testCaseExecutionStatusMessage.ExecutionHasFinishedAsString,
+			ExecutionStatusUpdateTimeStamp: testCaseExecutionStatusMessage.ExecutionStatusUpdateTimeStampAsString,
+		}
+
+		// Only send 'ExecutionStopTimeStamp' when the TestCaseExecution is finished
+		if testCaseExecutionStatusMessage.ExecutionHasFinishedAsString == "true" {
+			testCaseExecution.ExecutionStopTimeStamp = testCaseExecutionStatusMessage.ExecutionStopTimeStampAsString
 		}
 
 		// Add TestCaseExecution to slice of executions to be sent over Broadcast system
@@ -174,9 +186,14 @@ type loadTestInstructionExecutionStatusMessagesStruct struct {
 
 // Used as type when deciding what End-status a TestCaseExecution should have depending on its TestInstructionExecutions End-status
 type testCaseExecutionStatusStruct struct {
-	TestCaseExecutionUuid    string
-	TestCaseExecutionVersion int
-	TestCaseExecutionStatus  int
+	TestCaseExecutionUuid                  string
+	TestCaseExecutionVersion               int
+	TestCaseExecutionStatus                int
+	TestCaseExecutionStatusAsString        string
+	ExecutionStartTimeStampAsString        string
+	ExecutionStopTimeStampAsString         string
+	ExecutionHasFinishedAsString           string
+	ExecutionStatusUpdateTimeStampAsString string
 }
 
 // used as type when getting number of TestInstructionExecutions on TestInstructionExecutionQueue
@@ -551,8 +568,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 
 		var testCaseExecutionStatusAsString string
 		var testCaseExecutionVersionAsString string
+		var testCaseExecutionHasFinishedAsString string
 		testCaseExecutionStatusAsString = strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionStatus)
 		testCaseExecutionVersionAsString = strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion)
+
+		// Check if TestCasesExecutionHasFinished or not
+		switch testCaseExecutionStatusMessage.TestCaseExecutionStatus {
+		case int(fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_INITIATED),
+			int(fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_EXECUTING):
+			testCaseExecutionHasFinishedAsString = "false"
+
+		default:
+			testCaseExecutionHasFinishedAsString = "true"
+		}
 
 		//LOCK TABLE 'TestCasesUnderExecution' IN ROW EXCLUSIVE MODE;
 
@@ -564,7 +592,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		SqlToExecuteRowLock = SqlToExecuteRowLock + "FOR UPDATE; "
 
 		// Execute Query CloudDB
-		comandTagRowLock, err := dbTransaction.Exec(context.Background(), SqlToExecuteRowLock)
+		rows, err := dbTransaction.Query(context.Background(), SqlToExecuteRowLock)
 
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{
@@ -576,19 +604,85 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 			return err
 		}
 
-		// Log response from CloudDB
-		common_config.Logger.WithFields(logrus.Fields{
-			"Id":                       "ca11702a-2876-4558-bf05-bee83c435ede",
-			"comandTag.Insert()":       comandTagRowLock.Insert(),
-			"comandTag.Delete()":       comandTagRowLock.Delete(),
-			"comandTag.Select()":       comandTagRowLock.Select(),
-			"comandTag.Update()":       comandTagRowLock.Update(),
-			"comandTag.RowsAffected()": comandTagRowLock.RowsAffected(),
-			"comandTag.String()":       comandTagRowLock.String(),
-		}).Debug("Return data for SQL executed in database")
+		// Variables to used when extract data from result set
+		var tempPlacedOnTestExecutionQueueTimeStamp time.Time
+		var tempExecutionPriority int
+
+		var tempExecutionStartTimeStamp time.Time
+		var tempExecutionStartTimeStampAsString string
+		var tempExecutionStopTimeStamp time.Time
+		var tempTestCaseExecutionStatus int
+		var tempExecutionStatusUpdateTimeStamp time.Time
+
+		var tempUniqueCounter int
+
+		var testCasesUnderExecution []fenixExecutionServerGuiGrpcApi.TestCaseUnderExecutionMessage
+
+		// Extract data from DB result set
+		for rows.Next() {
+
+			// Initiate a new variable to store the data
+			testCaseUnderExecution := fenixExecutionServerGuiGrpcApi.TestCaseUnderExecutionMessage{}
+			testCaseExecutionBasicInformation := fenixExecutionServerGuiGrpcApi.TestCaseExecutionBasicInformationMessage{}
+			testCaseExecutionDetails := fenixExecutionServerGuiGrpcApi.TestCaseExecutionDetailsMessage{}
+
+			err := rows.Scan(
+				// TestCaseExecutionBasicInformationMessage
+				&testCaseExecutionBasicInformation.DomainUuid,
+				&testCaseExecutionBasicInformation.DomainName,
+				&testCaseExecutionBasicInformation.TestSuiteUuid,
+				&testCaseExecutionBasicInformation.TestSuiteName,
+				&testCaseExecutionBasicInformation.TestSuiteVersion,
+				&testCaseExecutionBasicInformation.TestSuiteExecutionUuid,
+				&testCaseExecutionBasicInformation.TestSuiteExecutionVersion,
+				&testCaseExecutionBasicInformation.TestCaseUuid,
+				&testCaseExecutionBasicInformation.TestCaseName,
+				&testCaseExecutionBasicInformation.TestCaseVersion,
+				&testCaseExecutionBasicInformation.TestCaseExecutionUuid,
+				&testCaseExecutionBasicInformation.TestCaseExecutionVersion,
+				&tempPlacedOnTestExecutionQueueTimeStamp,
+				&testCaseExecutionBasicInformation.TestDataSetUuid,
+				&tempExecutionPriority,
+
+				// TestCaseExecutionDetailsMessage
+				&tempExecutionStartTimeStamp,
+				&tempExecutionStopTimeStamp,
+				&tempTestCaseExecutionStatus,
+				&testCaseExecutionDetails.ExecutionHasFinished,
+				&tempUniqueCounter,
+				&tempExecutionStatusUpdateTimeStamp,
+			)
+
+			if err != nil {
+				common_config.Logger.WithFields(logrus.Fields{
+					"Id":                  "a1833e32-5ad5-468d-8e5f-ca6280d58099",
+					"Error":               err,
+					"SqlToExecuteRowLock": SqlToExecuteRowLock,
+				}).Error("Something went wrong when processing result from database")
+
+				return err
+			}
+
+			// Convert temp-variables into gRPC-variables
+			testCaseExecutionBasicInformation.PlacedOnTestExecutionQueueTimeStamp = timestamppb.New(tempPlacedOnTestExecutionQueueTimeStamp)
+			testCaseExecutionBasicInformation.ExecutionPriority = fenixExecutionServerGuiGrpcApi.ExecutionPriorityEnum(tempExecutionPriority)
+
+			testCaseExecutionDetails.ExecutionStartTimeStamp = timestamppb.New(tempExecutionStartTimeStamp)
+			testCaseExecutionDetails.ExecutionStopTimeStamp = timestamppb.New(tempExecutionStopTimeStamp)
+			testCaseExecutionDetails.TestCaseExecutionStatus = fenixExecutionServerGuiGrpcApi.TestCaseExecutionStatusEnum(tempTestCaseExecutionStatus)
+			testCaseExecutionDetails.ExecutionStatusUpdateTimeStamp = timestamppb.New(tempExecutionStatusUpdateTimeStamp)
+
+			// Build 'TestCaseUnderExecutionMessage'
+			testCaseUnderExecution.TestCaseExecutionBasicInformation = &testCaseExecutionBasicInformation
+			testCaseUnderExecution.TestCaseExecutionDetails = &testCaseExecutionDetails
+
+			// Add 'TestCaseUnderExecutionMessage' to slice of all 'TestCaseUnderExecutionMessage's
+			testCasesUnderExecution = append(testCasesUnderExecution, testCaseUnderExecution)
+
+		}
 
 		// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
-		if comandTagRowLock.RowsAffected() != 1 {
+		if len(testCasesUnderExecution) != 1 {
 			errorId := "cc47776a-959f-496a-821b-8a6e6e711549"
 
 			err = errors.New(fmt.Sprintf("TestICaseExecutionUuid '%s' with Execution Version Number '%s' is missing in Table [ErroId: %s]", testCaseExecutionStatusMessage.TestCaseExecutionUuid, testCaseExecutionStatusMessage.TestCaseExecutionVersion, errorId))
@@ -604,13 +698,17 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 			return err
 		}
 
+		// Extract 'ExecutionStartTimeStamp'
+		tempExecutionStartTimeStampAsString = testCasesUnderExecution[0].TestCaseExecutionDetails.ExecutionStartTimeStamp.AsTime().String()
+		//tempTestCasesExecutionBasicInformation
+
 		// Create Update Statement for each TestCaseExecution update
 		sqlToExecute := ""
 		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
 		sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStopTimeStamp\" = '%s', ", testCaseExecutionUpdateTimeStamp)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionStatus\" = %s, ", testCaseExecutionStatusAsString)
-		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionHasFinished\" = '%s', ", "true")
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionHasFinished\" = '%s', ", testCaseExecutionHasFinishedAsString)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", testCaseExecutionUpdateTimeStamp)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' ", testCaseExecutionStatusMessage.TestCaseExecutionUuid)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("AND \"TestCaseExecutionVersion\" = %s ", testCaseExecutionVersionAsString)
@@ -661,6 +759,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 
 			return err
 		}
+
+		// Update TestCaseExecutionDetails to be sent with help of BroadCast-message
+		testCaseExecutionStatusMessage.TestCaseExecutionStatusAsString = testCaseExecutionStatusAsString
+		testCaseExecutionStatusMessage.ExecutionStartTimeStampAsString = tempExecutionStartTimeStampAsString
+		testCaseExecutionStatusMessage.ExecutionStopTimeStampAsString = testCaseExecutionUpdateTimeStamp
+		testCaseExecutionStatusMessage.ExecutionStatusUpdateTimeStampAsString = testCaseExecutionUpdateTimeStamp
+		testCaseExecutionStatusMessage.ExecutionHasFinishedAsString = testCaseExecutionHasFinishedAsString
+
 	}
 
 	// No errors occurred

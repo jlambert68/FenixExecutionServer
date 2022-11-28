@@ -19,9 +19,13 @@ type BroadcastingMessageForExecutionsStruct struct {
 }
 
 type TestCaseExecutionStruct struct {
-	TestCaseExecutionUuid    string `json:"testcaseexecutionuuid"`
-	TestCaseExecutionVersion string `json:"testcaseexecutionversion"`
-	TestCaseExecutionStatus  string `json:"testcaseexecutionstatus"`
+	TestCaseExecutionUuid          string `json:"testcaseexecutionuuid"`
+	TestCaseExecutionVersion       string `json:"testcaseexecutionversion"`
+	TestCaseExecutionStatus        string `json:"testcaseexecutionstatus"`
+	ExecutionStartTimeStamp        string `json:"executionstarttimeStamp"`        // The timestamp when the execution was put for execution, not on queue for execution
+	ExecutionStopTimeStamp         string `json:"executionstoptimestamp"`         // The timestamp when the execution was ended, in anyway
+	ExecutionHasFinished           string `json:"executionhasfinished"`           // A simple status telling if the execution has ended or not
+	ExecutionStatusUpdateTimeStamp string `json:"executionstatusupdatetimestamp"` // The timestamp when the status was last updated
 }
 
 type TestInstructionExecutionStruct struct {
