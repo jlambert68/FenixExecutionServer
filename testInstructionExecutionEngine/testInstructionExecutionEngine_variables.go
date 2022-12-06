@@ -21,6 +21,7 @@ const (
 	ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker
 	ChannelCommandCheckOngoingTestInstructionExecutions
 	ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions
+	ChannelCommandLookForZombieTestInstructionExecutionsInUnderExecution
 )
 
 type ChannelCommandStruct struct {
@@ -30,7 +31,7 @@ type ChannelCommandStruct struct {
 }
 
 type ChannelCommandTestCaseExecutionStruct struct {
-	TestCaseExecution        string
+	TestCaseExecutionUuid    string
 	TestCaseExecutionVersion int32
 }
 

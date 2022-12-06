@@ -48,7 +48,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 	}
 }
 
-// Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
+// Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Begin SQL Transaction
@@ -88,7 +88,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess) //txn.Commit(context.Background())
 
-	// Generate a new TestCaseExecution-UUID
+	// Generate a new TestCaseExecutionUuid-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
 
 	// Generate TimeStamp
@@ -128,7 +128,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 		return ackNackResponse
 	}
 
-	// Save the Initiation of a new TestCaseExecution in the CloudDB
+	// Save the Initiation of a new TestCaseExecutionUuid in the CloudDB
 	err = fenixExecutionServerObject.saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
 	if err != nil {
 
@@ -343,7 +343,7 @@ type tempAttributeStruct struct {
 	testInstructionAttributeTypeName string
 }
 
-// Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecution-table
+// Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) (testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
@@ -353,7 +353,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
 	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
-			"(TCEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+			"(TCEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecutionUuid + "' AND " +
 				"TCEQ.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
 
 		switch testCaseExecutionCounter {
@@ -469,7 +469,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCase
 
 	sqlToExecute := ""
 
-	// Create Insert Statement for TestCaseExecution that will be put on ExecutionQueue
+	// Create Insert Statement for TestCaseExecutionUuid that will be put on ExecutionQueue
 	// Data to be inserted in the DB-table
 	dataRowsToBeInsertedMultiType = nil
 
@@ -714,7 +714,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 		testCaseExecutionQueueMessagesMap[testCaseExecutionQueueMessages.testCaseUuid] = testCaseExecutionQueueMessages
 	}
 
-	// Create Insert Statement for TestCaseExecution that will be put on ExecutionQueue
+	// Create Insert Statement for TestCaseExecutionUuid that will be put on ExecutionQueue
 	// Data to be inserted in the DB-table
 	dataRowsToBeInsertedMultiType = nil
 

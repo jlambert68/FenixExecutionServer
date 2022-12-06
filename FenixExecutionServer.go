@@ -73,7 +73,7 @@ func fenixExecutionServerMain() {
 		os.Exit(0)
 	}
 
-	// Start BroadcastingEngine, for sending info about when a TestCaseExecution or TestInstructionExecution has updated
+	// Start BroadcastingEngine, for sending info about when a TestCaseExecutionUuid or TestInstructionExecution has updated
 	//its status. Messages are sent to BroadcastEngine using channels
 	go broadcastingEngine.InitiateAndStartBroadcastNotifyEngine()
 

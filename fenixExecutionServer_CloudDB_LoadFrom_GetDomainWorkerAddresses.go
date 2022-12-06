@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-// Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
+// Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareGetDomainWorkerAddresses() (err error) {
 
 	// Load all Domain Worker addresses from Cloud-DB

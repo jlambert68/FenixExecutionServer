@@ -9,6 +9,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) InitiateTestInstruc
 	executionEngine.CommandChannelReference = &executionEngineCommandChannel
 	go executionEngine.startCommandChannelReader()
 
+	// Trigger TestInstructionEngine to check if there are any Zombie-TestInstructionExecutions stuck in UnderExecutions
+	channelCommandMessage := ChannelCommandStruct{
+		ChannelCommand:                   ChannelCommandLookForZombieTestInstructionExecutionsInUnderExecution,
+		ChannelCommandTestCaseExecutions: nil,
+	}
+
+	// Send Message on Channel
+	*executionEngine.CommandChannelReference <- channelCommandMessage
+
 	return
 }
 

@@ -27,7 +27,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 }
 
-// Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
+// Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorker(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
@@ -58,7 +58,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		&txn,
 		&doCommitNotRoleBack)
 
-	// Generate a new TestCaseExecution-UUID
+	// Generate a new TestCaseExecutionUuid-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
 
 	// Generate TimeStamp
@@ -191,7 +191,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
 	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
-			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecutionUuid + "' AND " +
 				"TIUE.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
 
 		switch testCaseExecutionCounter {

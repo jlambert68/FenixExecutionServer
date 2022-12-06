@@ -50,7 +50,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
 		}).Debug("Sent message on Broadcast channel")
 
-		// Update status for TestCaseExecution, based on incoming TestInstructionExecution
+		// Update status for TestCaseExecutionUuid, based on incoming TestInstructionExecution
 		if triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions == true {
 
 			// Create response channel to be able to get response when ChannelCommand has finished
@@ -89,7 +89,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 			var returnChannelWithDBError testInstructionExecutionEngine.ReturnChannelWithDBErrorType
 			returnChannelWithDBError = make(chan testInstructionExecutionEngine.ReturnChannelWithDBErrorStruct)
 
-			// Update status for TestCaseExecution, based on incoming TestInstructionExecution
+			// Update status for TestCaseExecutionUuid, based on incoming TestInstructionExecution
 			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
 				ChannelCommand:                    testInstructionExecutionEngine.ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
 				ChannelCommandTestCaseExecutions:  testCaseExecutionsToProcess,
@@ -122,7 +122,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 	}
 }
 
-// Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
+// Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Verify that the ExecutionStatus is a final status
@@ -209,7 +209,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	// TestInstructionExecution didn't end with an OK(4, 'TIE_FINISHED_OK' or 5, 'TIE_FINISHED_OK_CAN_BE_RERUN') then Stop further processing
 	var thereExistsOnGoingTestInstructionExecutionsOnQueue bool
 
-	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecution-status
+	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecutionUuid-status
 	var triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions bool
 	var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
 
@@ -267,7 +267,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 
 	// Create the BroadCastMessage for the TestInstructionExecution
 	testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
-		TestCaseExecutionUuid:           testCaseExecutionsToProcess[0].TestCaseExecution,
+		TestCaseExecutionUuid:           testCaseExecutionsToProcess[0].TestCaseExecutionUuid,
 		TestCaseExecutionVersion:        strconv.Itoa(int(testCaseExecutionsToProcess[0].TestCaseExecutionVersion)),
 		TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
 		TestInstructionExecutionVersion: "1", // TODO fix to dynamic value if this is needed
@@ -314,7 +314,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 		triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions = true
 	}
 
-	// Update Status on TestCaseExecution
+	// Update Status on TestCaseExecutionUuid
 
 	// Commit every database change
 	doCommitNotRoleBack = true
@@ -457,7 +457,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 		var channelCommandTestCaseExecution testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
 
 		err := rows.Scan(
-			&channelCommandTestCaseExecution.TestCaseExecution,
+			&channelCommandTestCaseExecution.TestCaseExecutionUuid,
 			&channelCommandTestCaseExecution.TestCaseExecutionVersion,
 		)
 
@@ -548,20 +548,20 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) areAllOngoin
 			return nil, err
 		}
 
-		// Add TestCaseExecution to slice
+		// Add TestCaseExecutionUuid to slice
 		currentTestCaseExecutions = append(currentTestCaseExecutions, currentTestCaseExecution)
 
 	}
 
-	// Exact one TestCaseExecution should be found
+	// Exact one TestCaseExecutionUuid should be found
 	if len(currentTestCaseExecutions) != 1 {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"Id":                        "22a56463-b892-4732-803a-11a69140e555",
 			"sqlToExecute":              sqlToExecute_part1,
 			"currentTestCaseExecutions": currentTestCaseExecutions,
-		}).Error("Did not found exact one TestCaseExecution")
+		}).Error("Did not found exact one TestCaseExecutionUuid")
 
-		err = errors.New("Did not found exact one TestCaseExecution")
+		err = errors.New("Did not found exact one TestCaseExecutionUuid")
 
 		return nil, err
 	}

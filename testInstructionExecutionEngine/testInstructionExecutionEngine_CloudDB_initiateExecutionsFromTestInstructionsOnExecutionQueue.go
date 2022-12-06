@@ -46,7 +46,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 
 			dbTransaction.Rollback(context.Background())
 
-			// Trigger TestInstructionEngine to update TestCaseExecution based on all finished individual TestInstructionExecutions
+			// Trigger TestInstructionEngine to update TestCaseExecutionUuid based on all finished individual TestInstructionExecutions
 			channelCommandMessage := ChannelCommandStruct{
 				ChannelCommand:                   ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
@@ -61,7 +61,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 	}
 }
 
-// Prepare for Saving the ongoing Execution of a new TestCaseExecution in the CloudDB
+// Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
@@ -76,7 +76,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 	// After all stuff is done, then Commit or Rollback depending on result
 	var doCommitNotRoleBack bool
 
-	// After all stuff is done, this one is used to decide if the TestCaseExecution status should be updated or not
+	// After all stuff is done, this one is used to decide if the TestCaseExecutionUuid status should be updated or not
 	var triggerUpdateTestCaseExecutionWithStatus bool
 
 	// Begin SQL Transaction
@@ -93,7 +93,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 
-	// Standard is not to update TestCaseExecution with Execution Status from TestInstructionExecutions
+	// Standard is not to update TestCaseExecutionUuid with Execution Status from TestInstructionExecutions
 	triggerUpdateTestCaseExecutionWithStatus = false
 
 	defer executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
@@ -102,7 +102,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 		&testCaseExecutionsToProcess,
 		&triggerUpdateTestCaseExecutionWithStatus)
 
-	// Generate a new TestCaseExecution-UUID
+	// Generate a new TestCaseExecutionUuid-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
 
 	// Generate TimeStamp
@@ -210,7 +210,7 @@ type tempTestInstructionInTestCaseStruct struct {
 	uniqueCounter                    int
 }
 
-// Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecution-table
+// Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionQueueMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (testInstructionExecutionQueueInformation []*tempTestInstructionExecutionQueueInformationStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
@@ -220,7 +220,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
 	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
-			"(TIEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+			"(TIEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecutionUuid + "' AND " +
 				"TIEQ.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
 
 		switch testCaseExecutionCounter {

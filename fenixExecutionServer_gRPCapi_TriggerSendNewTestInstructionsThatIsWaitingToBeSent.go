@@ -36,7 +36,7 @@ func (s *fenixExecutionServerGrpcServicesServer) TriggerSendNewTestInstructionsT
 	for _, testCaseExecutionToProcessMessage := range testCaseExecutionsToProcessMessage.TestCaseExecutionsToProcess {
 		var channelCommandTestCaseExecution testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
 		channelCommandTestCaseExecution = testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct{
-			TestCaseExecution:        testCaseExecutionToProcessMessage.TestCaseExecutionsUuid,
+			TestCaseExecutionUuid:    testCaseExecutionToProcessMessage.TestCaseExecutionsUuid,
 			TestCaseExecutionVersion: testCaseExecutionToProcessMessage.TestCaseExecutionVersion,
 		}
 		channelCommandTestCasesExecution = append(channelCommandTestCasesExecution, channelCommandTestCaseExecution)

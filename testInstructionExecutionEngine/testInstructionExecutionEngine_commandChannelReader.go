@@ -1,6 +1,7 @@
 package testInstructionExecutionEngine
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,6 +27,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 
 		case ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions: // (C)
 			executionEngine.updateStatusOnTestCaseExecution(incomingChannelCommand)
+
+		case ChannelCommandLookForZombieTestInstructionExecutionsInUnderExecution:
+			executionEngine.triggerLookForZombieTestInstructionExecutionsInUnderExecution()
 
 		// No other command is supported
 		default:
@@ -72,11 +76,17 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 // Check for ongoing executions  for TestInstructions for change in status that should be propagated to other places
 func (executionEngine *TestInstructionExecutionEngineStruct) checkOngoingExecutionsForTestInstructions() {
-
+	fmt.Println("ÄÄÄÄÄÄÄÄÄÄÄÄÄ CODE IS MISSING FOR THIS ONE!!! ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ")
 }
 
 // Update TestCaseExecutionStatus based on result on individual TestInstructionExecution-results
 func (executionEngine *TestInstructionExecutionEngineStruct) checkForTestInstructionsExecutionsWaitingToBeSentToWorker(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker(channelCommandTestCasesExecution)
+}
+
+// Look for Zombie-TransactionsExecutions that were sent to Worker, but was lost in some way
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsInUnderExecution() {
+
+	_ = executionEngine.sendAllZombieTestInstructionsUnderExecution()
 }

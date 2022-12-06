@@ -67,7 +67,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	}
 }
 
-// Update status, which came from Connector/Worker, on ongoing TestCaseExecution
+// Update status, which came from Connector/Worker, on ongoing TestCaseExecutionUuid
 func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecutionInCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
@@ -110,7 +110,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		//&testCaseExecutionsToProcess,
 		&testCaseExecutions) //txn.Commit(context.Background())
 
-	// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
+	// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecutionUuid
 	var loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct
 	loadTestInstructionExecutionStatusMessages, err = executionEngine.loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess)
 
@@ -159,12 +159,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 			ExecutionStatusUpdateTimeStamp: testCaseExecutionStatusMessage.ExecutionStatusUpdateTimeStampAsString,
 		}
 
-		// Only send 'ExecutionStopTimeStamp' when the TestCaseExecution is finished
+		// Only send 'ExecutionStopTimeStamp' when the TestCaseExecutionUuid is finished
 		if testCaseExecutionStatusMessage.ExecutionHasFinishedAsString == "true" {
 			testCaseExecution.ExecutionStopTimeStamp = testCaseExecutionStatusMessage.ExecutionStopTimeStampAsString
 		}
 
-		// Add TestCaseExecution to slice of executions to be sent over Broadcast system
+		// Add TestCaseExecutionUuid to slice of executions to be sent over Broadcast system
 		testCaseExecutions = append(testCaseExecutions, testCaseExecution)
 	}
 
@@ -184,7 +184,7 @@ type loadTestInstructionExecutionStatusMessagesStruct struct {
 	TestInstructionExecutionStatus int
 }
 
-// Used as type when deciding what End-status a TestCaseExecution should have depending on its TestInstructionExecutions End-status
+// Used as type when deciding what End-status a TestCaseExecutionUuid should have depending on its TestInstructionExecutions End-status
 type testCaseExecutionStatusStruct struct {
 	TestCaseExecutionUuid                  string
 	TestCaseExecutionVersion               int
@@ -206,7 +206,7 @@ type numberOfTestInstructionExecutionsOnQueueStruct struct {
 // Type used when to store Map with TestInstructionsExecutions from ExecutionQueue
 type numberOfTestInstructionExecutionsOnQueueMapType map[string]*numberOfTestInstructionExecutionsOnQueueStruct
 
-// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
+// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecutionUuid
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct, err error) {
 
 	//usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
@@ -216,7 +216,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
 	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
-			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecutionUuid + "' AND " +
 				"TIUE.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
 
 		switch testCaseExecutionCounter {
@@ -341,7 +341,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 		ruleNewTestCaseExecutionButNotTheFirstOne
 	)
 
-	// Loop all TestInstructionExecutions and extract the highest end-status based on rules in 'statusOrderDecisionMap', for each TestCaseExecution
+	// Loop all TestInstructionExecutions and extract the highest end-status based on rules in 'statusOrderDecisionMap', for each TestCaseExecutionUuid
 	for testInstructionExecutionCounter, testInstructionExecution := range testInstructionExecutionStatusMessages {
 
 		currentTestCaseExecutionUuid = testInstructionExecution.TestCaseExecutionUuid
@@ -364,14 +364,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 			return nil, err
 		}
 
-		// First TestCaseExecution in the list
+		// First TestCaseExecutionUuid in the list
 		if testInstructionExecutionCounter == 0 {
 
 			foundRule = true
 			ruleResult = ruleFirstTestCaseExecution
 		}
 
-		// Not the first TestCaseExecution, but the same TestCaseExecution as previous one
+		// Not the first TestCaseExecutionUuid, but the same TestCaseExecutionUuid as previous one
 		if foundRule == false &&
 			currentTestCaseExecutionUuid == previousTestCaseExecutionUuid &&
 			currentTestCaseExecutionVersion == previousTestCaseExecutionVersion {
@@ -380,7 +380,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 			ruleResult = ruleSameTestCaseExecution
 		}
 
-		// Not the first TestCaseExecution, but a new TestCaseExecution compared to previous TestCaseExecution
+		// Not the first TestCaseExecutionUuid, but a new TestCaseExecutionUuid compared to previous TestCaseExecutionUuid
 		if foundRule == false &&
 			currentTestCaseExecutionUuid != previousTestCaseExecutionUuid &&
 			currentTestCaseExecutionVersion != previousTestCaseExecutionVersion {
@@ -392,7 +392,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 		switch ruleResult {
 
 		case ruleFirstTestCaseExecution:
-			// First TestCaseExecution in the list
+			// First TestCaseExecutionUuid in the list
 
 			// Create TestCaseExecutionStatus
 			var testCaseExecutionStatus *testCaseExecutionStatusStruct
@@ -402,11 +402,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 				TestCaseExecutionStatus:  currentStatus,
 			}
 
-			// Add the TestCaseExecution with status based on status from   first TestInstructionExecution
+			// Add the TestCaseExecutionUuid with status based on status from   first TestInstructionExecution
 			testCaseExecutionStatusMessages = append(testCaseExecutionStatusMessages, testCaseExecutionStatus)
 
 		case ruleSameTestCaseExecution:
-			// Not the first TestCaseExecution, but the same TestCaseExecution as previous one
+			// Not the first TestCaseExecutionUuid, but the same TestCaseExecutionUuid as previous one
 
 			// Check if 'currentStatusOrder' is higher than previous saved StatusOrder
 			savedStatusOrder, _ = statusOrderDecisionMap[testCaseExecutionStatusMessages[len(testCaseExecutionStatusMessages)-1].TestCaseExecutionStatus]
@@ -416,7 +416,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 			}
 
 		case ruleNewTestCaseExecutionButNotTheFirstOne:
-			// Not the first TestCaseExecution, but a new TestCaseExecution compared to previous TestCaseExecution
+			// Not the first TestCaseExecutionUuid, but a new TestCaseExecutionUuid compared to previous TestCaseExecutionUuid
 			// Create TestCaseExecutionStatus
 			var testCaseExecutionStatus *testCaseExecutionStatusStruct
 			testCaseExecutionStatus = &testCaseExecutionStatusStruct{
@@ -425,7 +425,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 				TestCaseExecutionStatus:  currentStatus,
 			}
 
-			// Add the TestCaseExecution with status based on status from  new TestInstructionExecution
+			// Add the TestCaseExecutionUuid with status based on status from  new TestInstructionExecution
 			testCaseExecutionStatusMessages = append(testCaseExecutionStatusMessages, testCaseExecutionStatus)
 
 		default:
@@ -446,7 +446,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 
 }
 
-// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecution
+// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecutionUuid
 func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestInstructionExecutionsOnExecutionQueue(dbTransaction pgx.Tx, testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType, err error) {
 
 	// Initiate response map
@@ -460,7 +460,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
 	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
-			"(TIEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecution + "' AND " +
+			"(TIEQ.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecutionUuid + "' AND " +
 				"TIEQ.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
 
 		switch testCaseExecutionCounter {
@@ -702,7 +702,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		tempExecutionStartTimeStampAsString = testCasesUnderExecution[0].TestCaseExecutionDetails.ExecutionStartTimeStamp.AsTime().String()
 		//tempTestCasesExecutionBasicInformation
 
-		// Create Update Statement for each TestCaseExecution update
+		// Create Update Statement for each TestCaseExecutionUuid update
 		sqlToExecute := ""
 		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
 		sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
