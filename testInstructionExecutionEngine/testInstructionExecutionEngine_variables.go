@@ -27,6 +27,7 @@ const (
 	ChannelCommandLookForZombieTestInstructionExecutionsInUnderExecution
 	ChannelCommandProcessTestCaseExecutionsOnExecutionQueue
 	ChannelCommandSendZombieTestCaseExecutionThatAreStuckOnExecutionQueue
+	ChannelCommandLookForZombieTestInstructionExecutionsOnExecutionQueue
 )
 
 type ChannelCommandStruct struct {

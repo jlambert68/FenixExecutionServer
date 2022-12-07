@@ -59,9 +59,6 @@ func fenixExecutionServerMain() {
 	// Store Logger in common_config variable
 	common_config.Logger = fenixExecutionServerObject.logger
 
-	// Start Receiver channel for Commands
-	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRef)
-
 	// Load Domain Worker Addresses
 	err := fenixExecutionServerObject.prepareGetDomainWorkerAddresses()
 	if err != nil {
@@ -76,6 +73,9 @@ func fenixExecutionServerMain() {
 	// Start BroadcastingEngine, for sending info about when a TestCaseExecutionUuid or TestInstructionExecution has updated
 	//its status. Messages are sent to BroadcastEngine using channels
 	go broadcastingEngine.InitiateAndStartBroadcastNotifyEngine()
+
+	// Start Receiver channel for Commands
+	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRef)
 
 	// Start Backend gRPC-server
 	fenixExecutionServerObject.InitGrpcServer()

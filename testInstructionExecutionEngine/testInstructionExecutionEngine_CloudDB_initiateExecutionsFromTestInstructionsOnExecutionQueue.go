@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
@@ -283,6 +284,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		return []*tempTestInstructionExecutionQueueInformationStruct{}, err
 	}
 
+	// Temporary variables
+	var tempQueueTimeStamp time.Time
+
 	// Extract data from DB result set
 	for rows.Next() {
 
@@ -296,7 +300,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			&tempTestInstructionExecutionQueueMessage.testInstructionName,
 			&tempTestInstructionExecutionQueueMessage.testInstructionMajorVersionNumber,
 			&tempTestInstructionExecutionQueueMessage.testInstructionMinorVersionNumber,
-			&tempTestInstructionExecutionQueueMessage.queueTimeStamp,
+			&tempQueueTimeStamp, //&tempTestInstructionExecutionQueueMessage.queueTimeStamp,
 			&tempTestInstructionExecutionQueueMessage.executionPriority,
 			&tempTestInstructionExecutionQueueMessage.testCaseExecutionUuid,
 			&tempTestInstructionExecutionQueueMessage.testDataSetUuid,
@@ -317,6 +321,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 			return []*tempTestInstructionExecutionQueueInformationStruct{}, err
 		}
+
+		// Convert tempQueueTimeStamp -> tempTestInstructionExecutionQueueMessage.queueTimeStamp
+		tempTestInstructionExecutionQueueMessage.queueTimeStamp = common_config.GenerateDatetimeFromTimeInputForDB(tempQueueTimeStamp)
 
 		// Add Queue-message to slice of messages
 		testInstructionExecutionQueueInformation = append(testInstructionExecutionQueueInformation, &tempTestInstructionExecutionQueueMessage)

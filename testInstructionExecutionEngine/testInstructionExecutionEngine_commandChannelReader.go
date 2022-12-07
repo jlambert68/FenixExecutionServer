@@ -32,10 +32,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 			executionEngine.triggerLookForZombieTestInstructionExecutionsInUnderExecution()
 
 		case ChannelCommandProcessTestCaseExecutionsOnExecutionQueue:
-			executionEngine.triggerLookForZombieTestCaseExecutionsOnExecutionQueue()
+			executionEngine.processTestCaseExecutionsOnExecutionQueue(incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		case ChannelCommandSendZombieTestCaseExecutionThatAreStuckOnExecutionQueue:
-			executionEngine.triggerProcessTestCaseExecutionsOnExecutionQueue(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+			executionEngine.triggerLookForZombieTestCaseExecutionsOnExecutionQueue()
+
+		case ChannelCommandLookForZombieTestInstructionExecutionsOnExecutionQueue:
+			executionEngine.triggerLookForZombieTestInstructionExecutionsOnExecutionQueue()
 
 		// No other command is supported
 		default:
@@ -94,16 +97,46 @@ func (executionEngine *TestInstructionExecutionEngineStruct) checkForTestInstruc
 // Look for Zombie-TransactionsExecutions that were sent to Worker, but was lost in some way
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsInUnderExecution() {
 
+	// Look for Zombie-TestInstructionExecutions in UnderExecution
 	_ = executionEngine.sendAllZombieTestInstructionsUnderExecution()
+
+	// Trigger TestInstructionEngine to check if there are any Zombie-TestCaseExecutions stuck OnExecutionQueue
+	channelCommandMessage := ChannelCommandStruct{
+		ChannelCommand:                   ChannelCommandSendZombieTestCaseExecutionThatAreStuckOnExecutionQueue,
+		ChannelCommandTestCaseExecutions: nil,
+	}
+
+	// Send Message on Channel
+	*executionEngine.CommandChannelReference <- channelCommandMessage
+
 }
 
-// Look for Zombie-TransactionsExecutions that were sent to Worker, but was lost in some way
+// Look for Zombie-TestCaseExecutions that are waiting on OnQueue, but was lost in some way
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestCaseExecutionsOnExecutionQueue() {
 
 	_ = executionEngine.lookForZombieTestCaseExecutionsOnExecutionQueue()
+
+	// Trigger TestInstructionEngine to check if there are any Zombie-TestInstructionsExecutions stuck OnExecutionQueue
+	channelCommandMessage := ChannelCommandStruct{
+		ChannelCommand:                   ChannelCommandLookForZombieTestInstructionExecutionsOnExecutionQueue,
+		ChannelCommandTestCaseExecutions: nil,
+	}
+
+	// Send Message on Channel
+	*executionEngine.CommandChannelReference <- channelCommandMessage
+
 }
 
-// Look for Zombie-TransactionsExecutions that were sent to Worker, but was lost in some way
-func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestCaseExecutionsOnExecutionQueue(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+// Look for Zombie-TestCaseExecutions that are waiting on OnQueue, but was lost in some way
+func (executionEngine *TestInstructionExecutionEngineStruct) processTestCaseExecutionsOnExecutionQueue(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+
 	_ = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
+
+}
+
+// Look for Zombie-TestInstructionExecutions that are waiting on OnQueue, but was lost in some way
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsOnExecutionQueue() {
+
+	_ = executionEngine.sendAllZombieTestInstructionsOnExecutionQueue()
+
 }
