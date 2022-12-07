@@ -9,6 +9,9 @@ type TestInstructionExecutionEngineStruct struct {
 	CommandChannelReference *ExecutionEngineChannelType
 }
 
+// TestInstructionExecutionEngineObject
+var TestInstructionExecutionEngineObject TestInstructionExecutionEngineStruct
+
 // Parameters used for channel to trigger TestInstructionExecutionEngine
 var ExecutionEngineCommandChannel ExecutionEngineChannelType
 
@@ -22,6 +25,8 @@ const (
 	ChannelCommandCheckOngoingTestInstructionExecutions
 	ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions
 	ChannelCommandLookForZombieTestInstructionExecutionsInUnderExecution
+	ChannelCommandProcessTestCaseExecutionsOnExecutionQueue
+	ChannelCommandSendZombieTestCaseExecutionThatAreStuckOnExecutionQueue
 )
 
 type ChannelCommandStruct struct {

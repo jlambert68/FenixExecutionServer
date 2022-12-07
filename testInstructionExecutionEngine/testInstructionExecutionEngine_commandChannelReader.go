@@ -31,6 +31,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		case ChannelCommandLookForZombieTestInstructionExecutionsInUnderExecution:
 			executionEngine.triggerLookForZombieTestInstructionExecutionsInUnderExecution()
 
+		case ChannelCommandProcessTestCaseExecutionsOnExecutionQueue:
+			executionEngine.triggerLookForZombieTestCaseExecutionsOnExecutionQueue()
+
+		case ChannelCommandSendZombieTestCaseExecutionThatAreStuckOnExecutionQueue:
+			executionEngine.triggerProcessTestCaseExecutionsOnExecutionQueue(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+
 		// No other command is supported
 		default:
 			executionEngine.logger.WithFields(logrus.Fields{
@@ -89,4 +95,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) checkForTestInstruc
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsInUnderExecution() {
 
 	_ = executionEngine.sendAllZombieTestInstructionsUnderExecution()
+}
+
+// Look for Zombie-TransactionsExecutions that were sent to Worker, but was lost in some way
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestCaseExecutionsOnExecutionQueue() {
+
+	_ = executionEngine.lookForZombieTestCaseExecutionsOnExecutionQueue()
+}
+
+// Look for Zombie-TransactionsExecutions that were sent to Worker, but was lost in some way
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestCaseExecutionsOnExecutionQueue(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+	_ = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
 }

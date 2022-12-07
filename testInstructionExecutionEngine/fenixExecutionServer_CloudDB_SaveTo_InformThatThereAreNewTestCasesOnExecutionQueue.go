@@ -1,8 +1,7 @@
-package main
+package testInstructionExecutionEngine
 
 import (
 	"FenixExecutionServer/common_config"
-	"FenixExecutionServer/testInstructionExecutionEngine"
 	"context"
 	"database/sql/driver"
 	"encoding/json"
@@ -21,10 +20,10 @@ import (
 	"time"
 )
 
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRoleBack(
+func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBack(
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
-	testCaseExecutionsToProcessReference *[]testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) {
+	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
@@ -35,12 +34,12 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 
 		// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 		go func() {
-			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-				ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue,
+			channelCommandMessage := ChannelCommandStruct{
+				ChannelCommand:                   ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue,
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 
-			*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+			ExecutionEngineCommandChannel <- channelCommandMessage
 
 		}()
 	} else {
@@ -48,13 +47,22 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 	}
 }
 
+// PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB
+// Exposed version
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+func (executionEngine *TestInstructionExecutionEngineStruct) PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+	ackNackResponse = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess)
+
+	return ackNackResponse
+}
+
+// Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
+func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
 	if err != nil {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "306edce0-7a5a-4a0f-992b-5c9b69b0bcc6",
 			"error": err,
 		}).Error("Problem to do 'DbPool.Begin'  in 'prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB'")
@@ -83,7 +91,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 
-	defer fenixExecutionServerObject.commitOrRoleBack(
+	defer executionEngine.commitOrRoleBack(
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess) //txn.Commit(context.Background())
@@ -95,7 +103,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
-	testCaseExecutionQueueMessages, err := fenixExecutionServerObject.loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess) //(txn)
+	testCaseExecutionQueueMessages, err := executionEngine.loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess) //(txn)
 	if err != nil {
 
 		// Set Error codes to return message
@@ -129,10 +137,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	}
 
 	// Save the Initiation of a new TestCaseExecutionUuid in the CloudDB
-	err = fenixExecutionServerObject.saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
+	err = executionEngine.saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
 	if err != nil {
 
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "bc6f1da5-3c8c-493e-9882-0b20e0da9e2e",
 			"error": err,
 		}).Error("Couldn't Save TestCaseExecutionQueueMessages to queue for ongoing executions in CloudDB")
@@ -160,10 +168,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	}
 
 	// Delete messages in ExecutionQueue that has been put to ongoing executions
-	err = fenixExecutionServerObject.clearTestCasesExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
+	err = executionEngine.clearTestCasesExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
 	if err != nil {
 
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "c4836b67-3634-4fe0-bc89-551b2a56ce79",
 			"error": err,
 		}).Error("Couldn't clear TestCaseExecutionQueue in CloudDB")
@@ -191,10 +199,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	}
 
 	//Load all data around TestCase to be used for putting TestInstructions on the TestInstructionExecutionQueue
-	allDataAroundAllTestCase, err := fenixExecutionServerObject.loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages)
+	allDataAroundAllTestCase, err := executionEngine.loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages)
 	if err != nil {
 
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "7c778c1e-c5c2-46c3-a4e3-d59f2208d73b",
 			"error": err,
 		}).Error("Couldn't load TestInstructions that should be added to the TestInstructionExecutionQueue in CloudDB")
@@ -222,10 +230,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	}
 
 	// Add TestInstructions to TestInstructionsExecutionQueue
-	testInstructionUuidTotestInstructionExecutionUuidMap, err := fenixExecutionServerObject.SaveTestInstructionsToExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages, allDataAroundAllTestCase)
+	testInstructionUuidTotestInstructionExecutionUuidMap, err := executionEngine.SaveTestInstructionsToExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages, allDataAroundAllTestCase)
 	if err != nil {
 
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "4bb68279-0dff-426f-a31d-927a7459f324",
 			"error": err,
 		}).Error("Couldn't save TestInstructions to the TestInstructionExecutionQueue in CloudDB")
@@ -253,10 +261,10 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareInfor
 	}
 
 	// Add attributes to table for 'TestInstructionAttributesUnderExecution'
-	err = fenixExecutionServerObject.saveTestInstructionAttributesUnderExecutionSaveToCloudDB(txn, testInstructionUuidTotestInstructionExecutionUuidMap)
+	err = executionEngine.saveTestInstructionAttributesUnderExecutionSaveToCloudDB(txn, testInstructionUuidTotestInstructionExecutionUuidMap)
 	if err != nil {
 
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "d50bded9-f541-4367-b141-b640e7f6fc67",
 			"error": err,
 		}).Error("Couldn't add TestInstructionAttributes to table in CloudDB")
@@ -344,7 +352,7 @@ type tempAttributeStruct struct {
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct) (testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -387,7 +395,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id":           "85459587-0c1e-4db9-b257-742ff3a660fc",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -427,7 +435,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 
 		if err != nil {
 
-			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			executionEngine.logger.WithFields(logrus.Fields{
 				"Id":           "6ec31a99-d2d9-4ecd-b0ee-2e9a05df336e",
 				"Error":        err,
 				"sqlToExecute": sqlToExecute,
@@ -446,14 +454,14 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 }
 
 // Put all messages found on TestCaseExecutionQueue to the ongoing executions table
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (err error) {
 
-	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+	executionEngine.logger.WithFields(logrus.Fields{
 		"Id": "8e857aa4-3f15-4415-bc08-5ac97bf64446",
 	}).Debug("Entering: saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB()")
 
 	defer func() {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id": "8dd6bc1b-361b-4f82-83a8-dbe49114649b",
 		}).Debug("Exiting: saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB()")
 	}()
@@ -538,7 +546,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCase
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
 	if err != nil {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id":           "c7f30078-20ff-4a34-a066-fa49fa2ca475",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -548,7 +556,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCase
 	}
 
 	// Log response from CloudDB
-	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+	executionEngine.logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -564,15 +572,15 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestCase
 }
 
 // Clear all messages found on TestCaseExecutionQueue that were put on table for the ongoing executions
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) clearTestCasesExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) clearTestCasesExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (err error) {
 
-	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+	executionEngine.logger.WithFields(logrus.Fields{
 		"Id":                             "7703b634-a46d-4494-897f-1f139b5858c5",
 		"testCaseExecutionQueueMessages": testCaseExecutionQueueMessages,
 	}).Debug("Entering: clearTestCasesExecutionQueueSaveToCloudDB()")
 
 	defer func() {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id": "fed261d1-3757-46f7-bc10-476e045606a2",
 		}).Debug("Exiting: clearTestCasesExecutionQueueSaveToCloudDB()")
 	}()
@@ -597,7 +605,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) clearTestCas
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
 	if err != nil {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id":           "38a5ca13-c108-427a-a24a-20c3b6d6c4be",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -607,7 +615,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) clearTestCas
 	}
 
 	// Log response from CloudDB
-	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+	executionEngine.logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -623,7 +631,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) clearTestCas
 }
 
 //Load all data around TestCase to bes used for putting TestInstructions on the TestInstructionExecutionQueue
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct, err error) {
 
 	var testCasesUuidsToBeUsedInSQL []string
 
@@ -645,7 +653,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id":           "e7cef945-e58b-43b9-b8e2-f5d264e0fd21",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -673,7 +681,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 
 		if err != nil {
 
-			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			executionEngine.logger.WithFields(logrus.Fields{
 				"Id":           "4573547c-f4a6-46b9-b8c8-6189ebb5f721",
 				"Error":        err,
 				"sqlToExecute": sqlToExecute,
@@ -692,7 +700,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadTestCase
 }
 
 // Save all TestInstructions in 'TestInstructionExecutionQueue'
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType, err error) {
 
 	// Get a common dateTimeStamp to use
 	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
@@ -753,7 +761,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 		// Initiate map for TestInstructionExecution Order
 		testInstructionExecutionOrder := make(map[string]*testInstructionsRawExecutionOrderStruct) //map[testInstructionUuid]*testInstructionsRawExecutionOrderStruct
 
-		err = fenixExecutionServerObject.testInstructionExecutionOrderCalculator(
+		err = executionEngine.testInstructionExecutionOrderCalculator(
 			testCaseBasicInformationMessage.TestCaseModel.FirstMatureElementUuid,
 			&testCaseElementModelMap,
 			&testInstructionExecutionOrder,
@@ -761,7 +769,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 
 		if err != nil {
 			if err != nil {
-				fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+				executionEngine.logger.WithFields(logrus.Fields{
 					"Id":    "dbe7f121-1256-4bcf-883b-c6ee1bf85c4f",
 					"Error": err,
 				}).Error("Couldn't calculate Execution Order for TestInstructions")
@@ -813,7 +821,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 					}
 
 				default:
-					fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+					executionEngine.logger.WithFields(logrus.Fields{
 						"Id": "f9c124ba-beb2-40c7-a1b3-52d5b9997b2b",
 						"attribute.BaseAttributeInformation.TestInstructionAttributeType": attribute.BaseAttributeInformation.TestInstructionAttributeType,
 					}).Fatalln("Unknown attribute type. Exiting")
@@ -857,7 +865,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
 	if err != nil {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id":           "7b2447a0-5790-47b5-af28-5f069c80c88a",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -867,7 +875,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 	}
 
 	// Log response from CloudDB
-	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+	executionEngine.logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -883,15 +891,15 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) SaveTestInst
 }
 
 // Save the attributes for the TestInstructions waiting on Execution queue
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestInstructionAttributesUnderExecutionSaveToCloudDB(dbTransaction pgx.Tx, testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstructionAttributesUnderExecutionSaveToCloudDB(dbTransaction pgx.Tx, testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType) (err error) {
 
-	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+	executionEngine.logger.WithFields(logrus.Fields{
 		"Id": "23993342-01dc-40b5-b3c0-b83d1d0b2eb7",
 		"testInstructionAttributesForInstructionExecutionUuidMap": testInstructionAttributesForInstructionExecutionUuidMap,
 	}).Debug("Entering: saveTestInstructionAttributesUnderExecutionSaveToCloudDB()")
 
 	defer func() {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id": "9c36c17f-b4f9-4383-820a-32c22c050b71",
 		}).Debug("Exiting: saveTestInstructionAttributesUnderExecutionSaveToCloudDB()")
 	}()
@@ -941,7 +949,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestInst
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
 	if err != nil {
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"Id":           "8abe1477-351f-49e5-a563-94ed227dfad1",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -951,7 +959,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestInst
 	}
 
 	// Log response from CloudDB
-	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+	executionEngine.logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -968,14 +976,14 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) saveTestInst
 
 // *************************************************************************************************************
 // Extract ExecutionOrder for TestInstructions
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) testInstructionExecutionOrderCalculator(
+func (executionEngine *TestInstructionExecutionEngineStruct) testInstructionExecutionOrderCalculator(
 	elementsUuid string,
 	testCaseElementModelMapReference *map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage,
 	testInstructionExecutionOrderMapReference *map[string]*testInstructionsRawExecutionOrderStruct,
 	testInstructionContainerMapReference *map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainersMessage_MatureTestInstructionContainerMessage) (err error) {
 
 	// Extract 'Raw ExecutionOrder' for TestInstructions by recursive process element-model-tree
-	err = fenixExecutionServerObject.recursiveTestInstructionExecutionOrderCalculator(
+	err = executionEngine.recursiveTestInstructionExecutionOrderCalculator(
 		elementsUuid,
 		testCaseElementModelMapReference,
 		[]int{0},
@@ -1073,7 +1081,7 @@ func (e testInstructionsRawExecutionOrderSliceType) Swap(i, j int) {
 
 // *************************************************************************************************************
 // Extract ExecutionOrder for TestInstructions by recursive process element-model-tree
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTestInstructionExecutionOrderCalculator(
+func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstructionExecutionOrderCalculator(
 	elementsUuid string,
 	testCaseElementModelMapReference *map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage,
 	currentExecutionOrder []int,
@@ -1087,7 +1095,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 	// If the element doesn't exit then there is something really wrong
 	if existInMap == false {
 		// This shouldn't happen
-		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		executionEngine.logger.WithFields(logrus.Fields{
 			"id":           "9f628356-2ea2-48a6-8e6a-546a5f97f05b",
 			"elementsUuid": elementsUuid,
 		}).Error(elementsUuid + " could not be found in in map 'testCaseElementModelMap'")
@@ -1107,7 +1115,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 		// If the element does exit then there is something really wrong
 		if existInMap == true {
 			// This shouldn't happen
-			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			executionEngine.logger.WithFields(logrus.Fields{
 				"id":           "db8472c1-9383-4a43-b475-ff7218f13ff5",
 				"elementsUuid": elementsUuid,
 			}).Error(elementsUuid + " testInstruction already exits in could not be found in in map 'testCaseElementModelMap'")
@@ -1145,7 +1153,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 		// If the element doesn't exit then there is something really wrong
 		if existInMap == false {
 			// This shouldn't happen
-			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+			executionEngine.logger.WithFields(logrus.Fields{
 				"id":                               "e023bedb-ea12-4e31-9002-711f2babdb4f",
 				"currentElement.ParentElementUuid": currentElement.ParentElementUuid,
 			}).Error("parent element with uuid: " + currentElement.ParentElementUuid + " could not be found in in map 'testCaseElementModelMap'")
@@ -1162,8 +1170,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 		// If the TIC doesn't exist then there is something really wrong
 		if existInMap == false {
 			// This shouldn't happen
-			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
-				"id":                  "ecd29086-f3a4-45cf-9e72-45f222d81d99",
+			executionEngine.logger.WithFields(logrus.Fields{
+				"executionEngine":     "ecd29086-f3a4-45cf-9e72-45f222d81d99",
 				"TestInstructionUUid": parentElement.MatureElementUuid,
 			}).Error("TestInstructionContainer: " + parentElement.MatureElementUuid + " could not be found in in map 'testInstructionContainerMap'")
 
@@ -1202,7 +1210,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 		}
 
 		// Recursive call to child-element
-		err = fenixExecutionServerObject.recursiveTestInstructionExecutionOrderCalculator(
+		err = executionEngine.recursiveTestInstructionExecutionOrderCalculator(
 			currentElement.FirstChildElementUuid,
 			testCaseElementModelMapReference,
 			currentExecutionOrder,
@@ -1235,7 +1243,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) recursiveTes
 		}
 
 		// Recursive call to next-element
-		err = fenixExecutionServerObject.recursiveTestInstructionExecutionOrderCalculator(
+		err = executionEngine.recursiveTestInstructionExecutionOrderCalculator(
 			currentElement.NextElementUuid,
 			testCaseElementModelMapReference,
 			currentExecutionOrder,

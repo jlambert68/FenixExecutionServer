@@ -9,7 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
@@ -157,6 +156,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 	return
 }
 
+/*
 // Struct to use with variable to hold TestCaseExecutionQueue-messages
 type tempTestCaseExecutionQueueInformationStruct struct {
 	domainUuid                string
@@ -209,7 +209,7 @@ type tempTestInstructionInTestCaseStruct struct {
 	testInstructionContainersAsJsonb string
 	uniqueCounter                    int
 }
-
+*/
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionQueueMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (testInstructionExecutionQueueInformation []*tempTestInstructionExecutionQueueInformationStruct, err error) {
 

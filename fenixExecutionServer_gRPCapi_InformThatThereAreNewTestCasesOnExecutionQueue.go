@@ -45,7 +45,9 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 	}
 
 	// Create TestInstructions to be saved on 'TestInstructionExecutionQueue'
-	returnMessage = fenixExecutionServerObject.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
+	//	returnMessage = fenixExecutionServerObject.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
+
+	returnMessage = testInstructionExecutionEngine.TestInstructionExecutionEngineObject.PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
 	if returnMessage != nil {
 		// No errors when moving TestCases from queue into executing TestCases, so then start process TestInstruction
 		/*
