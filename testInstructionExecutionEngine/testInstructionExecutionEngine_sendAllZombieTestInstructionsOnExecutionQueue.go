@@ -52,6 +52,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"QueueTimeStamp\" ASC "
 	sqlToExecute = sqlToExecute + "; "
 
+	SELECT DISTINCT TIUE."TestCaseExecutionUuid", TIUE."TestCaseExecutionVersion"
+	INTO TABLE TEMP_TABLE
+	FROM "FenixExecution"."TestInstructionsUnderExecution" TIUE
+	GROUP BY TIUE."TestCaseExecutionUuid", TIUE."TestCaseExecutionVersion", TIUE."TestInstructionExecutionStatus"
+	HAVING TIUE."TestInstructionExecutionStatus"  NOT IN (4);
+
+	SELECT TIEQ."TestCaseExecutionUuid", TIEQ."TestCaseExecutionVersion", TIEQ."QueueTimeStamp"
+	FROM "FenixExecution"."TestInstructionExecutionQueue" TIEQ
+	LEFT JOIN TEMP_TABLE tmp
+	ON TIEQ."TestCaseExecutionUuid" = tmp."TestCaseExecutionUuid" AND
+	TIEQ."TestCaseExecutionVersion" = tmp."TestCaseExecutionVersion"
+	WHERE tmp."TestCaseExecutionUuid"  IS NULL AND
+	tmp."TestCaseExecutionVersion" IS NULL;
+
 	// Query DB
 	// Execute Query CloudDB
 	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)

@@ -62,7 +62,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
 	if err != nil {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"id":    "306edce0-7a5a-4a0f-992b-5c9b69b0bcc6",
 			"error": err,
 		}).Error("Problem to do 'DbPool.Begin'  in 'prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB'")
@@ -140,7 +140,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	err = executionEngine.saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
 	if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"id":    "bc6f1da5-3c8c-493e-9882-0b20e0da9e2e",
 			"error": err,
 		}).Error("Couldn't Save TestCaseExecutionQueueMessages to queue for ongoing executions in CloudDB")
@@ -171,7 +171,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	err = executionEngine.clearTestCasesExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
 	if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"id":    "c4836b67-3634-4fe0-bc89-551b2a56ce79",
 			"error": err,
 		}).Error("Couldn't clear TestCaseExecutionQueue in CloudDB")
@@ -202,7 +202,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	allDataAroundAllTestCase, err := executionEngine.loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages)
 	if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"id":    "7c778c1e-c5c2-46c3-a4e3-d59f2208d73b",
 			"error": err,
 		}).Error("Couldn't load TestInstructions that should be added to the TestInstructionExecutionQueue in CloudDB")
@@ -233,7 +233,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	testInstructionUuidTotestInstructionExecutionUuidMap, err := executionEngine.SaveTestInstructionsToExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages, allDataAroundAllTestCase)
 	if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"id":    "4bb68279-0dff-426f-a31d-927a7459f324",
 			"error": err,
 		}).Error("Couldn't save TestInstructions to the TestInstructionExecutionQueue in CloudDB")
@@ -264,7 +264,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	err = executionEngine.saveTestInstructionAttributesUnderExecutionSaveToCloudDB(txn, testInstructionUuidTotestInstructionExecutionUuidMap)
 	if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"id":    "d50bded9-f541-4367-b141-b640e7f6fc67",
 			"error": err,
 		}).Error("Couldn't add TestInstructionAttributes to table in CloudDB")
@@ -395,7 +395,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "85459587-0c1e-4db9-b257-742ff3a660fc",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -435,7 +435,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 
 		if err != nil {
 
-			executionEngine.logger.WithFields(logrus.Fields{
+			common_config.Logger.WithFields(logrus.Fields{
 				"Id":           "6ec31a99-d2d9-4ecd-b0ee-2e9a05df336e",
 				"Error":        err,
 				"sqlToExecute": sqlToExecute,
@@ -456,12 +456,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 // Put all messages found on TestCaseExecutionQueue to the ongoing executions table
 func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (err error) {
 
-	executionEngine.logger.WithFields(logrus.Fields{
+	common_config.Logger.WithFields(logrus.Fields{
 		"Id": "8e857aa4-3f15-4415-bc08-5ac97bf64446",
 	}).Debug("Entering: saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB()")
 
 	defer func() {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id": "8dd6bc1b-361b-4f82-83a8-dbe49114649b",
 		}).Debug("Exiting: saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB()")
 	}()
@@ -546,7 +546,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngo
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
 	if err != nil {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "c7f30078-20ff-4a34-a066-fa49fa2ca475",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -556,7 +556,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngo
 	}
 
 	// Log response from CloudDB
-	executionEngine.logger.WithFields(logrus.Fields{
+	common_config.Logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -574,13 +574,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngo
 // Clear all messages found on TestCaseExecutionQueue that were put on table for the ongoing executions
 func (executionEngine *TestInstructionExecutionEngineStruct) clearTestCasesExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (err error) {
 
-	executionEngine.logger.WithFields(logrus.Fields{
+	common_config.Logger.WithFields(logrus.Fields{
 		"Id":                             "7703b634-a46d-4494-897f-1f139b5858c5",
 		"testCaseExecutionQueueMessages": testCaseExecutionQueueMessages,
 	}).Debug("Entering: clearTestCasesExecutionQueueSaveToCloudDB()")
 
 	defer func() {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id": "fed261d1-3757-46f7-bc10-476e045606a2",
 		}).Debug("Exiting: clearTestCasesExecutionQueueSaveToCloudDB()")
 	}()
@@ -605,7 +605,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) clearTestCasesExecu
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
 	if err != nil {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "38a5ca13-c108-427a-a24a-20c3b6d6c4be",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -615,7 +615,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) clearTestCasesExecu
 	}
 
 	// Log response from CloudDB
-	executionEngine.logger.WithFields(logrus.Fields{
+	common_config.Logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -630,7 +630,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) clearTestCasesExecu
 
 }
 
-//Load all data around TestCase to bes used for putting TestInstructions on the TestInstructionExecutionQueue
+// Load all data around TestCase to bes used for putting TestInstructions on the TestInstructionExecutionQueue
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct, err error) {
 
 	var testCasesUuidsToBeUsedInSQL []string
@@ -653,7 +653,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAn
 	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "e7cef945-e58b-43b9-b8e2-f5d264e0fd21",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -681,7 +681,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAn
 
 		if err != nil {
 
-			executionEngine.logger.WithFields(logrus.Fields{
+			common_config.Logger.WithFields(logrus.Fields{
 				"Id":           "4573547c-f4a6-46b9-b8c8-6189ebb5f721",
 				"Error":        err,
 				"sqlToExecute": sqlToExecute,
@@ -769,7 +769,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 
 		if err != nil {
 			if err != nil {
-				executionEngine.logger.WithFields(logrus.Fields{
+				common_config.Logger.WithFields(logrus.Fields{
 					"Id":    "dbe7f121-1256-4bcf-883b-c6ee1bf85c4f",
 					"Error": err,
 				}).Error("Couldn't calculate Execution Order for TestInstructions")
@@ -821,7 +821,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 					}
 
 				default:
-					executionEngine.logger.WithFields(logrus.Fields{
+					common_config.Logger.WithFields(logrus.Fields{
 						"Id": "f9c124ba-beb2-40c7-a1b3-52d5b9997b2b",
 						"attribute.BaseAttributeInformation.TestInstructionAttributeType": attribute.BaseAttributeInformation.TestInstructionAttributeType,
 					}).Fatalln("Unknown attribute type. Exiting")
@@ -865,7 +865,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
 	if err != nil {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "7b2447a0-5790-47b5-af28-5f069c80c88a",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -875,7 +875,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	}
 
 	// Log response from CloudDB
-	executionEngine.logger.WithFields(logrus.Fields{
+	common_config.Logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -893,13 +893,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 // Save the attributes for the TestInstructions waiting on Execution queue
 func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstructionAttributesUnderExecutionSaveToCloudDB(dbTransaction pgx.Tx, testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType) (err error) {
 
-	executionEngine.logger.WithFields(logrus.Fields{
+	common_config.Logger.WithFields(logrus.Fields{
 		"Id": "23993342-01dc-40b5-b3c0-b83d1d0b2eb7",
 		"testInstructionAttributesForInstructionExecutionUuidMap": testInstructionAttributesForInstructionExecutionUuidMap,
 	}).Debug("Entering: saveTestInstructionAttributesUnderExecutionSaveToCloudDB()")
 
 	defer func() {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id": "9c36c17f-b4f9-4383-820a-32c22c050b71",
 		}).Debug("Exiting: saveTestInstructionAttributesUnderExecutionSaveToCloudDB()")
 	}()
@@ -949,7 +949,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
 	if err != nil {
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "8abe1477-351f-49e5-a563-94ed227dfad1",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
@@ -959,7 +959,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 	}
 
 	// Log response from CloudDB
-	executionEngine.logger.WithFields(logrus.Fields{
+	common_config.Logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
@@ -1095,7 +1095,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstru
 	// If the element doesn't exit then there is something really wrong
 	if existInMap == false {
 		// This shouldn't happen
-		executionEngine.logger.WithFields(logrus.Fields{
+		common_config.Logger.WithFields(logrus.Fields{
 			"id":           "9f628356-2ea2-48a6-8e6a-546a5f97f05b",
 			"elementsUuid": elementsUuid,
 		}).Error(elementsUuid + " could not be found in in map 'testCaseElementModelMap'")
@@ -1115,7 +1115,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstru
 		// If the element does exit then there is something really wrong
 		if existInMap == true {
 			// This shouldn't happen
-			executionEngine.logger.WithFields(logrus.Fields{
+			common_config.Logger.WithFields(logrus.Fields{
 				"id":           "db8472c1-9383-4a43-b475-ff7218f13ff5",
 				"elementsUuid": elementsUuid,
 			}).Error(elementsUuid + " testInstruction already exits in could not be found in in map 'testCaseElementModelMap'")
@@ -1153,7 +1153,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstru
 		// If the element doesn't exit then there is something really wrong
 		if existInMap == false {
 			// This shouldn't happen
-			executionEngine.logger.WithFields(logrus.Fields{
+			common_config.Logger.WithFields(logrus.Fields{
 				"id":                               "e023bedb-ea12-4e31-9002-711f2babdb4f",
 				"currentElement.ParentElementUuid": currentElement.ParentElementUuid,
 			}).Error("parent element with uuid: " + currentElement.ParentElementUuid + " could not be found in in map 'testCaseElementModelMap'")
@@ -1170,7 +1170,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstru
 		// If the TIC doesn't exist then there is something really wrong
 		if existInMap == false {
 			// This shouldn't happen
-			executionEngine.logger.WithFields(logrus.Fields{
+			common_config.Logger.WithFields(logrus.Fields{
 				"executionEngine":     "ecd29086-f3a4-45cf-9e72-45f222d81d99",
 				"TestInstructionUUid": parentElement.MatureElementUuid,
 			}).Error("TestInstructionContainer: " + parentElement.MatureElementUuid + " could not be found in in map 'testInstructionContainerMap'")
