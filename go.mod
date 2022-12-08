@@ -6,7 +6,7 @@ require (
 	github.com/go-gota/gota v0.12.0
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.17.2
-	github.com/jlambert68/FenixGrpcApi v0.0.0-20221127064648-6b3be4f40b92
+	github.com/jlambert68/FenixGrpcApi v0.0.0-20221208135827-8fc2262b6c0d
 	github.com/jlambert68/FenixSyncShared v0.0.0-20221208091411-9a347e92e03d
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/net v0.0.0-20220909164309-bea034e7d591

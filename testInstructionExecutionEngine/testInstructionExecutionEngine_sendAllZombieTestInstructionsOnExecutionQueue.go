@@ -7,6 +7,7 @@ import (
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -31,6 +32,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestIn
 
 		return err
 	}
+
+	defer txn.Commit(context.Background())
 
 	// Load all TestCasesExecutions for Zombie-TestInstructions that are stuck in UnderExecutions
 	var testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct
@@ -74,7 +77,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	max := 100000
 	randomNumber := rand.Intn(max-min+1) + min
 	var randomNumberAsString string
-	randomNumberAsString = string(randomNumber)
+	randomNumberAsString = strconv.Itoa(randomNumber)
 	var tempraryTableName = "TEMP_TABLE_" + randomNumberAsString
 
 	sqlToExecute := ""
