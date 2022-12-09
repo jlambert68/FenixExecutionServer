@@ -18,6 +18,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) InitiateTestInstruc
 	// Send Message on Channel
 	*executionEngine.CommandChannelReference <- channelCommandMessage
 
+	// Trigger TestInstructionEngine to check if there are any Zombie-TestInstructionExecutions, UnderExecution, that have timed out
+	channelCommandMessage = ChannelCommandStruct{
+		ChannelCommand:                          ChannelCommandLookForZombieTestInstructionExecutionsThatHaveTimedOut,
+		ChannelCommandTestCaseExecutions:        nil,
+		ChannelCommandTestInstructionExecutions: nil,
+	}
+
+	// Send Message on Channel
+	*executionEngine.CommandChannelReference <- channelCommandMessage
+
 	return
 }
 

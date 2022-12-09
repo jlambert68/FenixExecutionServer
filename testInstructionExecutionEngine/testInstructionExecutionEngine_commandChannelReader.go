@@ -40,6 +40,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		case ChannelCommandLookForZombieTestInstructionExecutionsOnExecutionQueue:
 			executionEngine.triggerLookForZombieTestInstructionExecutionsOnExecutionQueue()
 
+		case ChannelCommandLookForZombieTestInstructionExecutionsThatHaveTimedOut:
+			executionEngine.triggerLookForZombieTestInstructionExecutionsThatHaveTimedOut()
+
+		case ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut:
+			executionEngine.triggerProcessTestInstructionExecutionsThatHaveTimedOut(incomingChannelCommand.ChannelCommandTestInstructionExecutions)
+
 		// No other command is supported
 		default:
 			executionEngine.logger.WithFields(logrus.Fields{
@@ -138,5 +144,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) processTestCaseExec
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsOnExecutionQueue() {
 
 	_ = executionEngine.sendAllZombieTestInstructionsOnExecutionQueue()
+
+}
+
+// Look for Zombie-TestInstructionExecutions that have timed out, but was lost in some way
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsThatHaveTimedOut() {
+
+	_ = executionEngine.findAllZombieTestInstructionExecutionsInTimeout()
+
+}
+
+// Process for Zombie-TestInstructionExecutions that have timed out
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestInstructionExecutionsThatHaveTimedOut(testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct) {
+
+	//_ = executionEngine.processTestInstructionExecutionsThatHaveTimedOut(testInstructionExecutionsToProcess)
 
 }
