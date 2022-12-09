@@ -1,0 +1,9 @@
+package testInstructionTimeOutEngine
+
+// InitiateTestInstructionExecutionTimeOutEngineChannelReader
+// Initiate the channel reader which is used for sending commands to TimeOutEngine for TestInstructionExecutions
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) InitiateTestInstructionExecutionTimeOutEngineChannelReader() {
+
+	go testInstructionExecutionTimeOutEngineObject.startTimeOutChannelReader()
+
+}

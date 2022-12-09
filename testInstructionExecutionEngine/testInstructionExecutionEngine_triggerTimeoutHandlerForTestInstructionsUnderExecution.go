@@ -145,9 +145,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimed
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionHasFinished\" = '%s', ", "true")
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionEndTimeStamp\" = '%s' ", currentDataTimeStamp)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionUuid)
-	//sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
-	//sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = '%s' ", testInstructionExecutionVersion)
-
+	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("(\"TestInstructionExecutionStatus\" <> %s ",
+		fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("OR ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" <> %s) ",
+		fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION)
 	sqlToExecute = sqlToExecute + "; "
 
 	// If no positive responses the just exit
@@ -188,7 +191,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimed
 			"Id":                           "9b4fc6ed-8083-443a-a523-660df7b94ae5",
 			"testInstructionExecutionUuid": testInstructionExecutionUuid,
 			"sqlToExecute":                 sqlToExecute,
-		}).Error("TestInstructionExecutionUuid is missing in Table")
+			"comandTag.RowsAffected()":     comandTag.RowsAffected(),
+		}).Error("TestInstructionExecutionUuid 'might' be missing in Table. It can be so that another instance of ExecutionEngine changed the status before this one could do that.")
 
 		return err
 	}
