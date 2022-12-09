@@ -60,7 +60,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 }
 
-func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) recursiveAddTestInstructionExecutionToTimeOutTimer(newIncomingTimeOutChannelCommandObject *TimeOutChannelCommandStruct, currentTimeOutMapKey string) (err error) {
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) recursiveAddTestInstructionExecutionToTimeOutTimer(
+	newIncomingTimeOutChannelCommandObject *TimeOutChannelCommandStruct, currentTimeOutMapKey string) (err error) {
 
 	var existsInMap bool
 
@@ -98,34 +99,90 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		var objectPositionFound bool
 
 		// Current object is both first and last object
-		if len(timeOutMapStruct) == 1 {
-			objectPositionFound = true
+		if len(timeOutMap) == 1 {
 
 			return err
 		}
 
 		// Current object is first object
-		if currentProcessedObjects.previousTimeOutMapKey = currentProcessedObjects.currentTimeOutMapKey {
+		if currentProcessedObjects.previousTimeOutMapKey == currentProcessedObjects.currentTimeOutMapKey &&
+			currentProcessedObjects.nextTimeOutMapKey != currentProcessedObjects.currentTimeOutMapKey {
 
 			// Insert new object before current object
-
-			// Do recursive call to next object
-			err = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(newIncomingTimeOutChannelCommandObject, currentProcessedObjects.nextTimeOutMapKey)
 
 			return err
 		}
 
 		// Current object is not the first or last object
+		if currentProcessedObjects.previousTimeOutMapKey != currentProcessedObjects.currentTimeOutMapKey &&
+			currentProcessedObjects.nextTimeOutMapKey != currentProcessedObjects.currentTimeOutMapKey {
 
-		// Insert new object before current object
+			// Insert new object before current object
 
-		// Do recursive call to next object
-		err = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(newIncomingTimeOutChannelCommandObject, currentProcessedObjects.nextTimeOutMapKey)
-
-		return err
+			return err
+		}
 
 		// Current object is last object
+		if currentProcessedObjects.previousTimeOutMapKey != currentProcessedObjects.currentTimeOutMapKey &&
+			currentProcessedObjects.nextTimeOutMapKey == currentProcessedObjects.currentTimeOutMapKey {
+
+			// Insert new object before current object
+
+			return err
+		}
 
 	}
 
+	// Do recursive call to next object
+	err = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(newIncomingTimeOutChannelCommandObject, currentProcessedObjects.nextTimeOutMapKey)
+
+	return err
+}
+
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) storeNewTimeOutChannelCommandObject(
+	currentTimeOutMapKey string,
+	previousTimeOutMapKey string,
+	nextTimeOutMapKey string,
+	newIncomingTimeOutChannelCommandObject *TimeOutChannelCommandStruct) (err error) {
+
+	var existsInMap bool
+
+	// Create Map-key for 'timeOutMap'
+	var timeOutMapKey string
+
+	var testInstructionExecutionVersionAsString string
+	testInstructionExecutionVersionAsString = strconv.Itoa(int(newIncomingTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
+
+	timeOutMapKey = strconv.Itoa(int(
+		newIncomingTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion)) +
+		testInstructionExecutionVersionAsString
+
+	// Create object to be stored
+	var timeOutMapObject *timeOutMapStruct
+	timeOutMapObject = &timeOutMapStruct{
+		currentTimeOutMapKey:               currentTimeOutMapKey,
+		previousTimeOutMapKey:              previousTimeOutMapKey,
+		nextTimeOutMapKey:                  nextTimeOutMapKey,
+		currentTimeOutChannelCommandObject: newIncomingTimeOutChannelCommandObject,
+	}
+
+	// Verify that Object doesn't exist in Map
+	_, existsInMap = timeOutMap[currentTimeOutMapKey]
+	if existsInMap == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                   "ac69e72d-b124-43c8-a7e9-8760da369bec",
+			"currentTimeOutMapKey": currentTimeOutMapKey,
+		}).Error("'timeOutMap' does already contain an object for for the 'currentTimeOutMapKey'")
+
+		errorId := "af257654-4034-451d-9d1e-8385e2497264"
+		err = errors.New(fmt.Sprintf("'timeOutMap' does already contain an object for for the 'currentTimeOutMapKey': '%s' [ErroId: %s]", currentTimeOutMapKey, errorId))
+
+		return err
+
+	}
+
+	// Store object in 'timeOutMap'
+	timeOutMap[timeOutMapKey] = timeOutMapObject
+
+	return err
 }
