@@ -1,6 +1,7 @@
 package testInstructionExecutionEngine
 
 import (
+	"FenixExecutionServer/common_config"
 	"fmt"
 	"github.com/sirupsen/logrus"
 )
@@ -9,10 +10,22 @@ import (
 func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannelReader() {
 
 	var incomingChannelCommand ChannelCommandStruct
+	var channelSize int
 
 	for {
 		// Wait for incoming command over channel
 		incomingChannelCommand = <-*executionEngine.CommandChannelReference
+
+		// If size of Channel > 'ExecutionEngineChannelWarningLevel' then log Warning message
+		channelSize = len(*executionEngine.CommandChannelReference)
+		if channelSize > ExecutionEngineChannelWarningLevel {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                                 "b2ee2644-d318-4a7f-882a-cddd80058608",
+				"channelSize":                        channelSize,
+				"ExecutionEngineChannelWarningLevel": ExecutionEngineChannelWarningLevel,
+				"ExecutionEngineChannelSize":         ExecutionEngineChannelSize,
+			}).Warning("Number of messages on queue for 'ExecutionEngineChannel' has reached a critical level")
+		}
 
 		switch incomingChannelCommand.ChannelCommand {
 

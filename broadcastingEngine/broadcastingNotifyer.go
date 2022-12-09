@@ -1,12 +1,22 @@
 package broadcastingEngine
 
 import (
+	"FenixExecutionServer/common_config"
 	"context"
 	"encoding/json"
 	"fmt"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
+	"github.com/sirupsen/logrus"
 	"log"
 )
+
+// BroadcastEngineChannelWarningLevel
+// The size of the channel
+const BroadcastEngineChannelSize = 100
+
+// BroadcastEngineChannelWarningLevel
+// The size of warning level for the channel
+const BroadcastEngineChannelWarningLevel = 90
 
 var BroadcastEngineMessageChannel BroadcastEngineMessageChannelType
 
@@ -40,15 +50,27 @@ var err error
 
 func InitiateAndStartBroadcastNotifyEngine() {
 
-	BroadcastEngineMessageChannel = make(chan BroadcastingMessageForExecutionsStruct, 10)
+	BroadcastEngineMessageChannel = make(chan BroadcastingMessageForExecutionsStruct, BroadcastEngineChannelSize)
 	var broadcastingMessageForExecutions BroadcastingMessageForExecutionsStruct
 	var broadcastingMessageForExecutionsAsByteSlice []byte
 	var broadcastingMessageForExecutionsAsByteSliceAsString string
 	var err error
+	var channelSize int
 
 	for {
 
 		broadcastingMessageForExecutions = <-BroadcastEngineMessageChannel
+
+		// If size of Channel > 'TimeOutChannelWarningLevel' then log Warning message
+		channelSize = len(BroadcastEngineMessageChannel)
+		if channelSize > BroadcastEngineChannelWarningLevel {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                                 "7dafce7a-eed9-448c-81b6-1015733dc1cb",
+				"channelSize":                        channelSize,
+				"BroadcastEngineChannelWarningLevel": BroadcastEngineChannelWarningLevel,
+				"BroadcastEngineChannelSize":         BroadcastEngineChannelSize,
+			}).Warning("Number of messages on queue for 'BroadcastEngineMessageChannel' has reached a critical level")
+		}
 
 		// secure when there exists 'nil' in message, regarding "TestCaseExecutions"
 		if broadcastingMessageForExecutions.TestCaseExecutions == nil {

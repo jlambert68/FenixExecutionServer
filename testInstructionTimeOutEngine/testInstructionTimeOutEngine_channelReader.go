@@ -9,21 +9,33 @@ import (
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) startTimeOutChannelReader() {
 
 	var incomingTimeOutChannelCommand TimeOutChannelCommandStruct
+	var channelSize int
 
 	for {
 		// Wait for incoming command over channel
 		incomingTimeOutChannelCommand = <-TimeOutChannelEngineCommandChannel
 
+		// If size of Channel > 'TimeOutChannelWarningLevel' then log Warning message
+		channelSize = len(TimeOutChannelEngineCommandChannel)
+		if channelSize > TimeOutChannelWarningLevel {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                         "7dafce7a-eed9-448c-81b6-1015733dc1cb",
+				"channelSize":                channelSize,
+				"TimeOutChannelWarningLevel": TimeOutChannelWarningLevel,
+				"TimeOutChannelSize":         TimeOutChannelSize,
+			}).Warning("Number of messages on queue for 'TimeOutChannel' has reached a critical level")
+		}
+
 		switch incomingTimeOutChannelCommand.TimeOutChannelCommand {
 
-		case TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer: //(A)
-			executionEngine.moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutions(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+		case TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer:
+			testInstructionExecutionTimeOutEngineObject.addTestInstructionExecutionToTimeOutTimer(incomingTimeOutChannelCommand)
 
-		case TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer: //(B)
-			executionEngine.checkForTestInstructionsExecutionsWaitingToBeSentToWorker(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+		case TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer:
+			testInstructionExecutionTimeOutEngineObject.removeTestInstructionExecutionFromTimeOutTimer(incomingTimeOutChannelCommand)
 
-		case TimeOutChannelCommandExistsTestInstructionExecutionInTimeOutTimer: // NOT USED FOR NOW
-			executionEngine.checkOngoingExecutionsForTestInstructions()
+		case TimeOutChannelCommandExistsTestInstructionExecutionInTimeOutTimer:
+			testInstructionExecutionTimeOutEngineObject.existsTestInstructionExecutionInTimeOutTimer(incomingTimeOutChannelCommand)
 
 		// No other command is supported
 		default:
@@ -33,5 +45,20 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			}).Fatalln("Unknown command in TimeOutCommandChannel for TimeOutEngine")
 		}
 	}
+}
+
+// Add TestInstructionExecution to TimeOut-timer
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) addTestInstructionExecutionToTimeOutTimer(incomingTimeOutChannelCommand TimeOutChannelCommandStruct) {
+
+	testInstructionExecutionTimeOutEngineObject.processAddTestInstructionExecutionToTimeOutTimer(&incomingTimeOutChannelCommand)
+}
+
+// Remove TestInstructionExecution from TimeOut-timer
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) removeTestInstructionExecutionFromTimeOutTimer(incomingTimeOutChannelCommand TimeOutChannelCommandStruct) {
+
+}
+
+// Check if TestInstructionExecution exists within TimeOut-timer
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) existsTestInstructionExecutionInTimeOutTimer(incomingTimeOutChannelCommand TimeOutChannelCommandStruct) {
 
 }

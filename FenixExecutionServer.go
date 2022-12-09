@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/broadcastingEngine"
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/testInstructionExecutionEngine"
+	"FenixExecutionServer/testInstructionTimeOutEngine"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -49,7 +50,7 @@ func fenixExecutionServerMain() {
 	defer cleanup()
 
 	// Create Channel used for sending Commands to TestInstructionExecutionCommandsEngine
-	testInstructionExecutionEngine.ExecutionEngineCommandChannel = make(chan testInstructionExecutionEngine.ChannelCommandStruct, 100)
+	testInstructionExecutionEngine.ExecutionEngineCommandChannel = make(chan testInstructionExecutionEngine.ChannelCommandStruct, testInstructionExecutionEngine.ExecutionEngineChannelSize)
 	myCommandChannelRef := &testInstructionExecutionEngine.ExecutionEngineCommandChannel
 	fenixExecutionServerObject.executionEngineChannelRef = myCommandChannelRef
 
@@ -76,6 +77,9 @@ func fenixExecutionServerMain() {
 
 	// Start Receiver channel for Commands
 	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRef)
+
+	// Start Receiver channel for TimeOutEngine
+	testInstructionTimeOutEngine.TestInstructionExecutionTimeOutEngineObject.InitiateTestInstructionExecutionTimeOutEngineChannelReader()
 
 	// Start Backend gRPC-server
 	fenixExecutionServerObject.InitGrpcServer()

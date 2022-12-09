@@ -15,6 +15,14 @@ type TestInstructionExecutionEngineStruct struct {
 // The object that hold all functions together within the executionEngine
 var TestInstructionExecutionEngineObject TestInstructionExecutionEngineStruct
 
+// ExecutionEngineChannelSize
+// The size of the channel
+const ExecutionEngineChannelSize = 100
+
+// ExecutionEngineChannelWarningLevel
+// The size of warning level for the channel
+const ExecutionEngineChannelWarningLevel = 90
+
 // ExecutionEngineCommandChannel
 // The channel for the TestInstructionExecutionEngine
 var ExecutionEngineCommandChannel ExecutionEngineChannelType

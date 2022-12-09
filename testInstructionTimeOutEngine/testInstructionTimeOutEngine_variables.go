@@ -11,10 +11,27 @@ type TestInstructionTimeOutEngineObjectStruct struct {
 // The object that hold all functions together within the TimeOutEngine
 var TestInstructionExecutionTimeOutEngineObject TestInstructionTimeOutEngineObjectStruct
 
+// Variable holding a MapKey to 'timeOutMap' for the TestInstructionExecution that has the closest upcoming TimeOut
+var nextUpcomingObjectMapKeyWithTimeOut string
 
-// timeOutMap,
-var timeOutMap map[]
+// timeOutMap, the map that keeps track of all TestInstructionExecutions
+var timeOutMap map[string]*timeOutMapStruct // map[TestInstructionExecutionKey]*timeOutMapStruct
 
+// The struct holding one map-object with references to previous and next objects regarding their TimeOut-time
+type timeOutMapStruct struct {
+	currentTimeOutMapKey               string
+	previousTimeOutMapKey              string
+	nextTimeOutMapKey                  string
+	currentTimeOutChannelCommandObject *TimeOutChannelCommandStruct
+}
+
+// TimeOutChannelSize
+// The size of the channel
+const TimeOutChannelSize = 100
+
+// TimeOutChannelWarningLevel
+// The size of warning level for the channel
+const TimeOutChannelWarningLevel = 90
 
 // TimeOutChannelEngineCommandChannel
 // The channel for the TestInstructionExecutionEngine
@@ -32,6 +49,7 @@ const (
 	TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer TimeOutChannelCommandType = iota
 	TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer
 	TimeOutChannelCommandExistsTestInstructionExecutionInTimeOutTimer
+	TimeOutChannelCommandTimeOutTimerTriggered
 )
 
 // TimeOutChannelCommandStruct
