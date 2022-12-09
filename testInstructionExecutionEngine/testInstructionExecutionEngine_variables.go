@@ -59,10 +59,11 @@ type ChannelCommandTestCaseExecutionStruct struct {
 // ChannelCommandTestInstructionExecutionStruct
 // Hold one TestInstructionExecution that will be processed by the executionEngine
 type ChannelCommandTestInstructionExecutionStruct struct {
-	TestCaseExecutionUuid           string
-	TestCaseExecutionVersion        int32
-	TestInstructionExecutionUuid    string
-	TestInstructionExecutionVersion int32
+	TestCaseExecutionUuid                   string
+	TestCaseExecutionVersion                int32
+	TestInstructionExecutionUuid            string
+	TestInstructionExecutionVersion         int32
+	TestInstructionExecutionCanBeReExecuted bool
 }
 
 // ReturnChannelWithDBErrorType

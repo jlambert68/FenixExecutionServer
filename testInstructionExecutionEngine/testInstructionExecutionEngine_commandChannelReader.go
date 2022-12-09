@@ -157,6 +157,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombi
 // Process for Zombie-TestInstructionExecutions that have timed out
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestInstructionExecutionsThatHaveTimedOut(testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct) {
 
-	//_ = executionEngine.processTestInstructionExecutionsThatHaveTimedOut(testInstructionExecutionsToProcess)
+	executionEngine.timeoutHandlerForTestInstructionsUnderExecution(testInstructionExecutionsToProcess)
 
 }

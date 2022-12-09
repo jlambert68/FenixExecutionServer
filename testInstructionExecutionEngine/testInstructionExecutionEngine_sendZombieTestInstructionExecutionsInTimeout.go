@@ -52,7 +52,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT DISTINCT  TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", " +
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", " +
-		"TIUE.\"ExpectedExecutionEndTimeStamp\" "
+		"TIUE.\"TestInstructionCanBeReExecuted\", TIUE.\"ExpectedExecutionEndTimeStamp\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionEndTimeStamp\" IS NULL AND "
 	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionHasFinished\" = false AND "
@@ -89,6 +89,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 			&tempTestInstructionExecutionToProcess.TestCaseExecutionVersion,
 			&tempTestInstructionExecutionToProcess.TestInstructionExecutionUuid,
 			&tempTestInstructionExecutionToProcess.TestInstructionExecutionVersion,
+			&tempTestInstructionExecutionToProcess.TestInstructionExecutionCanBeReExecuted,
 			&tempExpectedExecutionEndTimeStamp,
 		)
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
@@ -112,28 +113,40 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimed
 		return nil
 	}
 
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
 	// Get a common dateTimeStamp to use
 	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
 
-	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
-
-	sqlToExecute := ""
-
+	// Extract variables to use in SQL
+	// TestInstructionExecutionUuid
 	testInstructionExecutionUuid := timedOutTestInstructionExecutionToUpdate.TestInstructionExecutionUuid
 
-	var testInstructionExecutionStatus string
-	testInstructionExecutionStatus = strconv.Itoa(int(timedOutTestInstructionExecutionToUpdate.TestInstructionExecutionStatus))
-	testInstructionExecutionEndTimeStamp := common_config.ConvertGrpcTimeStampToStringForDB(timedOutTestInstructionExecutionToUpdate.TestInstructionExecutionEndTimeStamp)
+	// Extract variables to use in SQL
+	// TestInstructionExecutionVersion
+	var testInstructionExecutionVersion string
+	testInstructionExecutionVersion = strconv.Itoa(int(timedOutTestInstructionExecutionToUpdate.TestInstructionExecutionVersion))
+
+	// Extract variables to use in SQL
+	// TestInstructionExecutionStatus
+	var testInstructionExecutionTimeOutStatus string
+	if timedOutTestInstructionExecutionToUpdate.TestInstructionExecutionCanBeReExecuted == true {
+		testInstructionExecutionTimeOutStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN))
+	} else {
+		testInstructionExecutionTimeOutStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION))
+	}
 
 	// Create Update Statement  TestInstructionExecution
-
+	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
-	sqlToExecute = sqlToExecute + "\"TestInstructionExecutionStatus\" = " + testInstructionExecutionStatus + ", " // TIE_EXECUTING
+	sqlToExecute = sqlToExecute + "\"TestInstructionExecutionStatus\" = " + testInstructionExecutionTimeOutStatus + ", "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s', ", currentDataTimeStamp)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionHasFinished\" = '%s', ", "true")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionEndTimeStamp\" = '%s' ", testInstructionExecutionEndTimeStamp)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionEndTimeStamp\" = '%s' ", currentDataTimeStamp)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionUuid)
+	//sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
+	//sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = '%s' ", testInstructionExecutionVersion)
 
 	sqlToExecute = sqlToExecute + "; "
 
@@ -157,7 +170,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimed
 
 	// Log response from CloudDB
 	common_config.Logger.WithFields(logrus.Fields{
-		"Id":                       "ffa5c358-ba6c-47bd-a828-d9e5d826f913",
+		"Id":                       "3497a29b-852d-4477-9e07-aed1ddd13a9e",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
 		"comandTag.Select()":       comandTag.Select(),
@@ -168,11 +181,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimed
 
 	// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
 	if comandTag.RowsAffected() != 1 {
-		errorId := "6f87dc32-61aa-4d29-a812-8b85d32d8cc1"
-		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' is missing in Table [ErroId: %s]", testInstructionExecutionUuid, errorId))
+		errorId := "189d8c7f-6d35-42e4-8f89-f41a8a3f2128"
+		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' with TestInstructionExecutionVersion '%s' is missing in Table: 'TestInstructionsUnderExecution' [ErroId: %s]", testInstructionExecutionUuid, testInstructionExecutionVersion, errorId))
 
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":                           "4737bf84-4444-4e0d-8653-cd2d1ad86b12",
+			"Id":                           "9b4fc6ed-8083-443a-a523-660df7b94ae5",
 			"testInstructionExecutionUuid": testInstructionExecutionUuid,
 			"sqlToExecute":                 sqlToExecute,
 		}).Error("TestInstructionExecutionUuid is missing in Table")
