@@ -231,7 +231,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	return err
 }
 
-// Update Previuos and Next MapKey for Object
+// Update Previous and Next MapKey for Object
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) updateTimeOutChannelCommandObject(
 	previousTimeOutMapKey string,
 	currentTimeOutMapKey string,
