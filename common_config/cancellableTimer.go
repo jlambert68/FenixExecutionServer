@@ -51,7 +51,9 @@ func (c *CancellableTimerStruct) Cancel() {
 
 // StartCancellableTimer
 // Start a CancellableTimer
-func StartCancellableTimer(t *CancellableTimerStruct, sleepDuration time.Duration, cancellableTimerReturnChannelReference *CancellableTimerReturnChannelType) {
+func StartCancellableTimer(t *CancellableTimerStruct,
+	sleepDuration time.Duration,
+	cancellableTimerReturnChannelReference *CancellableTimerReturnChannelType) {
 	select {
 	// timedOut will signify a timeout or cancellation
 	case timedOut := <-t.After(sleepDuration):
