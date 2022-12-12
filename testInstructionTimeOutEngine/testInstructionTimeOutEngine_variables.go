@@ -1,6 +1,9 @@
 package testInstructionTimeOutEngine
 
-import "time"
+import (
+	"FenixExecutionServer/common_config"
+	"time"
+)
 
 // TestInstructionTimeOutEngineObjectStruct
 // The struct for the object that hold all functions together within the TimeOutEngine
@@ -13,6 +16,12 @@ var TestInstructionExecutionTimeOutEngineObject TestInstructionTimeOutEngineObje
 
 // Variable holding a MapKey to 'timeOutMap' for the TestInstructionExecution that has the closest upcoming TimeOut
 var nextUpcomingObjectMapKeyWithTimeOut string
+
+// Timer used to keep track of when next TestInstructionExecutions TimeOut-time occurs
+var cancellableTimer *common_config.CancellableTimerStruct
+
+// The time that is added to the TimeOut-timer running on ExecutionServer
+const extractTimerMarginalBeforeTimeOut time.Duration = time.Second * 60
 
 // timeOutMap, the map that keeps track of all TestInstructionExecutions
 var timeOutMap map[string]*timeOutMapStruct // map[TestInstructionExecutionKey]*timeOutMapStruct

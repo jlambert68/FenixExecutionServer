@@ -56,6 +56,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 // Remove TestInstructionExecution from TimeOut-timer
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) removeTestInstructionExecutionFromTimeOutTimer(incomingTimeOutChannelCommand TimeOutChannelCommandStruct) {
 
+	testInstructionExecutionTimeOutEngineObject.processRemoveTestInstructionExecutionToTimeOutTimer(&incomingTimeOutChannelCommand)
 }
 
 // Check if TestInstructionExecution exists within TimeOut-timer

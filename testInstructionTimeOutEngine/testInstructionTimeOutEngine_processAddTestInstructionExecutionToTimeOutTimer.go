@@ -2,6 +2,7 @@ package testInstructionTimeOutEngine
 
 import (
 	"FenixExecutionServer/common_config"
+	"FenixExecutionServer/testInstructionExecutionEngine"
 	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
@@ -48,7 +49,36 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		// Set variable that keeps track of next object with upcoming Timeout
 		nextUpcomingObjectMapKeyWithTimeOut = timeOutMapKey
 
-		//TODO Call TIMER
+		// Check if TimeOutTime has occurred
+		if incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.Before(time.Now()) == true {
+			// TimeOutTime has occurred, act now
+			var executionEngineChannelCommand testInstructionExecutionEngine.ChannelCommandStruct
+			var executionEngineChannelCommandTestInstructionExecution testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
+			var executionEngineChannelCommandTestInstructionExecutions []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
+			executionEngineChannelCommandTestInstructionExecution = testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{
+				TestCaseExecutionUuid:                   incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionUuid,
+				TestCaseExecutionVersion:                incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionVersion,
+				TestInstructionExecutionUuid:            incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
+				TestInstructionExecutionVersion:         incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion,
+				TestInstructionExecutionCanBeReExecuted: incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionCanBeReExecuted,
+			}
+			executionEngineChannelCommandTestInstructionExecutions =  []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{executionEngineChannelCommandTestInstructionExecution}
+
+			executionEngineChannelCommand = testInstructionExecutionEngine.ChannelCommandStruct{
+				ChannelCommand:                          testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut,
+				ChannelCommandTestCaseExecutions:        nil,
+				ChannelCommandTestInstructionExecutions: executionEngineChannelCommandTestInstructionExecutions,
+				ReturnChannelWithDBErrorReference:       nil,
+			}
+
+			// Send command to ExecutionsEngine
+			testInstructionExecutionEngine.ExecutionEngineCommandChannel <-executionEngineChannelCommand
+		}
+
+		// Start TimeOut-timer for this TestInstructionExecution
+		var sleepDurantion time.Duration
+		sleepDurantion = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.Sub(time.Now())
+		common_config.StartCancellableTimer(cancellableTimer, incomingTimeOutChannelCommand.)
 
 		return
 	}

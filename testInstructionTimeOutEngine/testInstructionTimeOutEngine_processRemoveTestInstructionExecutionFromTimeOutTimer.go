@@ -3,19 +3,29 @@ package testInstructionTimeOutEngine
 import (
 	"FenixExecutionServer/common_config"
 	"github.com/sirupsen/logrus"
+	"strconv"
 )
 
 // Add TestInstructionExecution to TimeOut-timer
-func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processRemoveTestInstructionExecutionToTimeOutTimer(timeOutMapKeyToRemove string) {
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processRemoveTestInstructionExecutionToTimeOutTimer(incomingTimeOutChannelCommand *TimeOutChannelCommandStruct) {
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"id":                            "265c6141-c3be-43a8-a4cf-970435b2eaa3",
-		"incomingTimeOutChannelCommand": timeOutMapKeyToRemove,
+		"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
 	}).Debug("Incoming 'processRemoveTestInstructionExecutionToTimeOutTimer'")
 
 	defer common_config.Logger.WithFields(logrus.Fields{
 		"id": "69054858-a8d5-4c1d-ad11-63c1d37453f4",
 	}).Debug("Outgoing 'processRemoveTestInstructionExecutionToTimeOutTimer'")
+
+	// Create Map-key for 'timeOutMap'
+	var timeOutMapKeyToRemove string
+
+	var testInstructionExecutionVersionAsString string
+	testInstructionExecutionVersionAsString = strconv.Itoa(int(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
+
+	timeOutMapKeyToRemove = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
+		testInstructionExecutionVersionAsString
 
 	// Object to be removed from TimeOut-timer
 	var currentTimeOutObjectToRemove *timeOutMapStruct
