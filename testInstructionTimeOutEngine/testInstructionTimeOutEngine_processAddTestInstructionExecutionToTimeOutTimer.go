@@ -11,7 +11,8 @@ import (
 )
 
 // Add TestInstructionExecution to TimeOut-timer
-func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processAddTestInstructionExecutionToTimeOutTimer(incomingTimeOutChannelCommand *TimeOutChannelCommandStruct) {
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processAddTestInstructionExecutionToTimeOutTimer(
+	incomingTimeOutChannelCommand *common_config.TimeOutChannelCommandStruct) {
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"id":                            "bb9dcac7-ef0d-4559-b710-9ac04b3b4c6a",
@@ -29,7 +30,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		var timeOutMapKey string
 
 		var testInstructionExecutionVersionAsString string
-		testInstructionExecutionVersionAsString = strconv.Itoa(int(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
+		testInstructionExecutionVersionAsString = strconv.Itoa(int(
+			incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
 
 		timeOutMapKey = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
 			testInstructionExecutionVersionAsString
@@ -50,7 +52,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		nextUpcomingObjectMapKeyWithTimeOut = timeOutMapKey
 
 		// Check if TimeOutTime has occurred
-		if incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.Before(time.Now().Add(extractTimerMarginalBeforeTimeOut)) == true {
+		if incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.Before(
+			time.Now().Add(extractTimerMarginalBeforeTimeOut)) == true {
+
 			// TimeOutTime has already occurred, so act now
 			var executionEngineChannelCommand testInstructionExecutionEngine.ChannelCommandStruct
 			var executionEngineChannelCommandTestInstructionExecution testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
@@ -125,8 +129,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				testInstructionExecutionEngine.ExecutionEngineCommandChannel <- executionEngineChannelCommand
 
 				// Remove This TestInstructionExecution from Timer-queue (and set a new Timer for next TestInstructionExecution)
-				var tempTimeOutChannelTestInstructionExecutions TimeOutChannelCommandTestInstructionExecutionStruct
-				tempTimeOutChannelTestInstructionExecutions = TimeOutChannelCommandTestInstructionExecutionStruct{
+				var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+				tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
 					TestCaseExecutionUuid:                   incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionUuid,
 					TestCaseExecutionVersion:                incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionVersion,
 					TestInstructionExecutionUuid:            incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
@@ -135,12 +139,12 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 					TimeOutTime:                             incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime,
 				}
 
-				var tempTimeOutChannelCommand TimeOutChannelCommandStruct
-				tempTimeOutChannelCommand = TimeOutChannelCommandStruct{
-					TimeOutChannelCommand:                                               TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer,
-					TimeOutChannelTestInstructionExecutions:                             tempTimeOutChannelTestInstructionExecutions,
-					TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
-					TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+				var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+				tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+					TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer,
+					TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+					//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
+					//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
 				}
 
 				// Send message on TimeOutEngineChannel to remove TestInstructionExecution from Timer-queue
@@ -160,7 +164,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 }
 
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) recursiveAddTestInstructionExecutionToTimeOutTimer(
-	newIncomingTimeOutChannelCommandObject *TimeOutChannelCommandStruct, currentTimeOutMapKey string) (err error) {
+	newIncomingTimeOutChannelCommandObject *common_config.TimeOutChannelCommandStruct,
+	currentTimeOutMapKey string) (err error) {
 
 	var existsInMap bool
 
@@ -181,7 +186,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		}).Error("'timeOutMap' doesn't contain any object for for the 'currentTimeOutMapKey'")
 
 		errorId := "af257654-4034-451d-9d1e-8385e2497264"
-		err = errors.New(fmt.Sprintf("'timeOutMap' doesn't contain any object for for the 'currentTimeOutMapKey': '%s' [ErroId: %s]", currentTimeOutMapKey, errorId))
+		err = errors.New(fmt.Sprintf(
+			"'timeOutMap' doesn't contain any object for for the 'currentTimeOutMapKey': '%s' [ErroId: %s]",
+			currentTimeOutMapKey,
+			errorId))
 
 		return err
 
@@ -287,7 +295,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	previousTimeOutMapKey string,
 	currentTimeOutMapKey string,
 	nextTimeOutMapKey string,
-	newIncomingTimeOutChannelCommandObject *TimeOutChannelCommandStruct) (err error) {
+	newIncomingTimeOutChannelCommandObject *common_config.TimeOutChannelCommandStruct) (err error) {
 
 	var existsInMap bool
 
@@ -295,7 +303,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	var timeOutMapKey string
 
 	var testInstructionExecutionVersionAsString string
-	testInstructionExecutionVersionAsString = strconv.Itoa(int(newIncomingTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
+	testInstructionExecutionVersionAsString = strconv.Itoa(
+		int(newIncomingTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
 
 	timeOutMapKey = strconv.Itoa(int(
 		newIncomingTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion)) +

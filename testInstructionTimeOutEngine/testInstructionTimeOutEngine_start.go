@@ -6,10 +6,12 @@ import "FenixExecutionServer/common_config"
 // Initiate the channel reader which is used for sending commands to TimeOutEngine for TestInstructionExecutions
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) InitiateTestInstructionExecutionTimeOutEngineChannelReader() {
 
-	// Initiate channels and maps
+	// Initiate maps
 	timeOutMap = make(map[string]*timeOutMapStruct)
 
-	TimeOutChannelEngineCommandChannel = make(chan TimeOutChannelCommandStruct, TimeOutChannelSize)
+	// Initiate engine channel and save to reference for all to use
+	TimeOutChannelEngineCommandChannel = make(chan common_config.TimeOutChannelCommandStruct, timeOutChannelSize)
+	common_config.TimeOutChannelEngineCommandChannelReference = &TimeOutChannelEngineCommandChannel
 
 	cancellableTimer = common_config.NewCancellableTimer()
 

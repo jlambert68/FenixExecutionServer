@@ -7,7 +7,8 @@ import (
 )
 
 // Add TestInstructionExecution to TimeOut-timer
-func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processRemoveTestInstructionExecutionToTimeOutTimer(incomingTimeOutChannelCommand *TimeOutChannelCommandStruct) {
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processRemoveTestInstructionExecutionToTimeOutTimer(
+	incomingTimeOutChannelCommand *common_config.TimeOutChannelCommandStruct) {
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"id":                            "265c6141-c3be-43a8-a4cf-970435b2eaa3",
@@ -22,7 +23,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	var timeOutMapKeyToRemove string
 
 	var testInstructionExecutionVersionAsString string
-	testInstructionExecutionVersionAsString = strconv.Itoa(int(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
+	testInstructionExecutionVersionAsString = strconv.Itoa(
+		int(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
 
 	timeOutMapKeyToRemove = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
 		testInstructionExecutionVersionAsString

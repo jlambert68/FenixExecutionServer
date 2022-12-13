@@ -3,7 +3,7 @@ package testInstructionExecutionEngine
 import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
-	"FenixExecutionServer/testInstructionTimeOutEngine"
+	//"FenixExecutionServer/testInstructionTimeOutEngine"
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v4"
@@ -639,8 +639,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
 		// Create a message with TestInstructionExecution to be sent to TimeOutEngine
-		var tempTimeOutChannelTestInstructionExecutions testInstructionTimeOutEngine.TimeOutChannelCommandTestInstructionExecutionStruct
-		tempTimeOutChannelTestInstructionExecutions = testInstructionTimeOutEngine.TimeOutChannelCommandTestInstructionExecutionStruct{
+		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
 			TestCaseExecutionUuid:                   testInstructionExecution.testCaseExecutionUuid,
 			TestCaseExecutionVersion:                int32(testInstructionExecution.testCaseExecutionVersion),
 			TestInstructionExecutionUuid:            testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
@@ -649,16 +649,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 			TimeOutTime:                             testInstructionExecution.processTestInstructionExecutionResponse.ExpectedExecutionDuration.AsTime(),
 		}
 
-		var tempTimeOutChannelCommand testInstructionTimeOutEngine.TimeOutChannelCommandStruct
-		tempTimeOutChannelCommand = testInstructionTimeOutEngine.TimeOutChannelCommandStruct{
-			TimeOutChannelCommand:                                               testInstructionTimeOutEngine.TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer,
-			TimeOutChannelTestInstructionExecutions:                             tempTimeOutChannelTestInstructionExecutions,
-			TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
-			TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer,
+			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+			//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
+			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
 		}
 
 		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
-		testInstructionTimeOutEngine.TimeOutChannelEngineCommandChannel <- tempTimeOutChannelCommand
+		*common_config.TimeOutChannelEngineCommandChannelReference <- tempTimeOutChannelCommand
 
 	}
 
