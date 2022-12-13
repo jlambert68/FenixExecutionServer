@@ -79,7 +79,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		return
 	}
 
-	// Check if object, to be deleted, is between two objects
+	// Check if the object, to be deleted, is between two objects
 	if previousTimeOutMapKey != timeOutMapKeyToRemove &&
 		timeOutMapKeyToRemove != nextTimeOutMapKey {
 
@@ -101,7 +101,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		return
 	}
 
-	// Check if object, to be deleted, is last objects
+	// Check if the object, to be deleted, is last objects
 	if timeOutMapKeyToRemove == nextTimeOutMapKey {
 
 		// Delete current object

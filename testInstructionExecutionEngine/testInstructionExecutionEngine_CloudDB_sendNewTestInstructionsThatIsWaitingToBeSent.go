@@ -3,6 +3,7 @@ package testInstructionExecutionEngine
 import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
+	"FenixExecutionServer/testInstructionTimeOutEngine"
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v4"
@@ -141,6 +142,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 			"id":    "89eb961b-413d-47d1-86b1-8fc1f51c564c",
 			"error": err,
 		}).Error("Couldn't TestCaseExecutionStatus in CloudDB")
+
+		return
+
+	}
+
+	// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine
+	err = executionEngine.setTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+	if err != nil {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "7d998314-1a9c-40bb-a7f2-9017b26db58f",
+			"error": err,
+		}).Error("Problem when sending TestInstructionExecutions to TimeOutEngine")
 
 		return
 
@@ -611,4 +625,42 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	// No errors occurred
 	return nil
 
+}
+
+// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine
+func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+
+	// If there are nothing to update then just exit
+	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {
+		return nil
+	}
+
+	// Create Update Statement for response regarding TestInstructionExecution
+	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
+
+		// Create a message with TestInstructionExecution to be sent to TimeOutEngine
+		var tempTimeOutChannelTestInstructionExecutions testInstructionTimeOutEngine.TimeOutChannelCommandTestInstructionExecutionStruct
+		tempTimeOutChannelTestInstructionExecutions = testInstructionTimeOutEngine.TimeOutChannelCommandTestInstructionExecutionStruct{
+			TestCaseExecutionUuid:                   testInstructionExecution.testCaseExecutionUuid,
+			TestCaseExecutionVersion:                int32(testInstructionExecution.testCaseExecutionVersion),
+			TestInstructionExecutionUuid:            testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+			TestInstructionExecutionVersion:         1,
+			TestInstructionExecutionCanBeReExecuted: testInstructionExecution.processTestInstructionExecutionResponse.TestInstructionCanBeReExecuted,
+			TimeOutTime:                             testInstructionExecution.processTestInstructionExecutionResponse.ExpectedExecutionDuration.AsTime(),
+		}
+
+		var tempTimeOutChannelCommand testInstructionTimeOutEngine.TimeOutChannelCommandStruct
+		tempTimeOutChannelCommand = testInstructionTimeOutEngine.TimeOutChannelCommandStruct{
+			TimeOutChannelCommand:                                               testInstructionTimeOutEngine.TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer,
+			TimeOutChannelTestInstructionExecutions:                             tempTimeOutChannelTestInstructionExecutions,
+			TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
+			TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+		}
+
+		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
+		testInstructionTimeOutEngine.TimeOutChannelEngineCommandChannel <- tempTimeOutChannelCommand
+
+	}
+
+	return err
 }
