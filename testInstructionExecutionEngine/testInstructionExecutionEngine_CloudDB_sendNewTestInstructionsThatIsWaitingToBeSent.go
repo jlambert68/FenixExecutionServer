@@ -539,7 +539,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":           "e2a88e5e-a3b0-47d4-b867-93324126fbe7",
+			"Id":           "96b803db-8459-41b6-9420-e24f9965b425",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")

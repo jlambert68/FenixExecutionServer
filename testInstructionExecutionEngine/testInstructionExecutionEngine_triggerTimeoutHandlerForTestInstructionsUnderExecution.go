@@ -147,10 +147,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimed
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
 	sqlToExecute = sqlToExecute + fmt.Sprintf("(\"TestInstructionExecutionStatus\" <> %s ",
-		fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN)
+		strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN)))
 	sqlToExecute = sqlToExecute + fmt.Sprintf("OR ")
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" <> %s) ",
-		fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION)
+		strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION)))
 	sqlToExecute = sqlToExecute + "; "
 
 	// If no positive responses the just exit
