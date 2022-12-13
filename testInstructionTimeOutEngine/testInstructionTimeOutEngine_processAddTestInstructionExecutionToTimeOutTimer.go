@@ -52,7 +52,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		nextUpcomingObjectMapKeyWithTimeOut = timeOutMapKey
 
 		// Check if TimeOutTime has occurred
-		if incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.Before(
+		if incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.After(
 			time.Now().Add(extractTimerMarginalBeforeTimeOut)) == true {
 
 			// TimeOutTime has already occurred, so act now
@@ -86,21 +86,23 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			tempCancellableTimer = common_config.NewCancellableTimer()
 
 			// Create Timer Response Channel
-			var cancellableTimerReturnChannelReference common_config.CancellableTimerReturnChannelType
+			var cancellableTimerReturnChannel common_config.CancellableTimerReturnChannelType
 			var cancellableTimerReturnChannelResponseValue common_config.CancellableTimerEndStatusType
 
 			// Initiate response channel for Timer
-			cancellableTimerReturnChannelReference = make(chan common_config.CancellableTimerEndStatusType)
+			cancellableTimerReturnChannel = make(chan common_config.CancellableTimerEndStatusType)
 
 			// Start Timer
 			var sleepDuration time.Duration
-			sleepDuration = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.Sub(
-				time.Now().Add(extractTimerMarginalBeforeTimeOut))
-			common_config.StartCancellableTimer(tempCancellableTimer, sleepDuration, &cancellableTimerReturnChannelReference)
+			sleepDuration = time.Now().Add(extractTimerMarginalBeforeTimeOut).Sub(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime)
+
+			go common_config.StartCancellableTimer(
+				tempCancellableTimer,
+				sleepDuration,
+				&cancellableTimerReturnChannel)
 
 			// Wait for Timer to TimeOut or to be cancelled
-			cancellableTimerReturnChannelResponseValue = <-cancellableTimerReturnChannelReference
-
+			cancellableTimerReturnChannelResponseValue = <-cancellableTimerReturnChannel
 			// Check if the Timer TimedOut or was cancelled
 			// Only act when Timer did TimedOut
 			if cancellableTimerReturnChannelResponseValue == common_config.CancellableTimerEndStatusTimedOut {
