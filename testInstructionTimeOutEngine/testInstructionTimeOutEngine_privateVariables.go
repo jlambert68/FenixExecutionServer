@@ -12,7 +12,7 @@ var nextUpcomingObjectMapKeyWithTimeOut string
 var cancellableTimer *common_config.CancellableTimerStruct
 
 // The time that is added to the TimeOut-timer running on ExecutionServer
-const extractTimerMarginalBeforeTimeOut time.Duration = time.Second * 60
+const extractTimerMarginalBeforeTimeOut time.Duration = time.Minute * 2
 
 // timeOutMap, the map that keeps track of all TestInstructionExecutions
 var timeOutMap map[string]*timeOutMapStruct // map[TestInstructionExecutionKey]*timeOutMapStruct

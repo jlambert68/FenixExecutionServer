@@ -30,7 +30,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 			dbTransaction.Commit(context.Background())
 		}
 
-		// Only trigger 'To send TestInstructions' when are were some waiting on TestInstructionExecutionQueue
+		// Only trigger 'To send TestInstructions' when there are were some waiting on TestInstructionExecutionQueue
 		if updateTestCaseExecutionWithStatus == false {
 
 			// Trigger TestInstructionEngine to check if there are TestInstructionExecutions, in under Execution, waiting to be sent to Worker

@@ -1,8 +1,13 @@
 package testInstructionExecutionEngine
 
 import (
+	"FenixExecutionServer/broadcastingEngine"
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	"strings"
+	"time"
+
 	//"FenixExecutionServer/testInstructionTimeOutEngine"
 	"context"
 	"fmt"
@@ -15,13 +20,46 @@ import (
 
 func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
 	dbTransactionReference *pgx.Tx,
-	doCommitNotRoleBackReference *bool) {
+	doCommitNotRoleBackReference *bool,
+	testInstructionExecutionsReference *[]broadcastingEngine.TestInstructionExecutionStruct,
+	channelCommandTestCaseExecutionReference *[]ChannelCommandTestCaseExecutionStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
+	testInstructionExecutions := *testInstructionExecutionsReference
+	channelCommandTestCaseExecution := *channelCommandTestCaseExecutionReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
+
+		// Create message to be sent to BroadcastEngine
+		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
+		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
+			BroadcastTimeStamp:        strings.Split(time.Now().UTC().String(), " m=")[0],
+			TestCaseExecutions:        nil,
+			TestInstructionExecutions: testInstructionExecutions,
+		}
+
+		// Send message to BroadcastEngine over channel
+		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+
+		defer common_config.Logger.WithFields(logrus.Fields{
+			"id":                               "dc384f61-13a6-4f3b-9e1d-345669cf3947",
+			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
+		}).Debug("Sent message on Broadcast channel")
+
+		// Update status for TestCaseExecutionUuid, based there are TestInstructionExecution
+		if len(testInstructionExecutions) > 0 {
+
+			channelCommandMessage := ChannelCommandStruct{
+				ChannelCommand:                    ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
+				ChannelCommandTestCaseExecutions:  channelCommandTestCaseExecution,
+				ReturnChannelWithDBErrorReference: nil,
+			}
+
+			// Send message on ExecutionEngineChannel
+			*executionEngine.CommandChannelReference <- channelCommandMessage
+		}
 
 	} else {
 		dbTransaction.Rollback(context.Background())
@@ -53,11 +91,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 
 		return
 	}
+
+	// All TestInstructionExecutions
+	var testInstructionExecutions []broadcastingEngine.TestInstructionExecutionStruct
+
+	// All TestCaseExecutions to update status on
+	var channelCommandTestCaseExecution []ChannelCommandTestCaseExecutionStruct
+
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 	defer executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
 		&txn,
-		&doCommitNotRoleBack)
+		&doCommitNotRoleBack,
+		&testInstructionExecutions,
+		&channelCommandTestCaseExecution)
 
 	// Generate a new TestCaseExecutionUuid-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
@@ -145,6 +192,50 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 
 		return
 
+	}
+
+	// Prepare message data to be sent over Broadcast system
+	for _, testInstructionExecutionStatusMessage := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
+
+		// Only BroadCast 'TIE_EXECUTING' if we got an AckNack=true as respons
+		if testInstructionExecutionStatusMessage.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+
+			var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
+			testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
+				TestCaseExecutionUuid:           testInstructionExecutionStatusMessage.testCaseExecutionUuid,
+				TestCaseExecutionVersion:        strconv.Itoa(testInstructionExecutionStatusMessage.testCaseExecutionVersion),
+				TestInstructionExecutionUuid:    testInstructionExecutionStatusMessage.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+				TestInstructionExecutionVersion: "1", //TODO Add version in sending API
+				TestInstructionExecutionStatus:  fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING)],
+			}
+
+			// Add TestInstructionExecution to slice of executions to be sent over Broadcast system
+			testInstructionExecutions = append(testInstructionExecutions, testInstructionExecution)
+
+			// Make the list of TestCaseExecutions to be able to update Status on TestCaseExecutions
+			var tempTestCaseExecutionsMap map[string]string
+			var tempTestCaseExecutionsMapKey string
+			var existInMap bool
+			tempTestCaseExecutionsMap = make(map[string]string)
+
+			// Create the MapKey used for Map
+			tempTestCaseExecutionsMapKey = testInstructionExecutionStatusMessage.testCaseExecutionUuid + strconv.Itoa(testInstructionExecutionStatusMessage.testCaseExecutionVersion)
+			_, existInMap = tempTestCaseExecutionsMap[tempTestCaseExecutionsMapKey]
+
+			if existInMap == false {
+				// Only add to slice when it's a new TestCaseExecutions not handled yet in Map
+				var newTempChannelCommandTestCaseExecution ChannelCommandTestCaseExecutionStruct
+				newTempChannelCommandTestCaseExecution = ChannelCommandTestCaseExecutionStruct{
+					TestCaseExecutionUuid:    testInstructionExecutionStatusMessage.testCaseExecutionUuid,
+					TestCaseExecutionVersion: int32(testInstructionExecutionStatusMessage.testCaseExecutionVersion),
+				}
+
+				channelCommandTestCaseExecution = append(channelCommandTestCaseExecution, newTempChannelCommandTestCaseExecution)
+
+				// Add to map that this TestCaseExecution has been added to slice
+				tempTestCaseExecutionsMap[tempTestCaseExecutionsMapKey] = tempTestCaseExecutionsMapKey
+			}
+		}
 	}
 
 	// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine
