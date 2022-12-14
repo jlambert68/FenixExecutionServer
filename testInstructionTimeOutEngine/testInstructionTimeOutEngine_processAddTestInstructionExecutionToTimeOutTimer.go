@@ -150,7 +150,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		if currentProcessedObjects.previousTimeOutMapKey == currentProcessedObjects.currentTimeOutMapKey {
 
 			// Insert new object before current object
-			err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
+			var newTimeOutMapObject *timeOutMapStruct
+			newTimeOutMapObject, err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
 				newObjectsTimeOutMapKey,
 				newObjectsTimeOutMapKey,
 				currentTimeOutMapKey,
@@ -166,7 +167,20 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				currentTimeOutMapKey,
 				"")
 
+			// Set variable that keeps track of first object with upcoming Timeout
+			nextUpcomingObjectMapKeyWithTimeOut = newObjectsTimeOutMapKey
+
+			// Cancel timer of previous first object
+			currentProcessedObjects.cancellableTimer.Cancel()
+
+			// Start new TimeOut-timer for this TestInstructionExecution as go-routine
+			go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
+				newTimeOutMapObject,
+				newIncomingTimeOutChannelCommandObject,
+				newObjectsTimeOutMapKey)
+
 			return err
+
 		}
 
 		// Current object is not the first object
@@ -174,7 +188,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			currentProcessedObjects.currentTimeOutMapKey != currentProcessedObjects.nextTimeOutMapKey {
 
 			// Insert new object before current object
-			err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
+			_, err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
 				currentProcessedObjects.previousTimeOutMapKey,
 				newObjectsTimeOutMapKey,
 				currentTimeOutMapKey,
@@ -198,7 +212,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	if currentProcessedObjects.currentTimeOutMapKey == currentProcessedObjects.nextTimeOutMapKey {
 
 		// Insert new object after current object
-		err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
+		_, err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
 			currentProcessedObjects.currentTimeOutMapKey,
 			newObjectsTimeOutMapKey,
 			newObjectsTimeOutMapKey,
@@ -230,7 +244,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	previousTimeOutMapKey string,
 	currentTimeOutMapKey string,
 	nextTimeOutMapKey string,
-	newIncomingTimeOutChannelCommandObject *common_config.TimeOutChannelCommandStruct) (err error) {
+	newIncomingTimeOutChannelCommandObject *common_config.TimeOutChannelCommandStruct) (timeOutMapObject *timeOutMapStruct, err error) {
 
 	var existsInMap bool
 
@@ -246,7 +260,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		testInstructionExecutionVersionAsString
 
 	// Create object to be stored
-	var timeOutMapObject *timeOutMapStruct
 	timeOutMapObject = &timeOutMapStruct{
 		currentTimeOutMapKey:               currentTimeOutMapKey,
 		previousTimeOutMapKey:              previousTimeOutMapKey,
@@ -265,14 +278,14 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		errorId := "af257654-4034-451d-9d1e-8385e2497264"
 		err = errors.New(fmt.Sprintf("'timeOutMap' does already contain an object for for the 'currentTimeOutMapKey': '%s' [ErroId: %s]", currentTimeOutMapKey, errorId))
 
-		return err
+		return nil, err
 
 	}
 
 	// Store object in 'timeOutMap'
 	timeOutMap[timeOutMapKey] = timeOutMapObject
 
-	return err
+	return timeOutMapObject, err
 }
 
 // Update Previous and Next MapKey for Object
