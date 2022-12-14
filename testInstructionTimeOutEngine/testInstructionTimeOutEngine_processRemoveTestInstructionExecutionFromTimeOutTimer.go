@@ -54,7 +54,11 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		// Cancel timer
 		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
 
+		// Delete  current object from map
 		delete(timeOutMap, timeOutMapKeyToRemove)
+
+		// Clear reference to first MapKey
+		nextUpcomingObjectMapKeyWithTimeOut = ""
 
 		return
 	}
@@ -72,8 +76,34 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	if previousTimeOutMapKey == timeOutMapKeyToRemove &&
 		timeOutMapKeyToRemove != nextTimeOutMapKey {
 
+		// Cancel timer
+		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
+
 		// Delete current object
 		delete(timeOutMap, timeOutMapKeyToRemove)
+
+		// Set new reference to first MapKey
+		nextUpcomingObjectMapKeyWithTimeOut = nextTimeOutMapKey
+
+		// Extract newTimeOutMapObject
+		var nextTimeOutMapObject *timeOutMapStruct
+		nextTimeOutMapObject, existsInMap = timeOutMap[nextTimeOutMapKey]
+		if existsInMap == false {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":                "78bc4963-daf1-4624-89d6-dbdba32e5d31",
+				"nextTimeOutMapKey": nextTimeOutMapKey,
+			}).Error("'timeOutMap' doesn't contain the next object in line")
+
+			return
+
+		}
+
+		// Start new TimeOut-timer for next TestInstructionExecution
+		go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
+			nextTimeOutMapObject,
+			incomingTimeOutChannelCommand,
+			nextUpcomingObjectMapKeyWithTimeOut)
 
 		// Update next object regarding previous object MapKey
 		_ = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
@@ -87,6 +117,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// Check if the object, to be deleted, is between two objects
 	if previousTimeOutMapKey != timeOutMapKeyToRemove &&
 		timeOutMapKeyToRemove != nextTimeOutMapKey {
+
+		// Cancel timer
+		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
 
 		// Delete current object
 		delete(timeOutMap, timeOutMapKeyToRemove)
@@ -108,6 +141,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 	// Check if the object, to be deleted, is last objects
 	if timeOutMapKeyToRemove == nextTimeOutMapKey {
+
+		// Cancel timer
+		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
 
 		// Delete current object
 		delete(timeOutMap, timeOutMapKeyToRemove)

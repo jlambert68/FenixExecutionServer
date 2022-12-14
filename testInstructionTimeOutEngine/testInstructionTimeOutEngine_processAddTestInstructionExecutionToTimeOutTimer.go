@@ -23,6 +23,36 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		"id": "3d82a2e0-a8ba-4d01-95ec-aab154b227d3",
 	}).Debug("Outgoing 'processAddTestInstructionExecutionToTimeOutTimer'")
 
+	// Check if TimeOutTime has occurred
+	if incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.After(
+		time.Now().Add(extractTimerMarginalBeforeTimeOut)) == true {
+
+		// TimeOutTime has already occurred, so act now
+		var executionEngineChannelCommand testInstructionExecutionEngine.ChannelCommandStruct
+		var executionEngineChannelCommandTestInstructionExecution testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
+		var executionEngineChannelCommandTestInstructionExecutions []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
+		executionEngineChannelCommandTestInstructionExecution = testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{
+			TestCaseExecutionUuid:                   incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionUuid,
+			TestCaseExecutionVersion:                incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionVersion,
+			TestInstructionExecutionUuid:            incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
+			TestInstructionExecutionVersion:         incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion,
+			TestInstructionExecutionCanBeReExecuted: incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionCanBeReExecuted,
+		}
+		executionEngineChannelCommandTestInstructionExecutions = []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{executionEngineChannelCommandTestInstructionExecution}
+
+		executionEngineChannelCommand = testInstructionExecutionEngine.ChannelCommandStruct{
+			ChannelCommand:                          testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut,
+			ChannelCommandTestCaseExecutions:        nil,
+			ChannelCommandTestInstructionExecutions: executionEngineChannelCommandTestInstructionExecutions,
+			ReturnChannelWithDBErrorReference:       nil,
+		}
+
+		// Send command to ExecutionsEngine
+		testInstructionExecutionEngine.ExecutionEngineCommandChannel <- executionEngineChannelCommand
+
+		return
+	}
+
 	// If the map is empty then this TestInstructionExecution has the next, and only, upcoming TimeOut
 	if len(timeOutMap) == 0 {
 
@@ -51,34 +81,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		// Set variable that keeps track of next object with upcoming Timeout
 		nextUpcomingObjectMapKeyWithTimeOut = timeOutMapKey
 
-		// Check if TimeOutTime has occurred
-		if incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.After(
-			time.Now().Add(extractTimerMarginalBeforeTimeOut)) == true {
-
-			// TimeOutTime has already occurred, so act now
-			var executionEngineChannelCommand testInstructionExecutionEngine.ChannelCommandStruct
-			var executionEngineChannelCommandTestInstructionExecution testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
-			var executionEngineChannelCommandTestInstructionExecutions []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
-			executionEngineChannelCommandTestInstructionExecution = testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{
-				TestCaseExecutionUuid:                   incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionUuid,
-				TestCaseExecutionVersion:                incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionVersion,
-				TestInstructionExecutionUuid:            incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
-				TestInstructionExecutionVersion:         incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion,
-				TestInstructionExecutionCanBeReExecuted: incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionCanBeReExecuted,
-			}
-			executionEngineChannelCommandTestInstructionExecutions = []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{executionEngineChannelCommandTestInstructionExecution}
-
-			executionEngineChannelCommand = testInstructionExecutionEngine.ChannelCommandStruct{
-				ChannelCommand:                          testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut,
-				ChannelCommandTestCaseExecutions:        nil,
-				ChannelCommandTestInstructionExecutions: executionEngineChannelCommandTestInstructionExecutions,
-				ReturnChannelWithDBErrorReference:       nil,
-			}
-
-			// Send command to ExecutionsEngine
-			testInstructionExecutionEngine.ExecutionEngineCommandChannel <- executionEngineChannelCommand
-		}
-
 		// Start new TimeOut-timer for this TestInstructionExecution as go-routine
 		go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
 			timeOutMapObject,
@@ -90,7 +92,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 	// If there are at least one 'TimeOutChannelCommandObject' in 'timeOutMap' then process in a recursive way.
 	// Start with object that has next upcoming TimeOut
-	_ = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(incomingTimeOutChannelCommand, nextUpcomingObjectMapKeyWithTimeOut)
+	_ = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(
+		incomingTimeOutChannelCommand,
+		nextUpcomingObjectMapKeyWithTimeOut)
 
 }
 
