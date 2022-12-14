@@ -53,25 +53,31 @@ func (c *CancellableTimerStruct) Cancel() {
 // Start a CancellableTimer
 func StartCancellableTimer(t *CancellableTimerStruct,
 	sleepDuration time.Duration,
-	cancellableTimerReturnChannelReference *CancellableTimerReturnChannelType) {
+	cancellableTimerReturnChannelReference *CancellableTimerReturnChannelType,
+	currentTimeOutMapKey string) {
+
 	select {
 	// timedOut will signify a timeout or cancellation
 	case timedOut := <-t.After(sleepDuration):
 		if timedOut {
+
 			// When Timer times out
 			Logger.WithFields(logrus.Fields{
-				"id":            "8bea6fc7-9b7b-490f-8794-212f5aa24c74",
-				"sleepDuration": sleepDuration,
+				"id":                   "8bea6fc7-9b7b-490f-8794-212f5aa24c74",
+				"sleepDuration":        sleepDuration,
+				"currentTimeOutMapKey": currentTimeOutMapKey,
 			}).Debug("Timer did time out")
 
 			// Send Response over channel to initiator
 			*cancellableTimerReturnChannelReference <- CancellableTimerEndStatusTimedOut
 
 		} else {
+
 			// When Timer is cancelled
 			Logger.WithFields(logrus.Fields{
-				"id":            "e513f786-9632-4553-9177-624e5012ffb8",
-				"sleepDuration": sleepDuration,
+				"id":                   "e513f786-9632-4553-9177-624e5012ffb8",
+				"sleepDuration":        sleepDuration,
+				"currentTimeOutMapKey": currentTimeOutMapKey,
 			}).Debug("Timer was cancelled")
 
 			// Send Response over channel to initiator

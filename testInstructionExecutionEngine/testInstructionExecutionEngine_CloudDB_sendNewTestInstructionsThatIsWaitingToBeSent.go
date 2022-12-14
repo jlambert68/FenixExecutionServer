@@ -726,7 +726,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 		return nil
 	}
 
-	// Create Update Statement for response regarding TestInstructionExecution
+	// Create TimeOut-message for all TestInstructionExecutions
 	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
 		// Create a message with TestInstructionExecution to be sent to TimeOutEngine

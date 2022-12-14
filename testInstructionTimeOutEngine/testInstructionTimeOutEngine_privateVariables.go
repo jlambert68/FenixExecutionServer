@@ -23,6 +23,7 @@ type timeOutMapStruct struct {
 	previousTimeOutMapKey              string
 	nextTimeOutMapKey                  string
 	currentTimeOutChannelCommandObject *common_config.TimeOutChannelCommandStruct
+	cancellableTimer                   *common_config.CancellableTimerStruct
 }
 
 // timeOutChannelSize

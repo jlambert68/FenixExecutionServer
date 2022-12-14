@@ -80,81 +80,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		}
 
 		// Start new TimeOut-timer for this TestInstructionExecution as go-routine
-		go func() {
-			// Initiate the CancellableTimer
-			var tempCancellableTimer *common_config.CancellableTimerStruct
-			tempCancellableTimer = common_config.NewCancellableTimer()
-
-			// Create Timer Response Channel
-			var cancellableTimerReturnChannel common_config.CancellableTimerReturnChannelType
-			var cancellableTimerReturnChannelResponseValue common_config.CancellableTimerEndStatusType
-
-			// Initiate response channel for Timer
-			cancellableTimerReturnChannel = make(chan common_config.CancellableTimerEndStatusType)
-
-			// Start Timer
-			var sleepDuration time.Duration
-			sleepDuration = time.Now().Add(extractTimerMarginalBeforeTimeOut).Sub(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime)
-
-			go common_config.StartCancellableTimer(
-				tempCancellableTimer,
-				sleepDuration,
-				&cancellableTimerReturnChannel)
-
-			// Wait for Timer to TimeOut or to be cancelled
-			cancellableTimerReturnChannelResponseValue = <-cancellableTimerReturnChannel
-			// Check if the Timer TimedOut or was cancelled
-			// Only act when Timer did TimedOut
-			if cancellableTimerReturnChannelResponseValue == common_config.CancellableTimerEndStatusTimedOut {
-
-				// TimeOutTime has occurred
-				var executionEngineChannelCommand testInstructionExecutionEngine.ChannelCommandStruct
-				var executionEngineChannelCommandTestInstructionExecution testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
-				var executionEngineChannelCommandTestInstructionExecutions []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
-				executionEngineChannelCommandTestInstructionExecution = testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{
-					TestCaseExecutionUuid:                   incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionUuid,
-					TestCaseExecutionVersion:                incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionVersion,
-					TestInstructionExecutionUuid:            incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
-					TestInstructionExecutionVersion:         incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion,
-					TestInstructionExecutionCanBeReExecuted: incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionCanBeReExecuted,
-				}
-				executionEngineChannelCommandTestInstructionExecutions = []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{executionEngineChannelCommandTestInstructionExecution}
-
-				executionEngineChannelCommand = testInstructionExecutionEngine.ChannelCommandStruct{
-					ChannelCommand:                          testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut,
-					ChannelCommandTestCaseExecutions:        nil,
-					ChannelCommandTestInstructionExecutions: executionEngineChannelCommandTestInstructionExecutions,
-					ReturnChannelWithDBErrorReference:       nil,
-				}
-
-				// Send command to ExecutionsEngine that TestInstructionExecution TimedOut
-				testInstructionExecutionEngine.ExecutionEngineCommandChannel <- executionEngineChannelCommand
-
-				// Remove This TestInstructionExecution from Timer-queue (and set a new Timer for next TestInstructionExecution)
-				var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
-				tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
-					TestCaseExecutionUuid:                   incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionUuid,
-					TestCaseExecutionVersion:                incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionVersion,
-					TestInstructionExecutionUuid:            incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
-					TestInstructionExecutionVersion:         incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion,
-					TestInstructionExecutionCanBeReExecuted: incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionCanBeReExecuted,
-					TimeOutTime:                             incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime,
-				}
-
-				var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
-				tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
-					TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer,
-					TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
-					//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
-					//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-				}
-
-				// Send message on TimeOutEngineChannel to remove TestInstructionExecution from Timer-queue
-				TimeOutChannelEngineCommandChannel <- tempTimeOutChannelCommand
-			}
-
-			return
-		}()
+		go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
+			timeOutMapObject,
+			incomingTimeOutChannelCommand,
+			timeOutMapKey)
 
 		return
 	}
@@ -376,4 +305,89 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	}
 
 	return err
+}
+
+// Start new TimeOut-timer for this TestInstructionExecution as go-routine
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) startTimeOutTimerTestInstructionExecution(
+	timeOutMapObjectReference *timeOutMapStruct,
+	incomingTimeOutChannelCommand *common_config.TimeOutChannelCommandStruct,
+	timeOutMapKey string) {
+
+	// Initiate the CancellableTimer
+	var tempCancellableTimer *common_config.CancellableTimerStruct
+	tempCancellableTimer = common_config.NewCancellableTimer()
+
+	// Create Timer Response Channel
+	var cancellableTimerReturnChannel common_config.CancellableTimerReturnChannelType
+	var cancellableTimerReturnChannelResponseValue common_config.CancellableTimerEndStatusType
+
+	// Initiate response channel for Timer
+	cancellableTimerReturnChannel = make(chan common_config.CancellableTimerEndStatusType)
+
+	// Add reference to CancellableTimer in 'timeOutMap-object'
+	timeOutMapObjectReference.cancellableTimer = tempCancellableTimer
+
+	// Start Timer
+	var sleepDuration time.Duration
+	sleepDuration = time.Now().Add(extractTimerMarginalBeforeTimeOut).Sub(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime)
+
+	// Initiate a Timer
+	go common_config.StartCancellableTimer(
+		tempCancellableTimer,
+		sleepDuration,
+		&cancellableTimerReturnChannel,
+		timeOutMapKey)
+
+	// Wait for Timer to TimeOut or to be cancelled
+	cancellableTimerReturnChannelResponseValue = <-cancellableTimerReturnChannel
+	// Check if the Timer TimedOut or was cancelled
+	// Only act when Timer did TimedOut
+	if cancellableTimerReturnChannelResponseValue == common_config.CancellableTimerEndStatusTimedOut {
+
+		// TimeOutTime has occurred
+		var executionEngineChannelCommand testInstructionExecutionEngine.ChannelCommandStruct
+		var executionEngineChannelCommandTestInstructionExecution testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
+		var executionEngineChannelCommandTestInstructionExecutions []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct
+		executionEngineChannelCommandTestInstructionExecution = testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{
+			TestCaseExecutionUuid:                   incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionUuid,
+			TestCaseExecutionVersion:                incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionVersion,
+			TestInstructionExecutionUuid:            incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
+			TestInstructionExecutionVersion:         incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion,
+			TestInstructionExecutionCanBeReExecuted: incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionCanBeReExecuted,
+		}
+		executionEngineChannelCommandTestInstructionExecutions = []testInstructionExecutionEngine.ChannelCommandTestInstructionExecutionStruct{executionEngineChannelCommandTestInstructionExecution}
+
+		executionEngineChannelCommand = testInstructionExecutionEngine.ChannelCommandStruct{
+			ChannelCommand:                          testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut,
+			ChannelCommandTestCaseExecutions:        nil,
+			ChannelCommandTestInstructionExecutions: executionEngineChannelCommandTestInstructionExecutions,
+			ReturnChannelWithDBErrorReference:       nil,
+		}
+
+		// Send command to ExecutionsEngine that TestInstructionExecution TimedOut
+		testInstructionExecutionEngine.ExecutionEngineCommandChannel <- executionEngineChannelCommand
+
+		// Remove This TestInstructionExecution from Timer-queue (and set a new Timer for next TestInstructionExecution)
+		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+			TestCaseExecutionUuid:                   incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionUuid,
+			TestCaseExecutionVersion:                incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestCaseExecutionVersion,
+			TestInstructionExecutionUuid:            incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
+			TestInstructionExecutionVersion:         incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion,
+			TestInstructionExecutionCanBeReExecuted: incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionCanBeReExecuted,
+			TimeOutTime:                             incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime,
+		}
+
+		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer,
+			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+		}
+
+		// Send message on TimeOutEngineChannel to remove TestInstructionExecution from Timer-queue
+		TimeOutChannelEngineCommandChannel <- tempTimeOutChannelCommand
+	}
+
+	return
+
 }

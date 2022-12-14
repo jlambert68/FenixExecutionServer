@@ -45,10 +45,62 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 		// Send message to BroadcastEngine over channel
 		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
-		defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 			"id":                               "33c99b10-33e2-4eb2-a74f-275b65a5387c",
 			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
 		}).Debug("Sent message on Broadcast channel")
+
+		// Remove TestInstructionExecution from TimeOut-timer
+
+		// Convert strings to integer
+		var tempTestCaseExecutionVersion int
+		var tempTestInstructionExecutionVersionAsInteger int
+		var err error
+
+		// TestCaseExecutionVersion
+		tempTestCaseExecutionVersion, err = strconv.Atoi(testInstructionExecution.TestCaseExecutionVersion)
+		if err != nil {
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+				"id": "a6fa884b-3715-40a5-960d-f4a9beb646ba",
+				"testInstructionExecution.TestCaseExecutionVersion": testInstructionExecution.TestCaseExecutionVersion,
+			}).Error("Couldn't convert string-version of 'TestCaseExecutionVersion' to an integer")
+
+			return
+		}
+
+		// TestInstructionExecutionVersion
+		tempTestInstructionExecutionVersionAsInteger, err = strconv.Atoi(testInstructionExecution.TestInstructionExecutionVersion)
+		if err != nil {
+			fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+				"id": "74a015a1-cd78-49bc-b4ef-c2140e0258a3",
+				"testInstructionExecution.TestInstructionExecutionVersion": testInstructionExecution.TestInstructionExecutionVersion,
+			}).Error("Couldn't convert string-version of 'TestInstructionExecutionVersion' to an integer")
+
+			return
+
+		}
+
+		// Create a message with TestInstructionExecution to be sent to TimeOutEngine
+		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+			TestCaseExecutionUuid:           testInstructionExecution.TestCaseExecutionUuid,
+			TestCaseExecutionVersion:        int32(tempTestCaseExecutionVersion),
+			TestInstructionExecutionUuid:    testInstructionExecution.TestInstructionExecutionUuid,
+			TestInstructionExecutionVersion: int32(tempTestInstructionExecutionVersionAsInteger),
+			//TestInstructionExecutionCanBeReExecuted: false,
+			//TimeOutTime:                             nil,
+		}
+
+		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer,
+			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+			//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
+			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+		}
+
+		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
+		*common_config.TimeOutChannelEngineCommandChannelReference <- tempTimeOutChannelCommand
 
 		// Update status for TestCaseExecutionUuid, based on incoming TestInstructionExecution
 		if triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions == true {

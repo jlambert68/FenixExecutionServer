@@ -51,6 +51,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// If the map only consist of 1 object then just remove it
 	if len(timeOutMap) == 1 {
 
+		// Cancel timer
+		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
+
 		delete(timeOutMap, timeOutMapKeyToRemove)
 
 		return
