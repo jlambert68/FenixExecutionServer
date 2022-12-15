@@ -46,6 +46,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			testInstructionExecutionTimeOutEngineObject.existsTestInstructionExecutionInTimeOutTimer(
 				incomingTimeOutChannelCommand)
 
+		case common_config.TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut:
+			testInstructionExecutionTimeOutEngineObject.hasTestInstructionExecutionAlreadyTimedOut(
+				incomingTimeOutChannelCommand)
+
 		// No other command is supported
 		default:
 			common_config.Logger.WithFields(logrus.Fields{
@@ -77,5 +81,14 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 // Check if TestInstructionExecution exists within TimeOut-timer
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) existsTestInstructionExecutionInTimeOutTimer(
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
+
+}
+
+// Check if TestInstructionExecution alrady had TimedOut
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) hasTestInstructionExecutionAlreadyTimedOut(
+	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
+
+	testInstructionExecutionTimeOutEngineObject.processHasTestInstructionExecutionAlreadyTimedOut(
+		&incomingTimeOutChannelCommand)
 
 }
