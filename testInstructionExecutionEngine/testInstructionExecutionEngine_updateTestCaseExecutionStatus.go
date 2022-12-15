@@ -745,6 +745,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 			"comandTag.Update()":       comandTag.Update(),
 			"comandTag.RowsAffected()": comandTag.RowsAffected(),
 			"comandTag.String()":       comandTag.String(),
+			"sqlToExecute":             sqlToExecute,
 		}).Debug("Return data for SQL executed in database")
 
 		// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table

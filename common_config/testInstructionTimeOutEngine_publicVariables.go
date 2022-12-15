@@ -16,8 +16,10 @@ type TimeOutChannelCommandType uint8
 
 const (
 	TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer TimeOutChannelCommandType = iota
-	TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer
+	TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToTimeOutFromTimer
+	TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult
 	TimeOutChannelCommandExistsTestInstructionExecutionInTimeOutTimer
+	TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut
 	TimeOutChannelCommandTimeOutTimerTriggered
 )
 
@@ -35,8 +37,18 @@ type TimeOutChannelCommandTestInstructionExecutionStruct struct {
 // TimeOutChannelCommandStruct
 // The struct for the message that are sent over the channel to the TimeOutEngine
 type TimeOutChannelCommandStruct struct {
-	TimeOutChannelCommand                   TimeOutChannelCommandType
-	TimeOutChannelTestInstructionExecutions TimeOutChannelCommandTestInstructionExecutionStruct
-	//TimeOutReturnChannelForTimeOutHasOccurred                           *TimeOutReturnChannelForTimeOutHasOccurredType
+	TimeOutChannelCommand                     TimeOutChannelCommandType
+	TimeOutChannelTestInstructionExecutions   TimeOutChannelCommandTestInstructionExecutionStruct
+	TimeOutReturnChannelForTimeOutHasOccurred *TimeOutResponseChannelForTimeOutHasOccurredType
 	//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer *TimeOutReturnChannelForExistsTestInstructionExecutionWithinTimeOutTimerType
+}
+
+// TimeOutResponseChannelForTimeOutHasOccurredType
+// Channel used for response from TimeOutEngine when TimeOut has occurred
+type TimeOutResponseChannelForTimeOutHasOccurredType chan TimeOutResponseChannelForTimeOutHasOccurredStruct
+
+// TimeOutResponseChannelForTimeOutHasOccurredStruct
+// The struct for the message that are sent over the 'return-channel' when TimeOut has occurred
+type TimeOutResponseChannelForTimeOutHasOccurredStruct struct {
+	TimeOutWasTriggered bool
 }

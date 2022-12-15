@@ -14,8 +14,11 @@ var cancellableTimer *common_config.CancellableTimerStruct
 // The time that is added to the TimeOut-timer running on ExecutionServer
 const extractTimerMarginalBeforeTimeOut time.Duration = time.Minute * 2
 
-// timeOutMap, the map that keeps track of all TestInstructionExecutions
+// timeOutMap, the map that keeps track of all TestInstructionExecutions with ongoing TimeOut-timers
 var timeOutMap map[string]*timeOutMapStruct // map[TestInstructionExecutionKey]*timeOutMapStruct
+
+// timedOutMap, the map that keeps track of all TestInstructionExecutions that has TimedOut
+var timedOutMap map[string]*timeOutMapStruct // map[TestInstructionExecutionKey]*timeOutMapStruct
 
 // The struct holding one map-object with references to previous and next objects regarding their TimeOut-time
 type timeOutMapStruct struct {

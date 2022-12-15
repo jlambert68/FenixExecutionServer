@@ -93,7 +93,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 
 		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
 		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
-			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer,
+			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult,
 			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 			//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
@@ -188,6 +188,8 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	// (7, 'TIE_FINISHED_NOT_OK_CAN_BE_RERUN' -> OK
 	// (8, 'TIE_UNEXPECTED_INTERRUPTION' -> OK
 	// (9, 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (10, 'TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (11, 'TIE_TIMEOUT_INTERRUPTION' -> OK
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "3e7a261e-96d4-419c-83d6-2de95bda4102",
@@ -197,6 +199,56 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "215ea93d-2ac2-4d21-b573-72f120c4e885",
 	}).Debug("Outgoing 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
+
+	// Create Response channel from TimeOutEngine to get answer if TestInstructionExecution Already has been TimedOut
+	var timeOutResponseChannelForTimeOutHasOccurred common_config.TimeOutResponseChannelForTimeOutHasOccurredType
+	timeOutResponseChannelForTimeOutHasOccurred = make(chan common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct)
+
+	// Create a message with TestInstructionExecution to be sent to TimeOutEngine for check if it has TimedOut
+	var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+	tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+		TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
+		TestInstructionExecutionVersion: 1,
+	}
+
+	var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+	tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+		TimeOutChannelCommand:                     common_config.TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut,
+		TimeOutChannelTestInstructionExecutions:   tempTimeOutChannelTestInstructionExecutions,
+		TimeOutReturnChannelForTimeOutHasOccurred: &timeOutResponseChannelForTimeOutHasOccurred,
+		//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+	}
+
+	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
+	*common_config.TimeOutChannelEngineCommandChannelReference <- tempTimeOutChannelCommand
+
+	// Response from TimeOutEngine
+	var timeOutReturnChannelForTimeOutHasOccurredValue common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
+
+	// Wait for response from TimeOutEngine
+	timeOutReturnChannelForTimeOutHasOccurredValue = <-timeOutResponseChannelForTimeOutHasOccurred
+
+	// Verify that TestInstructionExecution hasn't TimedOut yet
+	if timeOutReturnChannelForTimeOutHasOccurredValue.TimeOutWasTriggered == true {
+		// TestInstructionExecution had already TimedOut
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:                      false,
+			Comments:                     fmt.Sprintf("TestInstructionExecution, '%s' had already TimedOut", finalTestInstructionExecutionResultMessage),
+			ErrorCodes:                   errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+	}
 
 	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < 2 {
 
@@ -425,6 +477,12 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) updateStatus
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionHasFinished\" = '%s', ", "true")
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionEndTimeStamp\" = '%s' ", testInstructionExecutionEndTimeStamp)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionUuid)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("(\"TestInstructionExecutionStatus\" <> %s ",
+		strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN)))
+	sqlToExecute = sqlToExecute + fmt.Sprintf("OR ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" <> %s) ",
+		strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION)))
 
 	sqlToExecute = sqlToExecute + "; "
 

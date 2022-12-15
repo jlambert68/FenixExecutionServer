@@ -29,13 +29,22 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		switch incomingTimeOutChannelCommand.TimeOutChannelCommand {
 
 		case common_config.TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer:
-			testInstructionExecutionTimeOutEngineObject.addTestInstructionExecutionToTimeOutTimer(incomingTimeOutChannelCommand)
+			testInstructionExecutionTimeOutEngineObject.addTestInstructionExecutionToTimeOutTimer(
+				incomingTimeOutChannelCommand)
 
-		case common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimer:
-			testInstructionExecutionTimeOutEngineObject.removeTestInstructionExecutionFromTimeOutTimer(incomingTimeOutChannelCommand)
+		case common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToTimeOutFromTimer:
+			testInstructionExecutionTimeOutEngineObject.removeTestInstructionExecutionFromTimeOutTimer(
+				incomingTimeOutChannelCommand,
+				common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToTimeOutFromTimer)
+
+		case common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult:
+			testInstructionExecutionTimeOutEngineObject.removeTestInstructionExecutionFromTimeOutTimer(
+				incomingTimeOutChannelCommand,
+				common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult)
 
 		case common_config.TimeOutChannelCommandExistsTestInstructionExecutionInTimeOutTimer:
-			testInstructionExecutionTimeOutEngineObject.existsTestInstructionExecutionInTimeOutTimer(incomingTimeOutChannelCommand)
+			testInstructionExecutionTimeOutEngineObject.existsTestInstructionExecutionInTimeOutTimer(
+				incomingTimeOutChannelCommand)
 
 		// No other command is supported
 		default:
@@ -57,10 +66,12 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 // Remove TestInstructionExecution from TimeOut-timer
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) removeTestInstructionExecutionFromTimeOutTimer(
-	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
+	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct,
+	timeOutChannelCommand common_config.TimeOutChannelCommandType) {
 
-	testInstructionExecutionTimeOutEngineObject.processRemoveTestInstructionExecutionToTimeOutTimer(
-		&incomingTimeOutChannelCommand)
+	testInstructionExecutionTimeOutEngineObject.processRemoveTestInstructionExecutionFromTimeOutTimer(
+		&incomingTimeOutChannelCommand,
+		timeOutChannelCommand)
 }
 
 // Check if TestInstructionExecution exists within TimeOut-timer

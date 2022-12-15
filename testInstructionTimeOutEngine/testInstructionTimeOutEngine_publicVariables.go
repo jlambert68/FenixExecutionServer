@@ -17,16 +17,6 @@ var TestInstructionExecutionTimeOutEngineObject TestInstructionTimeOutEngineObje
 // The channel for the TestInstructionExecutionEngine
 var TimeOutChannelEngineCommandChannel common_config.TimeOutChannelEngineType
 
-// TimeOutReturnChannelForTimeOutHasOccurredType
-// Channel used for response from TimeOutEngine when TimeOut has occurred
-type TimeOutReturnChannelForTimeOutHasOccurredType chan TimeOutReturnChannelForTimeOutHasOccurredStruct
-
-// TimeOutReturnChannelForTimeOutHasOccurredStruct
-// The struct for the message that are sent over the 'return-channel' when TimeOut has occurred
-type TimeOutReturnChannelForTimeOutHasOccurredStruct struct {
-	TimeOutWasTriggered bool
-}
-
 // TimeOutReturnChannelForExistsTestInstructionExecutionWithinTimeOutTimerType
 // Channel used for response from TimeOutEngine when TimeOut has occurred
 type TimeOutReturnChannelForExistsTestInstructionExecutionWithinTimeOutTimerType chan TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimerStruct
