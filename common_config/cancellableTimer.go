@@ -18,6 +18,10 @@ type CancellableTimerReturnChannelType chan CancellableTimerEndStatusType
 
 type CancellableTimerStruct struct {
 	cancel chan bool
+
+	startTimeStamp   time.Time
+	timeOutTimeStamp time.Time
+	timerDuration    time.Duration
 }
 
 func NewCancellableTimer() *CancellableTimerStruct {
@@ -34,6 +38,19 @@ func (c *CancellableTimerStruct) wait(d time.Duration, ch chan bool) {
 	case <-c.cancel:
 		ch <- false
 	}
+}
+
+// WhenWillTimerTimeOut
+// Returns both how long before the time times out and the TimeOutTimeStamp
+func (c *CancellableTimerStruct) WhenWillTimerTimeOut() (durationToTimeOut time.Duration, timeOutTimeStamp time.Time) {
+
+	// Calculate time-duration before TimeOut
+	durationToTimeOut = c.timeOutTimeStamp.Sub(time.Now())
+
+	// TimeOut-time
+	timeOutTimeStamp = c.timeOutTimeStamp
+
+	return durationToTimeOut, timeOutTimeStamp
 }
 
 // After mimics time.After but returns bool to signify whether we timed out or cancelled
@@ -55,6 +72,11 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 	sleepDuration time.Duration,
 	cancellableTimerReturnChannelReference *CancellableTimerReturnChannelType,
 	currentTimeOutMapKey string) {
+
+	// Save time-variables for Timer
+	t.startTimeStamp = time.Now()
+	t.timerDuration = sleepDuration
+	t.timeOutTimeStamp = t.startTimeStamp.Add(t.timerDuration)
 
 	select {
 	// timedOut will signify a timeout or cancellation
