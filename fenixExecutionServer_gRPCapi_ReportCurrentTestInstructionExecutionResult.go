@@ -2,7 +2,6 @@ package main
 
 import (
 	"FenixExecutionServer/common_config"
-	"fmt"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -56,7 +55,10 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCurrentTestInstructionExe
 		}
 	}
 
-	fmt.Println(currentTestInstructionExecutionResultMessages)
+	common_config.Logger.WithFields(logrus.Fields{
+		"id": "4f92676d-89d8-458a-a86b-6af841d523a6",
+		"currentTestInstructionExecutionResultMessages": currentTestInstructionExecutionResultMessages,
+	}).Debug("All received messages that was added to 'currentTestInstructionExecutionResultMessages'")
 
 	returnMessage = &fenixExecutionServerGrpcApi.AckNackResponse{
 		AckNack:  true,

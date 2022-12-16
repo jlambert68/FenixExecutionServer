@@ -54,18 +54,47 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			return
 		}
 	*/
+
+	// Variables needed
+	var existsInMap bool
+
+	// Create Map-key for 'timeOutMap'
+	var timeOutMapKey string
+
+	var testInstructionExecutionVersionAsString string
+	testInstructionExecutionVersionAsString = strconv.Itoa(int(
+		incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
+
+	timeOutMapKey = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
+		testInstructionExecutionVersionAsString
+
+	// There must be an allocation before a TimeOut-timer can be added
+	// The reason is that sometime a very fast response, from sent TestInstructionExecutions, then the TimerRemove-command comes in before the TimerAdd-command
+	_, existsInMap = allocatedTimeOutTimerMap[timeOutMapKey]
+	if existsInMap == false {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                            "da1ea775-627d-4856-961c-1da9f20c9751",
+			"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
+			"timeOutMapKey":                 timeOutMapKey,
+		}).Debug("There exist no allocated TimeOut-timer so we should NOT create a new TimeOut-timer")
+
+		return
+	}
+
+	// Secure that the TimeOut-timer doesn't already exist
+	_, existsInMap = timeOutMap[timeOutMapKey]
+	if existsInMap == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":            "efeba77a-d36d-4c32-a27f-8b7bbe2e3855",
+			"timeOutMapKey": timeOutMapKey,
+		}).Error("'timeOutMap' does already contain an object for for the 'timeOutMapKey'")
+
+		return
+	}
+
 	// If the map is empty then this TestInstructionExecution has the next, and only, upcoming TimeOut
 	if len(timeOutMap) == 0 {
-
-		// Create Map-key for 'timeOutMap'
-		var timeOutMapKey string
-
-		var testInstructionExecutionVersionAsString string
-		testInstructionExecutionVersionAsString = strconv.Itoa(int(
-			incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
-
-		timeOutMapKey = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
-			testInstructionExecutionVersionAsString
 
 		// Create object to be stored
 		var timeOutMapObject *timeOutMapStruct
@@ -81,6 +110,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		// Set variable that keeps track of next object with upcoming Timeout
 		nextUpcomingObjectMapKeyWithTimeOut = timeOutMapKey
+
+		// Remove Allocation for TimeOut-timer
+		delete(allocatedTimeOutTimerMap, timeOutMapKey)
 
 		// Start new TimeOut-timer for this TestInstructionExecution as go-routine
 		go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
@@ -286,6 +318,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// Store object in 'timeOutMap'
 	timeOutMap[timeOutMapKey] = timeOutMapObject
 
+	// Remove Allocation for TimeOut-timer
+	delete(allocatedTimeOutTimerMap, timeOutMapKey)
+
 	return timeOutMapObject, err
 }
 
@@ -345,9 +380,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// Add reference to CancellableTimer in 'timeOutMap-object'
 	timeOutMapObjectReference.cancellableTimer = tempCancellableTimer
 
-	// Start Timer
+	// Calculate Timer-time
 	var sleepDuration time.Duration
-	sleepDuration = time.Now().Add(extractTimerMarginalBeforeTimeOut).Sub(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime)
+	sleepDuration = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime.Add(extractTimerMarginalBeforeTimeOut).Sub(time.Now())
 
 	// Initiate a Timer
 	go common_config.StartCancellableTimer(

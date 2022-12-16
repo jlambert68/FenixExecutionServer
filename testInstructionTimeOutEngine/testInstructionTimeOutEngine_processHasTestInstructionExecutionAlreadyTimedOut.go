@@ -34,6 +34,21 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	var currentTimeOutdObject *timeOutMapStruct
 	var existsInMap bool
 
+	// If there are an ongoing allocation then the Timer hasn't started yet so then NO Timer has TimedOut
+	_, existsInMap = allocatedTimeOutTimerMap[timeOutdMapKey]
+	if existsInMap == true {
+
+		// TestInstructionExecution hasn't timed out due to Timer  hasn't started yet
+		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
+		timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
+			TimeOutWasTriggered: false}
+
+		// Send response on response channel
+		*incomingTimeOutChannelCommand.TimeOutReturnChannelForTimeOutHasOccurred <- timedOutResponse
+
+		return
+	}
+
 	// Check if TestInstructionExecution has already timedOut
 	currentTimeOutdObject, existsInMap = timedOutMap[timeOutdMapKey]
 	if existsInMap == true {
@@ -45,9 +60,33 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		// Send response on response channel
 		*incomingTimeOutChannelCommand.TimeOutReturnChannelForTimeOutHasOccurred <- timedOutResponse
+
+		return
 	}
 
-	// Extract when Timer will time out
+	// Get current TestInstructionExecution from timeOut-map
+	currentTimeOutdObject, existsInMap = timeOutMap[timeOutdMapKey]
+	if existsInMap == false {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":             "25124f1b-6402-4eb2-a27b-e3b41798a952",
+			"timeOutdMapKey": timeOutdMapKey,
+		}).Error("couldn't find the TestInstructionObject in TimeOut-map, something is very wrong")
+
+		// Sending is over channel is not nessasary but I will keep the program running to have more log data.
+		// The most correct would be to end program, but....
+		// Set that TestInstructionExecution has already timed out so create response to caller
+		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
+		timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
+			TimeOutWasTriggered: true}
+
+		// Send response on response channel
+		*incomingTimeOutChannelCommand.TimeOutReturnChannelForTimeOutHasOccurred <- timedOutResponse
+
+		return
+	}
+
+	// Nothing had timed outs so extract when Timer will time out
 	var durationToTimeOut time.Duration
 	durationToTimeOut, _ = currentTimeOutdObject.cancellableTimer.WhenWillTimerTimeOut()
 

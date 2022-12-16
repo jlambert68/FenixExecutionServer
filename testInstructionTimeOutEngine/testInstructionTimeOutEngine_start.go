@@ -12,6 +12,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// Initiate map with Timers that TimedOut
 	timedOutMap = make(map[string]*timeOutMapStruct)
 
+	// Initiate the Allocation-map for TimeOut-timers
+	allocatedTimeOutTimerMap = make(map[string]string)
+
 	// Initiate engine channel and save to reference for all to use
 	TimeOutChannelEngineCommandChannel = make(chan common_config.TimeOutChannelCommandStruct, timeOutChannelSize)
 	common_config.TimeOutChannelEngineCommandChannelReference = &TimeOutChannelEngineCommandChannel

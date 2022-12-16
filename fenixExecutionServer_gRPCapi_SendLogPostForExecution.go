@@ -2,7 +2,6 @@ package main
 
 import (
 	"FenixExecutionServer/common_config"
-	"fmt"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -56,7 +55,10 @@ func (s *fenixExecutionServerGrpcServicesServer) SendLogPostForExecution(logPost
 		}
 	}
 
-	fmt.Println(logPostsMessages)
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":               "00927bf8-a36e-4cd6-9c4d-f8edcaf620e8",
+		"logPostsMessages": logPostsMessages,
+	}).Debug("logPostsMessages that were received")
 
 	returnMessage = &fenixExecutionServerGrpcApi.AckNackResponse{
 		AckNack:  true,

@@ -21,7 +21,18 @@ const (
 	TimeOutChannelCommandExistsTestInstructionExecutionInTimeOutTimer
 	TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut
 	TimeOutChannelCommandTimeOutTimerTriggered
+	TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer
 )
+
+var TimeOutChannelCommandsForDebugPrinting []string = []string{
+	"TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer",
+	"TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToTimeOutFromTimer",
+	"TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult",
+	"TimeOutChannelCommandExistsTestInstructionExecutionInTimeOutTimer",
+	"TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut",
+	"TimeOutChannelCommandTimeOutTimerTriggered",
+	"TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer",
+}
 
 // TimeOutChannelCommandTestInstructionExecutionStruct
 // Hold one TestInstructionExecution that to handled by TimeOutEngine

@@ -4,7 +4,6 @@ import (
 	"FenixExecutionServer/common_config"
 	"context"
 	"encoding/json"
-	"fmt"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"log"
@@ -85,7 +84,10 @@ func InitiateAndStartBroadcastNotifyEngine() {
 		broadcastingMessageForExecutionsAsByteSlice, err = json.Marshal(broadcastingMessageForExecutions)
 		broadcastingMessageForExecutionsAsByteSliceAsString = string(broadcastingMessageForExecutionsAsByteSlice)
 
-		fmt.Println(broadcastingMessageForExecutionsAsByteSliceAsString)
+		common_config.Logger.WithFields(logrus.Fields{
+			"id": "5c9019a5-1b97-4d5f-97a3-79977f6aa824",
+			"broadcastingMessageForExecutionsAsByteSliceAsString": broadcastingMessageForExecutionsAsByteSliceAsString,
+		}).Debug("Message sent over Broadcast system")
 
 		_, err = fenixSyncShared.DbPool.Exec(context.Background(), "SELECT pg_notify('notes', $1)", broadcastingMessageForExecutionsAsByteSlice)
 		if err != nil {

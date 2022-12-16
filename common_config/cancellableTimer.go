@@ -73,6 +73,12 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 	cancellableTimerReturnChannelReference *CancellableTimerReturnChannelType,
 	currentTimeOutMapKey string) {
 
+	Logger.WithFields(logrus.Fields{
+		"id":                   "7dd4ef2c-f0ed-4406-8c97-a79accd8ebb9",
+		"sleepDuration":        sleepDuration,
+		"currentTimeOutMapKey": currentTimeOutMapKey,
+	}).Debug("Start a Timer")
+
 	// Save time-variables for Timer
 	t.startTimeStamp = time.Now()
 	t.timerDuration = sleepDuration
@@ -88,6 +94,8 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 				"id":                   "8bea6fc7-9b7b-490f-8794-212f5aa24c74",
 				"sleepDuration":        sleepDuration,
 				"currentTimeOutMapKey": currentTimeOutMapKey,
+				"startTimeStamp":       t.startTimeStamp,
+				"timeOutTimeStamp":     t.timeOutTimeStamp,
 			}).Debug("Timer did time out")
 
 			// Send Response over channel to initiator
@@ -100,6 +108,8 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 				"id":                   "e513f786-9632-4553-9177-624e5012ffb8",
 				"sleepDuration":        sleepDuration,
 				"currentTimeOutMapKey": currentTimeOutMapKey,
+				"startTimeStamp":       t.startTimeStamp,
+				"timeOutTimeStamp":     t.timeOutTimeStamp,
 			}).Debug("Timer was cancelled")
 
 			// Send Response over channel to initiator

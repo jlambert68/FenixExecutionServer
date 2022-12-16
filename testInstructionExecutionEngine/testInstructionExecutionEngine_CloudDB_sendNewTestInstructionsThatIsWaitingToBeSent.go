@@ -580,7 +580,30 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 	// Loop all TestInstructionExecutions and send them to correct Worker for executions
 	for _, testInstructionToBeSentToExecutionWorkers := range testInstructionsToBeSentToExecutionWorkers {
 
+		// Allocate TimeOut-timer
+		// Create a message with TestInstructionExecution to be sent to TimeOutEngine ta be able to allocate a TimeOutTimer
+		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+			TestInstructionExecutionUuid:    testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+			TestInstructionExecutionVersion: 1,
+		}
+
+		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer,
+			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+		}
+
+		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
+		*common_config.TimeOutChannelEngineCommandChannelReference <- tempTimeOutChannelCommand
+
 		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(testInstructionToBeSentToExecutionWorkers.domainUuid, testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":                 "7a725e82-d3f4-4cb6-9910-099d8d6dc14e",
+			"responseFromWorker": responseFromWorker,
+			"TimeOut time":       responseFromWorker.ExpectedExecutionDuration.String(),
+		}).Debug("Response from Worker when sending TestInstructionExecution to Worker")
 
 		testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionResponse = responseFromWorker
 

@@ -15,6 +15,12 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		// Wait for incoming command over channel
 		incomingTimeOutChannelCommand = <-TimeOutChannelEngineCommandChannel
 
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":                            "0d02712a-d27b-4be4-b168-f2d670010990",
+			"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
+			"TimeOutChannelCommand":         common_config.TimeOutChannelCommandsForDebugPrinting[incomingTimeOutChannelCommand.TimeOutChannelCommand],
+		}).Debug("Message received on 'TimeOutChannel'")
+
 		// If size of Channel > 'timeOutChannelWarningLevel' then log Warning message
 		channelSize = len(TimeOutChannelEngineCommandChannel)
 		if channelSize > timeOutChannelWarningLevel {
@@ -48,6 +54,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		case common_config.TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut:
 			testInstructionExecutionTimeOutEngineObject.hasTestInstructionExecutionAlreadyTimedOut(
+				incomingTimeOutChannelCommand)
+
+		case common_config.TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer:
+			testInstructionExecutionTimeOutEngineObject.allocateTestInstructionExecutionToTimeOutTimer(
 				incomingTimeOutChannelCommand)
 
 		// No other command is supported
@@ -89,6 +99,15 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
 
 	testInstructionExecutionTimeOutEngineObject.processHasTestInstructionExecutionAlreadyTimedOut(
+		&incomingTimeOutChannelCommand)
+
+}
+
+// Allocate a Timer before starting it. Used to handle really fast responses for TestInstructionExecutions so stuff doesn't happen in wrong order
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) allocateTestInstructionExecutionToTimeOutTimer(
+	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
+
+	testInstructionExecutionTimeOutEngineObject.processAllocateTestInstructionExecutionToTimeOutTimer(
 		&incomingTimeOutChannelCommand)
 
 }
