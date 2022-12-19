@@ -48,15 +48,17 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				"id":                    "67a83431-0a18-458a-b0a1-032ad21de613",
 				"timeOutMapKeyToRemove": timeOutMapKeyToRemove,
 				"timeOutChannelCommand": timeOutChannelCommand,
+				"timeOutMap":            timeOutMap,
 			}).Warning("'timeOutMap' doesn't contain the object to be removed")
 
 		} else {
 
-			// log Error when TimeOut has occured
+			// log Error when the TimeOut occurred
 			common_config.Logger.WithFields(logrus.Fields{
 				"id":                    "ce9d00d7-e245-4687-bca6-028f2e059dc9",
 				"timeOutMapKeyToRemove": timeOutMapKeyToRemove,
 				"timeOutChannelCommand": timeOutChannelCommand,
+				"timeOutMap":            timeOutMap,
 			}).Error("'timeOutMap' doesn't contain the object to be removed")
 
 		}

@@ -1,5 +1,6 @@
 package common_config
 
+import "C"
 import (
 	"github.com/sirupsen/logrus"
 	"time"
@@ -22,6 +23,7 @@ type CancellableTimerStruct struct {
 	startTimeStamp   time.Time
 	timeOutTimeStamp time.Time
 	timerDuration    time.Duration
+	timeOutMapKey    string
 }
 
 func NewCancellableTimer() *CancellableTimerStruct {
@@ -62,6 +64,28 @@ func (c *CancellableTimerStruct) After(d time.Duration) chan bool {
 
 // Cancel makes all the waiters receive false
 func (c *CancellableTimerStruct) Cancel() {
+	defer func() {
+		recoverValue := recover()
+		if recoverValue != nil {
+			Logger.WithFields(logrus.Fields{
+				"id":               "2bc0e8a0-9c31-4a3b-ac59-b65fde999f9f",
+				"CancellableTimer": c,
+				"startTimeStamp":   c.startTimeStamp,
+				"timeOutTimeStamp": c.timeOutTimeStamp,
+				"timeOutMapKey":    c.timeOutMapKey,
+				"recoverValue":     recoverValue,
+			}).Error("Panic when closing channel!!!")
+		}
+	}()
+
+	Logger.WithFields(logrus.Fields{
+		"id":               "ca35c4bf-dbcb-41b4-842a-73541f54c9f0",
+		"CancellableTimer": c,
+		"startTimeStamp":   c.startTimeStamp,
+		"timeOutTimeStamp": c.timeOutTimeStamp,
+		"timeOutMapKey":    c.timeOutMapKey,
+	}).Debug("close(c.cancel)")
+
 	close(c.cancel)
 
 }
@@ -83,6 +107,7 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 	t.startTimeStamp = time.Now()
 	t.timerDuration = sleepDuration
 	t.timeOutTimeStamp = t.startTimeStamp.Add(t.timerDuration)
+	t.timeOutMapKey = currentTimeOutMapKey
 
 	select {
 	// timedOut will signify a timeout or cancellation
@@ -91,11 +116,11 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 
 			// When Timer times out
 			Logger.WithFields(logrus.Fields{
-				"id":                   "8bea6fc7-9b7b-490f-8794-212f5aa24c74",
-				"sleepDuration":        sleepDuration,
-				"currentTimeOutMapKey": currentTimeOutMapKey,
-				"startTimeStamp":       t.startTimeStamp,
-				"timeOutTimeStamp":     t.timeOutTimeStamp,
+				"id":               "8bea6fc7-9b7b-490f-8794-212f5aa24c74",
+				"sleepDuration":    sleepDuration,
+				"startTimeStamp":   t.startTimeStamp,
+				"timeOutTimeStamp": t.timeOutTimeStamp,
+				"timeOutMapKey":    t.timeOutMapKey,
 			}).Debug("Timer did time out")
 
 			// Send Response over channel to initiator
@@ -105,11 +130,11 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 
 			// When Timer is cancelled
 			Logger.WithFields(logrus.Fields{
-				"id":                   "e513f786-9632-4553-9177-624e5012ffb8",
-				"sleepDuration":        sleepDuration,
-				"currentTimeOutMapKey": currentTimeOutMapKey,
-				"startTimeStamp":       t.startTimeStamp,
-				"timeOutTimeStamp":     t.timeOutTimeStamp,
+				"id":               "e513f786-9632-4553-9177-624e5012ffb8",
+				"sleepDuration":    sleepDuration,
+				"startTimeStamp":   t.startTimeStamp,
+				"timeOutTimeStamp": t.timeOutTimeStamp,
+				"timeOutMapKey":    t.timeOutMapKey,
 			}).Debug("Timer was cancelled")
 
 			// Send Response over channel to initiator

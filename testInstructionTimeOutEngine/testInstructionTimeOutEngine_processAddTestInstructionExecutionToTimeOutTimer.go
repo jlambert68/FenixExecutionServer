@@ -17,11 +17,17 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	common_config.Logger.WithFields(logrus.Fields{
 		"id":                            "bb9dcac7-ef0d-4559-b710-9ac04b3b4c6a",
 		"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
+		"len(timeOutMap)":               len(timeOutMap),
+		"len(timedOutMap),":             len(timedOutMap),
 	}).Debug("Incoming 'processAddTestInstructionExecutionToTimeOutTimer'")
 
 	defer common_config.Logger.WithFields(logrus.Fields{
 		"id": "3d82a2e0-a8ba-4d01-95ec-aab154b227d3",
 	}).Debug("Outgoing 'processAddTestInstructionExecutionToTimeOutTimer'")
+
+	// Force GC to clear up, should see a memory drop
+	//runtime.GC()
+	common_config.PrintMemUsage()
 
 	// Check if TimeOutTime has occurred
 	/*
@@ -103,6 +109,14 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			previousTimeOutMapKey:              timeOutMapKey,
 			nextTimeOutMapKey:                  timeOutMapKey,
 			currentTimeOutChannelCommandObject: incomingTimeOutChannelCommand,
+		}
+
+		if timeOutMapKey == "11" {
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":                            "da1ea775-627d-4856-961c-1da9f20c9751",
+				"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
+				"timeOutMapKey":                 timeOutMapKey,
+			}).Debug("THIS IS WRONG")
 		}
 
 		// Store object in 'timeOutMap'
@@ -216,7 +230,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		}
 
-		// Current object is not the first object
+		// Current object is not the first object or the last object
 		if currentProcessedObjects.previousTimeOutMapKey != currentProcessedObjects.currentTimeOutMapKey &&
 			currentProcessedObjects.currentTimeOutMapKey != currentProcessedObjects.nextTimeOutMapKey {
 
@@ -231,6 +245,16 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				return err
 			}
 
+			// Update previous object regarding next object MapKey
+			err = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
+				"",
+				currentProcessedObjects.previousTimeOutMapKey,
+				newObjectsTimeOutMapKey)
+
+			if err != nil {
+				return err
+			}
+
 			// Update current object regarding previous and next object MapKey
 			err = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
 				newObjectsTimeOutMapKey,
@@ -239,35 +263,40 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 			return err
 		}
-	}
+	} else {
 
-	// Check if current object is the last object
-	if currentProcessedObjects.currentTimeOutMapKey == currentProcessedObjects.nextTimeOutMapKey {
+		// Verify if current object is the last object
+		if currentProcessedObjects.currentTimeOutMapKey == currentProcessedObjects.nextTimeOutMapKey {
 
-		// Insert new object after current object
-		_, err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
-			currentProcessedObjects.currentTimeOutMapKey,
-			newObjectsTimeOutMapKey,
-			newObjectsTimeOutMapKey,
-			newIncomingTimeOutChannelCommandObject)
+			// Insert new object after current object
+			_, err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
+				currentProcessedObjects.currentTimeOutMapKey,
+				newObjectsTimeOutMapKey,
+				newObjectsTimeOutMapKey,
+				newIncomingTimeOutChannelCommandObject)
 
-		if err != nil {
+			if err != nil {
+				return err
+			}
+
+			// Update current object regarding previous and next object MapKey
+			err = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
+				"",
+				currentTimeOutMapKey,
+				newObjectsTimeOutMapKey)
+
 			return err
+
 		}
 
-		// Update current object regarding previous and next object MapKey
-		err = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
-			"",
-			currentTimeOutMapKey,
-			newObjectsTimeOutMapKey)
+		// Do recursive call to "next object"
+		err = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(
+			newIncomingTimeOutChannelCommandObject,
+			currentProcessedObjects.nextTimeOutMapKey)
 
 		return err
-	}
 
-	// Do recursive call to "next object"
-	err = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(
-		newIncomingTimeOutChannelCommandObject,
-		currentProcessedObjects.nextTimeOutMapKey)
+	}
 
 	return err
 }
@@ -288,8 +317,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	testInstructionExecutionVersionAsString = strconv.Itoa(
 		int(newIncomingTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
 
-	timeOutMapKey = strconv.Itoa(int(
-		newIncomingTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion)) +
+	timeOutMapKey = newIncomingTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
 		testInstructionExecutionVersionAsString
 
 	// Create object to be stored
@@ -313,6 +341,14 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		return nil, err
 
+	}
+
+	if timeOutMapKey == "11" {
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                            "795aad00-3b5a-40fe-8ace-49dd511dc24e",
+			"incomingTimeOutChannelCommand": newIncomingTimeOutChannelCommandObject,
+			"timeOutMapKey":                 timeOutMapKey,
+		}).Debug("THIS IS WRONG")
 	}
 
 	// Store object in 'timeOutMap'

@@ -18,12 +18,12 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) InitGrpcServ
 	// Find first non allocated port from defined start port
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"Id": "054bc0ef-93bb-4b75-8630-74e3823f71da",
-	}).Info("Backend Server tries to start")
+	}).Debug("Backend Server tries to start")
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"Id": "ca3593b1-466b-4536-be91-5e038de178f4",
 		"common_config.FenixExecutionExecutionServerPort: ": common_config.FenixExecutionExecutionServerPort,
-	}).Info("Start listening on:")
+	}).Debug("Start listening on:")
 	lis, err = net.Listen("tcp", ":"+strconv.Itoa(common_config.FenixExecutionExecutionServerPort))
 
 	if err != nil {
@@ -43,7 +43,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) InitGrpcServ
 	//go func() {
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"Id": "b0ccffb5-4367-464c-a3bc-460cafed16cb",
-	}).Info("Starting Backend gRPC Server")
+	}).Debug("Starting Backend gRPC Server")
 
 	registerFenixExecutionServerGrpcServicesServer = grpc.NewServer()
 	fenixExecutionServerGrpcApi.RegisterFenixExecutionServerGrpcServicesServer(registerFenixExecutionServerGrpcServicesServer, &fenixExecutionServerGrpcServicesServer{})

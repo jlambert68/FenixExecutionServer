@@ -29,12 +29,21 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) InitLogger(f
 	}
 
 	logrus.SetLevel(common_config.LoggingLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:     true,
-		FullTimestamp:   true,
-		TimestampFormat: time.RFC3339Nano,
-		DisableSorting:  true,
-	})
+	if filename != "" {
+		logrus.SetFormatter(&logrus.TextFormatter{
+			ForceColors:     false,
+			FullTimestamp:   true,
+			TimestampFormat: time.RFC3339Nano,
+			DisableSorting:  true,
+		})
+	} else {
+		logrus.SetFormatter(&logrus.TextFormatter{
+			ForceColors:     true,
+			FullTimestamp:   true,
+			TimestampFormat: time.RFC3339Nano,
+			DisableSorting:  true,
+		})
+	}
 
 	//If no file then set standard out
 

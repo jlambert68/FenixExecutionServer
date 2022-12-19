@@ -17,11 +17,11 @@ var TestInstructionExecutionEngineObject TestInstructionExecutionEngineStruct
 
 // ExecutionEngineChannelSize
 // The size of the channel
-const ExecutionEngineChannelSize = 100
+const ExecutionEngineChannelSize = 1000
 
 // ExecutionEngineChannelWarningLevel
 // The size of warning level for the channel
-const ExecutionEngineChannelWarningLevel = 90
+const ExecutionEngineChannelWarningLevel = 700
 
 // ExecutionEngineCommandChannel
 // The channel for the TestInstructionExecutionEngine
