@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/common_config"
 	"github.com/sirupsen/logrus"
 	"strconv"
+	"time"
 )
 
 // Add TestInstructionExecution to TimeOut-timer
@@ -94,6 +95,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		// Cancel timer
 		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
 
+		// Wait for Cancel timer is complete
+		<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
+
 		// Delete  current object from map
 		delete(timeOutMap, timeOutMapKeyToRemove)
 
@@ -119,6 +123,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		// Cancel timer
 		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
 
+		// Wait for Cancel timer to be complete
+		<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
+
 		// Delete current object
 		delete(timeOutMap, timeOutMapKeyToRemove)
 
@@ -139,11 +146,20 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		}
 
+		// Extract TimeOut-time
+		var timeOutTime time.Time
+		timeOutTime = nextTimeOutMapObject.currentTimeOutChannelCommandObject.TimeOutChannelTestInstructionExecutions.TimeOutTime
+
+		// Store TimeOut-time in 'incomingTimeOutChannelCommand' because for Remove that information doesn't exist in that object
+		incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TimeOutTime = timeOutTime
+
 		// Start new TimeOut-timer for next TestInstructionExecution
 		go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
 			nextTimeOutMapObject,
 			incomingTimeOutChannelCommand,
-			nextUpcomingObjectMapKeyWithTimeOut)
+			nextTimeOutMapKey,
+			"082203e6-0136-4d03-a37e-8b0913d8add3",
+		)
 
 		// Update next object regarding previous object MapKey
 		_ = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
@@ -160,6 +176,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		// Cancel timer
 		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
+
+		// Wait for Cancel timer is complete
+		<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
 
 		// Delete current object
 		delete(timeOutMap, timeOutMapKeyToRemove)
@@ -184,6 +203,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		// Cancel timer
 		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
+
+		// Wait for Cancel timer is complete
+		<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
 
 		// Delete current object
 		delete(timeOutMap, timeOutMapKeyToRemove)

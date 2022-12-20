@@ -3,6 +3,7 @@ package common_config
 import "C"
 import (
 	"github.com/sirupsen/logrus"
+	"sync"
 	"time"
 )
 
@@ -18,7 +19,10 @@ const (
 type CancellableTimerReturnChannelType chan CancellableTimerEndStatusType
 
 type CancellableTimerStruct struct {
-	cancel chan bool
+	cancel             chan bool
+	once               sync.Once
+	TimerHasBeenClosed chan bool
+	onlyActOnChoice    sync.Once
 
 	startTimeStamp   time.Time
 	timeOutTimeStamp time.Time
@@ -28,7 +32,8 @@ type CancellableTimerStruct struct {
 
 func NewCancellableTimer() *CancellableTimerStruct {
 	return &CancellableTimerStruct{
-		cancel: make(chan bool),
+		cancel:             make(chan bool),
+		TimerHasBeenClosed: make(chan bool),
 	}
 }
 
@@ -86,7 +91,9 @@ func (c *CancellableTimerStruct) Cancel() {
 		"timeOutMapKey":    c.timeOutMapKey,
 	}).Debug("close(c.cancel)")
 
-	close(c.cancel)
+	c.once.Do(func() {
+		close(c.cancel)
+	})
 
 }
 
@@ -101,7 +108,11 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 		"id":                   "7dd4ef2c-f0ed-4406-8c97-a79accd8ebb9",
 		"sleepDuration":        sleepDuration,
 		"currentTimeOutMapKey": currentTimeOutMapKey,
-	}).Debug("Start a Timer")
+	}).Debug("Incoming - Start a Timer")
+
+	defer Logger.WithFields(logrus.Fields{
+		"id": "1952c4b2-2213-473f-a0ab-36ff81248967",
+	}).Debug("Outgoing  - Start a Timer")
 
 	// Save time-variables for Timer
 	t.startTimeStamp = time.Now()
@@ -114,33 +125,41 @@ func StartCancellableTimer(t *CancellableTimerStruct,
 	case timedOut := <-t.After(sleepDuration):
 		if timedOut {
 
-			// When Timer times out
-			Logger.WithFields(logrus.Fields{
-				"id":               "8bea6fc7-9b7b-490f-8794-212f5aa24c74",
-				"sleepDuration":    sleepDuration,
-				"startTimeStamp":   t.startTimeStamp,
-				"timeOutTimeStamp": t.timeOutTimeStamp,
-				"timeOutMapKey":    t.timeOutMapKey,
-			}).Debug("Timer did time out")
+			t.onlyActOnChoice.Do(func() {
+				// When Timer times out
+				Logger.WithFields(logrus.Fields{
+					"id":               "8bea6fc7-9b7b-490f-8794-212f5aa24c74",
+					"sleepDuration":    sleepDuration,
+					"startTimeStamp":   t.startTimeStamp,
+					"timeOutTimeStamp": t.timeOutTimeStamp,
+					"timeOutMapKey":    t.timeOutMapKey,
+				}).Debug("Timer did time out")
 
-			// Send Response over channel to initiator
-			*cancellableTimerReturnChannelReference <- CancellableTimerEndStatusTimedOut
+				// Send Response over channel to initiator
+				*cancellableTimerReturnChannelReference <- CancellableTimerEndStatusTimedOut
+
+			})
 
 		} else {
+			t.onlyActOnChoice.Do(func() {
+				// When Timer is cancelled
+				Logger.WithFields(logrus.Fields{
+					"id":               "e513f786-9632-4553-9177-624e5012ffb8",
+					"sleepDuration":    sleepDuration,
+					"startTimeStamp":   t.startTimeStamp,
+					"timeOutTimeStamp": t.timeOutTimeStamp,
+					"timeOutMapKey":    t.timeOutMapKey,
+				}).Debug("Timer was cancelled")
 
-			// When Timer is cancelled
-			Logger.WithFields(logrus.Fields{
-				"id":               "e513f786-9632-4553-9177-624e5012ffb8",
-				"sleepDuration":    sleepDuration,
-				"startTimeStamp":   t.startTimeStamp,
-				"timeOutTimeStamp": t.timeOutTimeStamp,
-				"timeOutMapKey":    t.timeOutMapKey,
-			}).Debug("Timer was cancelled")
+				// Send Response over channel to initiator
+				*cancellableTimerReturnChannelReference <- CancellableTimerEndStatusWasCancelled
 
-			// Send Response over channel to initiator
-			*cancellableTimerReturnChannelReference <- CancellableTimerEndStatusWasCancelled
+				// Send over channel that Timer has been closed and to continue to delete from 'timeOutMapKey'
+				t.TimerHasBeenClosed <- true
+			})
 
 		}
+
 	}
 }
 

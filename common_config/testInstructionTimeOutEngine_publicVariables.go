@@ -51,6 +51,7 @@ type TimeOutChannelCommandStruct struct {
 	TimeOutChannelCommand                     TimeOutChannelCommandType
 	TimeOutChannelTestInstructionExecutions   TimeOutChannelCommandTestInstructionExecutionStruct
 	TimeOutReturnChannelForTimeOutHasOccurred *TimeOutResponseChannelForTimeOutHasOccurredType
+	SendID                                    string
 	//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer *TimeOutReturnChannelForExistsTestInstructionExecutionWithinTimeOutTimerType
 }
 

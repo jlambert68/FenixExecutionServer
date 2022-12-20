@@ -97,6 +97,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) commitOrRole
 			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 			//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+			SendID: "18d960b0-a0dc-4058-9370-c66dce099e3d",
 		}
 
 		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
@@ -217,6 +218,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareRepor
 		TimeOutChannelTestInstructionExecutions:   tempTimeOutChannelTestInstructionExecutions,
 		TimeOutReturnChannelForTimeOutHasOccurred: &timeOutResponseChannelForTimeOutHasOccurred,
 		//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+		SendID: "7a1aab65-93ab-4f59-b341-3b8fe16f6631",
 	}
 
 	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut

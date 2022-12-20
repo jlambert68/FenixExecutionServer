@@ -132,7 +132,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
 			timeOutMapObject,
 			incomingTimeOutChannelCommand,
-			timeOutMapKey)
+			timeOutMapKey,
+			"cb66ee1d-9500-41fe-90d3-14aa30d233d5")
 
 		return
 	}
@@ -224,7 +225,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
 				newTimeOutMapObject,
 				newIncomingTimeOutChannelCommandObject,
-				newObjectsTimeOutMapKey)
+				newObjectsTimeOutMapKey,
+				"41a72efa-bdd3-4933-a913-a96e69a7c9c6")
 
 			return err
 
@@ -354,6 +356,13 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// Store object in 'timeOutMap'
 	timeOutMap[timeOutMapKey] = timeOutMapObject
 
+	// Is this the first object, to Time Out
+	if currentTimeOutMapKey == previousTimeOutMapKey {
+
+		// Set variable that keeps track of next object with upcoming Timeout
+		nextUpcomingObjectMapKeyWithTimeOut = timeOutMapKey
+	}
+
 	// Remove Allocation for TimeOut-timer
 	delete(allocatedTimeOutTimerMap, timeOutMapKey)
 
@@ -389,7 +398,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	if previousTimeOutMapKey != "" {
 		timeOutMapObject.previousTimeOutMapKey = previousTimeOutMapKey
 	}
-	if previousTimeOutMapKey != "" {
+	if nextTimeOutMapKey != "" {
 		timeOutMapObject.nextTimeOutMapKey = nextTimeOutMapKey
 	}
 
@@ -400,7 +409,19 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) startTimeOutTimerTestInstructionExecution(
 	timeOutMapObjectReference *timeOutMapStruct,
 	incomingTimeOutChannelCommand *common_config.TimeOutChannelCommandStruct,
-	timeOutMapKey string) {
+	timeOutMapKey string,
+	senderId string) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                            "2834d828-f3b7-4f7d-a33e-f12c86e89432",
+		"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
+		"timeOutMapKey":                 timeOutMapKey,
+		"senderId":                      senderId,
+	}).Debug("Incoming 'startTimeOutTimerTestInstructionExecution'")
+
+	defer common_config.Logger.WithFields(logrus.Fields{
+		"id": "fd15766c-fce1-4fb6-82f4-e4825d14935b",
+	}).Debug("Outgoing 'startTimeOutTimerTestInstructionExecution'")
 
 	// Initiate the CancellableTimer
 	var tempCancellableTimer *common_config.CancellableTimerStruct
@@ -429,6 +450,13 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 	// Wait for Timer to TimeOut or to be cancelled
 	cancellableTimerReturnChannelResponseValue = <-cancellableTimerReturnChannel
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id": "e25b7b8e-3ce5-4428-8f90-d13fc81182b3",
+		"cancellableTimerReturnChannelResponseValue": cancellableTimerReturnChannelResponseValue,
+		"timeOutMapKey": timeOutMapKey,
+	}).Debug("Response from 'cancellableTimerReturnChannel'")
+
 	// Check if the Timer TimedOut or was cancelled
 	// Only act when Timer did TimedOut
 	if cancellableTimerReturnChannelResponseValue == common_config.CancellableTimerEndStatusTimedOut {
@@ -471,6 +499,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
 			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToTimeOutFromTimer,
 			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+			SendID:                                  "6605911d-7e53-4321-b359-9e55b399dd44",
 		}
 
 		// Send message on TimeOutEngineChannel to remove TestInstructionExecution from Timer-queue
