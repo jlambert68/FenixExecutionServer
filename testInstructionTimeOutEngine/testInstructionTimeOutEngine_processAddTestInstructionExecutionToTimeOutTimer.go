@@ -22,8 +22,55 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	}).Debug("Incoming 'processAddTestInstructionExecutionToTimeOutTimer'")
 
 	defer common_config.Logger.WithFields(logrus.Fields{
-		"id": "3d82a2e0-a8ba-4d01-95ec-aab154b227d3",
+		"id": "6d94b817-4efe-40e1-bd8a-95a201dae3de",
 	}).Debug("Outgoing 'processAddTestInstructionExecutionToTimeOutTimer'")
+
+	incomingTimeOutMapCount := len(timeOutMap)
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                      "58f707fe-36f6-4c05-8d75-7b1e00377e8f",
+		"key":                     incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
+		"incomingTimeOutMapCount": incomingTimeOutMapCount,
+	}).Debug("Number of incoming items 'timeOutMap'")
+
+	for key, object := range timeOutMap {
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                           "58f707fe-36f6-4c05-8d75-7b1e00377e8f",
+			"key":                          key,
+			"object.previousTimeOutMapKey": object.previousTimeOutMapKey,
+			"object.currentTimeOutMapKey":  object.currentTimeOutMapKey,
+			"object.nextTimeOutMapKey":     object.nextTimeOutMapKey,
+			"object.cancellableTimer":      object.cancellableTimer,
+		}).Debug("All items in 'timeOutMap' before 'processAddTestInstructionExecutionToTimeOutTimer'")
+	}
+
+	defer func() {
+		outgoingTimeOutMapCount := len(timeOutMap)
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                      "1b534565-ffae-42af-8e04-48505a9e20ff",
+			"key":                     incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
+			"outgoingTimeOutMapCount": outgoingTimeOutMapCount,
+		}).Debug("Number of outgoing items 'timeOutMap'")
+
+		for key, object := range timeOutMap {
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":                           "bf9fc988-4998-4db0-9ffb-7ba633b8767a",
+				"key":                          key,
+				"object.previousTimeOutMapKey": object.previousTimeOutMapKey,
+				"object.currentTimeOutMapKey":  object.currentTimeOutMapKey,
+				"object.nextTimeOutMapKey":     object.nextTimeOutMapKey,
+				"object.cancellableTimer":      object.cancellableTimer,
+			}).Debug("All items in 'timeOutMap' after 'processAddTestInstructionExecutionToTimeOutTimer'")
+		}
+		if outgoingTimeOutMapCount-incomingTimeOutMapCount != 1 {
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":  "07a9f4a2-92d1-4dbf-b366-bff9092def5b",
+				"key": incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
+			}).Error("Missing one item in 'timeOutMap'")
+		}
+
+	}()
 
 	// Force GC to clear up, should see a memory drop
 	//runtime.GC()
@@ -111,14 +158,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			currentTimeOutChannelCommandObject: incomingTimeOutChannelCommand,
 		}
 
-		if timeOutMapKey == "11" {
-			common_config.Logger.WithFields(logrus.Fields{
-				"id":                            "da1ea775-627d-4856-961c-1da9f20c9751",
-				"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
-				"timeOutMapKey":                 timeOutMapKey,
-			}).Debug("THIS IS WRONG")
-		}
-
 		// Store object in 'timeOutMap'
 		timeOutMap[timeOutMapKey] = timeOutMapObject
 
@@ -203,7 +242,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				newObjectsTimeOutMapKey,
 				newObjectsTimeOutMapKey,
 				currentTimeOutMapKey,
-				newIncomingTimeOutChannelCommandObject)
+				newIncomingTimeOutChannelCommandObject,
+				"90b48a0a-8281-4d41-b15b-bc155456948c")
 
 			if err != nil {
 				return err
@@ -232,7 +272,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		}
 
-		// Current object is not the first object or the last object
+		// Current object is not the first object or not the last object
 		if currentProcessedObjects.previousTimeOutMapKey != currentProcessedObjects.currentTimeOutMapKey &&
 			currentProcessedObjects.currentTimeOutMapKey != currentProcessedObjects.nextTimeOutMapKey {
 
@@ -241,7 +281,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				currentProcessedObjects.previousTimeOutMapKey,
 				newObjectsTimeOutMapKey,
 				currentTimeOutMapKey,
-				newIncomingTimeOutChannelCommandObject)
+				newIncomingTimeOutChannelCommandObject,
+				"afd9bec8-797a-4d03-bfb4-bdb05627fd8c")
 
 			if err != nil {
 				return err
@@ -275,7 +316,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				currentProcessedObjects.currentTimeOutMapKey,
 				newObjectsTimeOutMapKey,
 				newObjectsTimeOutMapKey,
-				newIncomingTimeOutChannelCommandObject)
+				newIncomingTimeOutChannelCommandObject,
+				"7f70c268-6164-4d69-995f-a0d9c0fe465c")
 
 			if err != nil {
 				return err
@@ -289,14 +331,15 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 			return err
 
+		} else {
+
+			// Do recursive call to "next object"
+			err = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(
+				newIncomingTimeOutChannelCommandObject,
+				currentProcessedObjects.nextTimeOutMapKey)
+
+			return err
 		}
-
-		// Do recursive call to "next object"
-		err = testInstructionExecutionTimeOutEngineObject.recursiveAddTestInstructionExecutionToTimeOutTimer(
-			newIncomingTimeOutChannelCommandObject,
-			currentProcessedObjects.nextTimeOutMapKey)
-
-		return err
 
 	}
 
@@ -308,7 +351,13 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	previousTimeOutMapKey string,
 	currentTimeOutMapKey string,
 	nextTimeOutMapKey string,
-	newIncomingTimeOutChannelCommandObject *common_config.TimeOutChannelCommandStruct) (timeOutMapObject *timeOutMapStruct, err error) {
+	newIncomingTimeOutChannelCommandObject *common_config.TimeOutChannelCommandStruct,
+	senderId string) (timeOutMapObject *timeOutMapStruct, err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":       "90d20c2c-db78-41a8-919f-4ccd1b9d6db8",
+		"senderId": senderId,
+	}).Debug("Incoming 'storeNewTimeOutChannelCommandObject'")
 
 	var existsInMap bool
 
@@ -345,14 +394,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 	}
 
-	if timeOutMapKey == "11" {
-		common_config.Logger.WithFields(logrus.Fields{
-			"id":                            "795aad00-3b5a-40fe-8ace-49dd511dc24e",
-			"incomingTimeOutChannelCommand": newIncomingTimeOutChannelCommandObject,
-			"timeOutMapKey":                 timeOutMapKey,
-		}).Debug("THIS IS WRONG")
-	}
-
 	// Store object in 'timeOutMap'
 	timeOutMap[timeOutMapKey] = timeOutMapObject
 
@@ -374,6 +415,13 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	previousTimeOutMapKey string,
 	currentTimeOutMapKey string,
 	nextTimeOutMapKey string) (err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                    "ad37804a-286b-453f-8709-ccae90cbd166",
+		"previousTimeOutMapKey": previousTimeOutMapKey,
+		"currentTimeOutMapKey":  currentTimeOutMapKey,
+		"nextTimeOutMapKey":     nextTimeOutMapKey,
+	}).Debug("Incoming 'updateTimeOutChannelCommandObject'")
 
 	// Create object to be stored
 	var timeOutMapObject *timeOutMapStruct
@@ -401,6 +449,13 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	if nextTimeOutMapKey != "" {
 		timeOutMapObject.nextTimeOutMapKey = nextTimeOutMapKey
 	}
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                                     "ee97ecdf-21c4-468f-8c65-78d8e0d4b10f",
+		"timeOutMapObject.previousTimeOutMapKey": timeOutMapObject.previousTimeOutMapKey,
+		"timeOutMapObject.currentTimeOutMapKey":  timeOutMapObject.currentTimeOutMapKey,
+		"timeOutMapObject.nextTimeOutMapKey":     timeOutMapObject.nextTimeOutMapKey,
+	}).Debug("Outgoing 'updateTimeOutChannelCommandObject'")
 
 	return err
 }

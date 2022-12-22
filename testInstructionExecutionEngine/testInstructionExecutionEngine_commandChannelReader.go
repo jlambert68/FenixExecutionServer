@@ -3,6 +3,7 @@ package testInstructionExecutionEngine
 import (
 	"FenixExecutionServer/common_config"
 	"fmt"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 )
 
@@ -58,6 +59,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 
 		case ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut:
 			executionEngine.triggerProcessTestInstructionExecutionsThatHaveTimedOut(incomingChannelCommand.ChannelCommandTestInstructionExecutions)
+
+		case ChannelCommandProcessFinalTestInstructionExecutionResultMessage:
+			executionEngine.triggerProcessReportCompleteTestInstructionExecutionResultSaveToCloudDB(incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
 		// No other command is supported
 		default:
@@ -147,7 +151,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombi
 }
 
 // Look for Zombie-TestCaseExecutions that are waiting on OnQueue, but was lost in some way
-func (executionEngine *TestInstructionExecutionEngineStruct) processTestCaseExecutionsOnExecutionQueue(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) processTestCaseExecutionsOnExecutionQueue(
+	channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
 	_ = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
 
@@ -168,8 +173,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombi
 }
 
 // Process for Zombie-TestInstructionExecutions that have timed out
-func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestInstructionExecutionsThatHaveTimedOut(testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestInstructionExecutionsThatHaveTimedOut(
+	testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct) {
 
 	executionEngine.timeoutHandlerForTestInstructionsUnderExecution(testInstructionExecutionsToProcess)
 
+}
+
+// Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessReportCompleteTestInstructionExecutionResultSaveToCloudDB(
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) {
+
+	_ = executionEngine.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage)
 }

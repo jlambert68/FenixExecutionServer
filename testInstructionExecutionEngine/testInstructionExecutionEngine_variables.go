@@ -1,6 +1,7 @@
 package testInstructionExecutionEngine
 
 import (
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,15 +47,17 @@ const (
 	ChannelCommandLookForZombieTestInstructionExecutionsOnExecutionQueue
 	ChannelCommandLookForZombieTestInstructionExecutionsThatHaveTimedOut
 	ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut
+	ChannelCommandProcessFinalTestInstructionExecutionResultMessage
 )
 
 // ChannelCommandStruct
 // The struct for the message that are sent over the channel to the executionEngine
 type ChannelCommandStruct struct {
-	ChannelCommand                          ChannelCommandType
-	ChannelCommandTestCaseExecutions        []ChannelCommandTestCaseExecutionStruct
-	ChannelCommandTestInstructionExecutions []ChannelCommandTestInstructionExecutionStruct
-	ReturnChannelWithDBErrorReference       *ReturnChannelWithDBErrorType
+	ChannelCommand                             ChannelCommandType
+	ChannelCommandTestCaseExecutions           []ChannelCommandTestCaseExecutionStruct
+	ChannelCommandTestInstructionExecutions    []ChannelCommandTestInstructionExecutionStruct
+	ReturnChannelWithDBErrorReference          *ReturnChannelWithDBErrorType
+	FinalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
 }
 
 // ChannelCommandTestCaseExecutionStruct

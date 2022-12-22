@@ -2,6 +2,7 @@ package main
 
 import (
 	"FenixExecutionServer/common_config"
+	"FenixExecutionServer/testInstructionExecutionEngine"
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
@@ -33,7 +34,23 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 		return returnMessage, nil
 	}
 
-	returnMessage = fenixExecutionServerObject.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage)
+	// returnMessage = fenixExecutionServerObject.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage)
+
+	// Create Message to be sent to TestInstructionExecutionEngine
+	channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+		FinalTestInstructionExecutionResultMessage: finalTestInstructionExecutionResultMessage,
+	}
+
+	// Send Message to TestInstructionExecutionEngine via channel
+	*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
+
+	// Create Return message
+	returnMessage = &fenixExecutionServerGrpcApi.AckNackResponse{
+		AckNack:                      true,
+		Comments:                     "",
+		ErrorCodes:                   nil,
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+	}
 
 	return returnMessage, nil
 }

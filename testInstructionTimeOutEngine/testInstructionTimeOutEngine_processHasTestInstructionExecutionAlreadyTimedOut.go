@@ -53,6 +53,11 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	currentTimeOutdObject, existsInMap = timedOutMap[timeOutdMapKey]
 	if existsInMap == true {
 
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":             "6c8be98f-f8ff-4ab7-ae2c-2b85b6bfed64",
+			"timeOutdMapKey": timeOutdMapKey,
+		}).Error("couldn't find the TestInstructionObject in TimeOut-map, something is very wrong")
+
 		// TestInstructionExecution has already timed out so create response to caller
 		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
 		timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
@@ -73,12 +78,27 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			"timeOutdMapKey": timeOutdMapKey,
 		}).Error("couldn't find the TestInstructionObject in TimeOut-map, something is very wrong")
 
-		// Sending is over channel is not nessasary but I will keep the program running to have more log data.
+		// Sending is over channel is not necessary, but I will keep the program running to have more log data.
 		// The most correct would be to end program, but....
 		// Set that TestInstructionExecution has already timed out so create response to caller
 		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
 		timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
 			TimeOutWasTriggered: true}
+
+		// Send response on response channel
+		*incomingTimeOutChannelCommand.TimeOutReturnChannelForTimeOutHasOccurred <- timedOutResponse
+
+		return
+	}
+
+	// If 'cancellableTimer' = nil and 'timeOutdMapKey' != 'currentTimeOutdObject.currentTimeOutMapKey'
+	// then this is not the first object in line to TimeOut, just return that it has not TimedOut yet
+	if currentTimeOutdObject.cancellableTimer == nil &&
+		currentTimeOutdObject.currentTimeOutMapKey != nextUpcomingObjectMapKeyWithTimeOut {
+
+		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
+		timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
+			TimeOutWasTriggered: false}
 
 		// Send response on response channel
 		*incomingTimeOutChannelCommand.TimeOutReturnChannelForTimeOutHasOccurred <- timedOutResponse
@@ -104,6 +124,17 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		// Send response on response channel
 		*incomingTimeOutChannelCommand.TimeOutReturnChannelForTimeOutHasOccurred <- timedOutResponse
+
+		return
 	}
 
+	// TestInstructionExecution has NOT timed out so create response to caller
+	var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
+	timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
+		TimeOutWasTriggered: false}
+
+	// Send response on response channel
+	*incomingTimeOutChannelCommand.TimeOutReturnChannelForTimeOutHasOccurred <- timedOutResponse
+
+	return
 }
