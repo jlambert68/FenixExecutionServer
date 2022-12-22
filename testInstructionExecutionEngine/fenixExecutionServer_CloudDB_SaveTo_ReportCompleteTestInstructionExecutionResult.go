@@ -45,7 +45,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
 		common_config.Logger.WithFields(logrus.Fields{
-			"id":                               "33c99b10-33e2-4eb2-a74f-275b65a5387c",
+			"id":                               "c71501df-2ddc-4874-953f-4cca70d9b698",
 			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
 		}).Debug("Sent message on Broadcast channel")
 
@@ -60,7 +60,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 		tempTestCaseExecutionVersion, err = strconv.Atoi(testInstructionExecution.TestCaseExecutionVersion)
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{
-				"id": "a6fa884b-3715-40a5-960d-f4a9beb646ba",
+				"id": "285c4321-fec5-402a-8874-50360695efcf",
 				"testInstructionExecution.TestCaseExecutionVersion": testInstructionExecution.TestCaseExecutionVersion,
 			}).Error("Couldn't convert string-version of 'TestCaseExecutionVersion' to an integer")
 
@@ -71,7 +71,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 		tempTestInstructionExecutionVersionAsInteger, err = strconv.Atoi(testInstructionExecution.TestInstructionExecutionVersion)
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{
-				"id": "74a015a1-cd78-49bc-b4ef-c2140e0258a3",
+				"id": "499cc96e-cc02-4247-94b7-70f08beeaa20",
 				"testInstructionExecution.TestInstructionExecutionVersion": testInstructionExecution.TestInstructionExecutionVersion,
 			}).Error("Couldn't convert string-version of 'TestInstructionExecutionVersion' to an integer")
 
@@ -192,12 +192,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	// (11, 'TIE_TIMEOUT_INTERRUPTION' -> OK
 
 	common_config.Logger.WithFields(logrus.Fields{
-		"id": "3e7a261e-96d4-419c-83d6-2de95bda4102",
+		"id": "51054338-e8ac-49ef-bb30-0efebc98e029",
 		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
 	}).Debug("Incoming 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
 
 	defer common_config.Logger.WithFields(logrus.Fields{
-		"id": "215ea93d-2ac2-4d21-b573-72f120c4e885",
+		"id": "4601d6d7-f7b7-428e-957b-eeec12debf74",
 	}).Debug("Outgoing 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
 
 	// Create Response channel from TimeOutEngine to get answer if TestInstructionExecution Already has been TimedOut

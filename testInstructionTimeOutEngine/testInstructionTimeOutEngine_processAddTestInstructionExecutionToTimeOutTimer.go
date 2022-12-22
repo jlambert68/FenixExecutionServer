@@ -537,7 +537,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		}
 
 		// Send command to ExecutionsEngine that TestInstructionExecution TimedOut
-		testInstructionExecutionEngine.ExecutionEngineCommandChannel <- executionEngineChannelCommand
+		go func() {
+			testInstructionExecutionEngine.ExecutionEngineCommandChannel <- executionEngineChannelCommand
+		}()
 
 		// Remove This TestInstructionExecution from Timer-queue (and set a new Timer for next TestInstructionExecution)
 		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
