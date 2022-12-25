@@ -113,7 +113,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Load all TestInstructions and their attributes to be sent to the Executions Workers over gRPC
-	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err := executionEngine.loadNewTestInstructionToBeSentToExecutionWorkers(testCaseExecutionsToProcess) //(txn)
+	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err := executionEngine.loadNewTestInstructionToBeSentToExecutionWorkers(
+		txn, testCaseExecutionsToProcess)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -285,7 +286,12 @@ type newTestInstructionAttributeToBeSentToExecutionWorkersStruct struct {
 }
 
 // Load all New TestInstructions and their attributes to be sent to the Executions Workers over gRPC
-func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstructionToBeSentToExecutionWorkers(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct, rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstructionToBeSentToExecutionWorkers(
+	dbTransaction pgx.Tx,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
+	rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct,
+	rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct,
+	err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -332,8 +338,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -402,8 +407,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err = fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err = dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{

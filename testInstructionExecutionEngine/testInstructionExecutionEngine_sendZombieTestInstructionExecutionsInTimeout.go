@@ -3,6 +3,7 @@ package testInstructionExecutionEngine
 import (
 	"FenixExecutionServer/common_config"
 	"context"
+	"github.com/jackc/pgx/v4"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -19,9 +20,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) findAllZombieTestIn
 		"id": "dfe4934f-56f0-4444-b703-15d803376a54",
 	}).Debug("Outgoing 'findAllZombieTestInstructionExecutionsInTimeout'")
 
+	// Begin SQL Transaction
+	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "32824ce8-bd1b-4af1-a45b-687cd80237ea",
+			"error": err,
+		}).Error("Problem to do 'DbPool.Begin'  in 'findAllZombieTestInstructionExecutionsInTimeout'")
+
+		return err
+	}
+
+	// Close db-transaction when leaving this function
+	defer txn.Commit(context.Background())
+
 	// Load all TestInstructionsExecutions for Zombie-TestInstructions that should be classified to have timeout-status
 	var testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct
-	testInstructionExecutionsToProcess, err = executionEngine.loadAllZombieTestInstructionExecutionsInTimeout()
+	testInstructionExecutionsToProcess, err = executionEngine.loadAllZombieTestInstructionExecutionsInTimeout(txn)
 	if err != nil {
 		return err
 	}
@@ -44,7 +59,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) findAllZombieTestIn
 }
 
 // Load all TestInstructionsExecution for Zombie-TestInstructions that should be put into timeout-status
-func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestInstructionExecutionsInTimeout() (testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestInstructionExecutionsInTimeout(
+	dbTransaction pgx.Tx) (
+	testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct,
+	err error) {
 
 	var currentTimeStampForDB string
 	currentTimeStampForDB = common_config.GenerateDatetimeTimeStampForDB()
@@ -62,8 +80,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{

@@ -2,6 +2,7 @@ package testInstructionExecutionEngine
 
 import (
 	"context"
+	"github.com/jackc/pgx/v4"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -22,9 +23,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestIn
 		"id": "3633ae34-262f-4634-aaa6-d2603b9ad51d",
 	}).Debug("Outgoing 'sendAllZombieTestInstructionsUnderExecution'")
 
+	// Begin SQL Transaction
+	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "271c0bba-fb4f-433d-a07b-56d5b86ed60a",
+			"error": err,
+		}).Error("Problem to do 'DbPool.Begin'  in 'sendAllZombieTestInstructionsUnderExecution'")
+
+		return err
+	}
+
+	// Close db-transaction when leaving this function
+	defer txn.Commit(context.Background())
+
 	// Load all TestCasesExecutions for Zombie-TestInstructions that are stuck in UnderExecutions
 	var testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct
-	testCaseExecutionsToProcess, err = executionEngine.loadAllZombieTestInstructionExecutionsUnderExecution()
+	testCaseExecutionsToProcess, err = executionEngine.loadAllZombieTestInstructionExecutionsUnderExecution(txn)
 	if err != nil {
 		return err
 	}
@@ -47,7 +62,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestIn
 }
 
 // Load all TestCasesExecutions for Zombie-TestInstructions that are stuck in UnderExecutions
-func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestInstructionExecutionsUnderExecution() (testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestInstructionExecutionsUnderExecution(
+	dbTransaction pgx.Tx) (
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct,
+	err error) {
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT DISTINCT " +
@@ -60,8 +78,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{

@@ -103,7 +103,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
-	testCaseExecutionQueueMessages, err := executionEngine.loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess) //(txn)
+	testCaseExecutionQueueMessages, err := executionEngine.loadTestCaseExecutionQueueMessages(
+		txn, testCaseExecutionsToProcess)
 	if err != nil {
 
 		// Set Error codes to return message
@@ -199,7 +200,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	}
 
 	//Load all data around TestCase to be used for putting TestInstructions on the TestInstructionExecutionQueue
-	allDataAroundAllTestCase, err := executionEngine.loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages)
+	allDataAroundAllTestCase, err := executionEngine.loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(txn, testCaseExecutionQueueMessages)
 	if err != nil {
 
 		common_config.Logger.WithFields(logrus.Fields{
@@ -352,7 +353,7 @@ type tempAttributeStruct struct {
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
-func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionQueueMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionQueueMessages(dbTransaction pgx.Tx, testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -391,8 +392,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
@@ -631,7 +631,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) clearTestCasesExecu
 }
 
 // Load all data around TestCase to bes used for putting TestInstructions on the TestInstructionExecutionQueue
-func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(
+	dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (
+	testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct, err error) {
 
 	var testCasesUuidsToBeUsedInSQL []string
 
@@ -650,7 +652,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAn
 	sqlToExecute = sqlToExecute + "ORDER BY TC.\"TestCaseUuid\" ASC, TC.\"TestCaseVersion\" DESC; "
 
 	// Query DB
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{

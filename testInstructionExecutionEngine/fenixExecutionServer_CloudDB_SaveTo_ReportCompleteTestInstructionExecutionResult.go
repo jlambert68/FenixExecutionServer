@@ -349,7 +349,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	}
 
 	// Load TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
-	testCaseExecutionsToProcess, err = executionEngine.loadTestCaseExecutionAndTestCaseExecutionVersion(finalTestInstructionExecutionResultMessage)
+	testCaseExecutionsToProcess, err = executionEngine.loadTestCaseExecutionAndTestCaseExecutionVersion(txn, finalTestInstructionExecutionResultMessage)
 	if err != nil {
 
 		// Set Error codes to return message
@@ -381,7 +381,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 
 	// If this is the last on TestInstructionExecution and any of them ended with a 'Non-OK-status' then stop pick new TestInstructionExecutions from Queue
 	var testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct
-	testInstructionExecutionSiblingsStatus, err = executionEngine.areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(txn, finalTestInstructionExecutionResultMessage)
+	testInstructionExecutionSiblingsStatus, err = executionEngine.areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(
+		txn, finalTestInstructionExecutionResultMessage)
 
 	if err != nil {
 
@@ -536,7 +537,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 }
 
 // Load TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
-func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionAndTestCaseExecutionVersion(finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionAndTestCaseExecutionVersion(
+	dbTransaction pgx.Tx,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -547,8 +551,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
@@ -603,7 +606,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 }
 
 // Verify if siblings to current finsihed TestInstructionExecutions are all finished and if any of them ended with a Non-OK-status
-func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(dbTransaction pgx.Tx, finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(
+	dbTransaction pgx.Tx,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (
+	testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct, err error) {
 
 	// Generate UUID as part of name for Temp-table AND
 	//tempTableUuid := uuidGenerator.New().String()
@@ -625,8 +631,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute_part1)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute_part1)
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{

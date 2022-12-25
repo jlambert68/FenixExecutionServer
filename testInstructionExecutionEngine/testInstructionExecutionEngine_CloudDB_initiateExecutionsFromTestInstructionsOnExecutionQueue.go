@@ -109,7 +109,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
-	testInstructionExecutionQueueMessages, err := executionEngine.loadTestInstructionExecutionQueueMessages(testCaseExecutionsToProcess) //(txn)
+	testInstructionExecutionQueueMessages, err := executionEngine.loadTestInstructionExecutionQueueMessages(
+		txn, testCaseExecutionsToProcess) //(txn)
 	if err != nil {
 
 		return
@@ -212,7 +213,10 @@ type tempTestInstructionInTestCaseStruct struct {
 }
 */
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
-func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionQueueMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (testInstructionExecutionQueueInformation []*tempTestInstructionExecutionQueueInformationStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionQueueMessages(
+	dbTransaction pgx.Tx,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
+	testInstructionExecutionQueueInformation []*tempTestInstructionExecutionQueueInformationStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -271,8 +275,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{

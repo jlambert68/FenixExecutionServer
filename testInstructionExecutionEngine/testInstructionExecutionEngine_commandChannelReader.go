@@ -184,5 +184,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestI
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessReportCompleteTestInstructionExecutionResultSaveToCloudDB(
 	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) {
 
-	_ = executionEngine.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage)
+	go func() {
+		_ = executionEngine.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage)
+	}()
+
 }

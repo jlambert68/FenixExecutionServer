@@ -112,7 +112,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecutionUuid
 	var loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct
-	loadTestInstructionExecutionStatusMessages, err = executionEngine.loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess)
+	loadTestInstructionExecutionStatusMessages, err = executionEngine.loadTestInstructionExecutionStatusMessages(
+		txn, testCaseExecutionsToProcess)
 
 	// Exit when there was a problem reading  the database
 	if err != nil {
@@ -121,7 +122,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	// Transform TestInstructionExecutionStatus into correct prioritized TestCaseExecutionStatus
 	var testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct
-	testCaseExecutionStatusMessages, err = executionEngine.transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus(loadTestInstructionExecutionStatusMessages)
+	testCaseExecutionStatusMessages, err = executionEngine.transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus(
+		loadTestInstructionExecutionStatusMessages)
 
 	// Exit when there was a problem when converting into TestCaseExecutionStatus
 	if err != nil {
@@ -130,14 +132,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	// Get number of TestInstructionExecutions that is waiting on TestInstructionExecutionQueue
 	var numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType
-	numberOfTestInstructionExecutionsOnExecutionQueueMap, err = executionEngine.loadNumberOfTestInstructionExecutionsOnExecutionQueue(txn, testCaseExecutionsToProcess)
+	numberOfTestInstructionExecutionsOnExecutionQueueMap, err = executionEngine.loadNumberOfTestInstructionExecutionsOnExecutionQueue(
+		txn, testCaseExecutionsToProcess)
 	// Exit when there was a problem updating the database
 	if err != nil {
 		return err
 	}
 
 	// Update TestExecutions in database with the new TestCaseExecutionStatus
-	err = executionEngine.updateTestCaseExecutionsWithNewTestCaseExecutionStatus(txn, testCaseExecutionStatusMessages, numberOfTestInstructionExecutionsOnExecutionQueueMap)
+	err = executionEngine.updateTestCaseExecutionsWithNewTestCaseExecutionStatus(
+		txn, testCaseExecutionStatusMessages, numberOfTestInstructionExecutionsOnExecutionQueueMap)
 
 	// Exit when there was a problem updating the database
 	if err != nil {
@@ -151,7 +155,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		testCaseExecution = broadcastingEngine.TestCaseExecutionStruct{
 			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
 			TestCaseExecutionVersion: strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion),
-			TestCaseExecutionStatus:  fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
+			TestCaseExecutionStatus: fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(
+				testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
 
 			ExecutionStartTimeStamp: testCaseExecutionStatusMessage.ExecutionStartTimeStampAsString,
 
@@ -207,7 +212,11 @@ type numberOfTestInstructionExecutionsOnQueueStruct struct {
 type numberOfTestInstructionExecutionsOnQueueMapType map[string]*numberOfTestInstructionExecutionsOnQueueStruct
 
 // Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecutionUuid
-func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionStatusMessages(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionStatusMessages(
+	dbTransaction pgx.Tx,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
+	loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct,
+	err error) {
 
 	//usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -249,8 +258,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -495,8 +503,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{

@@ -3,6 +3,7 @@ package main
 import (
 	"FenixExecutionServer/common_config"
 	"context"
+	"github.com/jackc/pgx/v4"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
@@ -11,8 +12,22 @@ import (
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareGetDomainWorkerAddresses() (err error) {
 
+	// Begin SQL Transaction
+	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "6aa288c4-1774-4336-8d9c-b2504f4e5225",
+			"error": err,
+		}).Error("Problem to do 'DbPool.Begin' in 'prepareGetDomainWorkerAddresses'")
+
+		return err
+	}
+
+	// Close db-transaction when leaving this function
+	defer txn.Commit(context.Background())
+
 	// Load all Domain Worker addresses from Cloud-DB
-	domainWorkersParameters, err := fenixExecutionServerObject.loadDomainWorkerAddresses()
+	domainWorkersParameters, err := fenixExecutionServerObject.loadDomainWorkerAddresses(txn)
 	if err != nil {
 
 		return err
@@ -32,7 +47,7 @@ type domainWorkerParametersStruct struct {
 }
 
 // Load All Domains and their address information
-func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadDomainWorkerAddresses() (domainWorkersParameters []domainWorkerParametersStruct, err error) {
+func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadDomainWorkerAddresses(dbTransaction pgx.Tx) (domainWorkersParameters []domainWorkerParametersStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -43,8 +58,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadDomainWo
 
 	// Query DB
 	// Execute Query CloudDB
-	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
-	rows, err := fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute)
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
 
 	if err != nil {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{

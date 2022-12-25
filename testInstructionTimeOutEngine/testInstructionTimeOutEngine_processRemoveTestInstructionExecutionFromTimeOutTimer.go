@@ -78,14 +78,17 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		} else {
 
-			// log Error when the TimeOut occurred
-			common_config.Logger.WithFields(logrus.Fields{
-				"id":                    "ce9d00d7-e245-4687-bca6-028f2e059dc9",
-				"timeOutMapKeyToRemove": timeOutMapKeyToRemove,
-				"timeOutChannelCommand": timeOutChannelCommand,
-				"timeOutMap":            timeOutMap,
-			}).Error("'timeOutMap' doesn't contain the object to be removed")
-
+			// Check if Timer already TimedOut
+			_, existsInMap = timedOutMap[timeOutMapKeyToRemove]
+			if existsInMap == false {
+				// log Error when the TimeOut occurred
+				common_config.Logger.WithFields(logrus.Fields{
+					"id":                    "ce9d00d7-e245-4687-bca6-028f2e059dc9",
+					"timeOutMapKeyToRemove": timeOutMapKeyToRemove,
+					"timeOutChannelCommand": timeOutChannelCommand,
+					"timeOutMap":            timeOutMap,
+				}).Error("'timeOutMap' doesn't contain the object to be removed")
+			}
 		}
 
 		//errorId := "c7e4917d-57d1-4a07-9c8e-0a793aa6174b"
@@ -116,11 +119,16 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// If the map only consist of 1 object then just remove it
 	if len(timeOutMap) == 1 {
 
-		// Cancel timer
-		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
+		// Only Cancel Timer when TestInstructionExecution was finished, otherwise Timer has finished
+		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
 
-		// Wait for Cancel timer is complete
-		<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
+			// Cancel timer
+			currentTimeOutObjectToRemove.cancellableTimer.Cancel()
+
+			// Wait for Cancel timer is complete
+			<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
+
+		}
 
 		// Delete  current object from map
 		delete(timeOutMap, timeOutMapKeyToRemove)
@@ -144,12 +152,16 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	if previousTimeOutMapKey == timeOutMapKeyToRemove &&
 		timeOutMapKeyToRemove != nextTimeOutMapKey {
 
-		// Cancel timer
-		currentTimeOutObjectToRemove.cancellableTimer.Cancel()
+		// Only Cancel Timer when TestInstructionExecution was finished, otherwise Timer has finished
+		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
 
-		// Wait for Cancel timer to be complete
-		<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
+			// Cancel timer
+			currentTimeOutObjectToRemove.cancellableTimer.Cancel()
 
+			// Wait for Cancel timer to be complete
+			<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
+
+		}
 		// Delete current object
 		delete(timeOutMap, timeOutMapKeyToRemove)
 

@@ -68,6 +68,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				"id":  "07a9f4a2-92d1-4dbf-b366-bff9092def5b",
 				"key": incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
 			}).Error("Missing one item in 'timeOutMap'")
+
+			testInstructionExecutionTimeOutEngineObject.processAddTestInstructionExecutionToTimeOutTimer(incomingTimeOutChannelCommand)
 		}
 
 	}()
@@ -273,8 +275,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		}
 
 		// Current object is not the first object or not the last object
-		if currentProcessedObjects.previousTimeOutMapKey != currentProcessedObjects.currentTimeOutMapKey &&
-			currentProcessedObjects.currentTimeOutMapKey != currentProcessedObjects.nextTimeOutMapKey {
+		if currentProcessedObjects.previousTimeOutMapKey != currentProcessedObjects.currentTimeOutMapKey {
 
 			// Insert new object before current object
 			_, err = testInstructionExecutionTimeOutEngineObject.storeNewTimeOutChannelCommandObject(
