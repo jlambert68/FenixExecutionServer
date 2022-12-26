@@ -8,8 +8,8 @@ import (
 // TestInstructionExecutionEngineStruct
 // The struct for the object that hold all functions together within the executionEngine
 type TestInstructionExecutionEngineStruct struct {
-	logger                  *logrus.Logger
-	CommandChannelReference *ExecutionEngineChannelType
+	logger                       *logrus.Logger
+	CommandChannelReferenceSlice []*ExecutionEngineChannelType
 }
 
 // TestInstructionExecutionEngineObject
@@ -26,7 +26,7 @@ const ExecutionEngineChannelWarningLevel = 700
 
 // ExecutionEngineCommandChannel
 // The channel for the TestInstructionExecutionEngine
-var ExecutionEngineCommandChannel ExecutionEngineChannelType
+var ExecutionEngineCommandChannelSlice []ExecutionEngineChannelType
 
 // ExecutionEngineChannelType
 // The channel type

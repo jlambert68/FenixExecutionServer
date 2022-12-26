@@ -1,13 +1,25 @@
 package testInstructionExecutionEngine
 
-import "github.com/sirupsen/logrus"
+import (
+	"FenixExecutionServer/common_config"
+	"github.com/sirupsen/logrus"
+)
 
 // InitiateTestInstructionExecutionEngineCommandChannelReader
 // Initiate the channel reader which is used for sending commands to TestInstruction Execution Engine
-func (executionEngine *TestInstructionExecutionEngineStruct) InitiateTestInstructionExecutionEngineCommandChannelReader(executionEngineCommandChannel ExecutionEngineChannelType) {
+func (executionEngine *TestInstructionExecutionEngineStruct) InitiateTestInstructionExecutionEngineCommandChannelReader(
+	executionEngineCommandChannel []ExecutionEngineChannelType) {
 
-	executionEngine.CommandChannelReference = &executionEngineCommandChannel
-	go executionEngine.startCommandChannelReader()
+	// Create and start one instance per execution track for channel
+	for executionTrackNumber := 0; executionTrackNumber < common_config.NumberOfParallellExecutionEngineCommandChannels; executionTrackNumber++ {
+
+		executionEngine.CommandChannelReferenceSlice = append(
+			executionEngine.CommandChannelReferenceSlice,
+			&executionEngineCommandChannel)
+
+		go executionEngine.startCommandChannelReader(executionTrackNumber)
+
+	}
 
 	// Trigger TestInstructionEngine to check if there are any Zombie-TestInstructionExecutions stuck in UnderExecutions
 	channelCommandMessage := ChannelCommandStruct{
@@ -15,8 +27,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) InitiateTestInstruc
 		ChannelCommandTestCaseExecutions: nil,
 	}
 
-	// Send Message on Channel
-	*executionEngine.CommandChannelReference <- channelCommandMessage
+	// Send Message on Channel, use first instance
+	*executionEngine.CommandChannelReferenceSlice[0] <- channelCommandMessage
 
 	// Trigger TestInstructionEngine to check if there are any Zombie-TestInstructionExecutions, UnderExecution, that have timed out
 	channelCommandMessage = ChannelCommandStruct{
@@ -25,8 +37,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) InitiateTestInstruc
 		ChannelCommandTestInstructionExecutions: nil,
 	}
 
-	// Send Message on Channel
-	*executionEngine.CommandChannelReference <- channelCommandMessage
+	// Send Message on Channel, use first instance
+	*executionEngine.CommandChannelReferenceSlice[0] <- channelCommandMessage
 
 	return
 }

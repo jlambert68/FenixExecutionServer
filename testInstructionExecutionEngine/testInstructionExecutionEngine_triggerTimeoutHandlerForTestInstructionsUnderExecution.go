@@ -13,6 +13,7 @@ import (
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTestInstructionsUnderExecutionCommitOrRoleBackParallellSave(
+	executionTrackNumber int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct) {
@@ -32,7 +33,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTe
 		}
 
 		// Send Message on Channel
-		*executionEngine.CommandChannelReference <- channelCommandMessage
+		*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 
 	} else {
 		dbTransaction.Rollback(context.Background())
@@ -40,7 +41,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTe
 }
 
 // Prepare to update 'timed out' TestInstructionExecutions in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTestInstructionsUnderExecution(testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTestInstructionsUnderExecution(
+	executionTrackNumber int,
+	testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id":                                 "637852af-7a8d-4492-b15a-bb96425f3541",
@@ -81,6 +84,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTe
 	doCommitNotRoleBack = false
 
 	defer executionEngine.timeoutHandlerForTestInstructionsUnderExecutionCommitOrRoleBackParallellSave(
+		executionTrackNumber,
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess)

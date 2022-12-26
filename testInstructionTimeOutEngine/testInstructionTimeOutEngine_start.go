@@ -11,11 +11,14 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"id":                               "4076cea7-3252-496d-9b3d-83488e699a3b",
-		"NumberOfParallellTimeOutChannels": NumberOfParallellTimeOutChannels,
+		"NumberOfParallellTimeOutChannels": common_config.NumberOfParallellTimeOutChannels,
 	}).Info("Will use parallell TimeOutChannels")
 
+	// Initate 'nextUpcomingObjectMapKeyWithTimeOutSlice'
+	nextUpcomingObjectMapKeyWithTimeOutSlice = make([]string, common_config.NumberOfParallellTimeOutChannels)
+
 	// Create one instance per execution track
-	for executionTrackNumber := 0; executionTrackNumber < NumberOfParallellTimeOutChannels; executionTrackNumber++ {
+	for executionTrackNumber := 0; executionTrackNumber < common_config.NumberOfParallellTimeOutChannels; executionTrackNumber++ {
 
 		// Initiate maps with ongoing Timers
 		var timeOutMapSliceElement map[string]*timeOutMapStruct
@@ -56,7 +59,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	}
 
 	// Start Channel reader(s)
-	for executionTrackNumber := 0; executionTrackNumber < NumberOfParallellTimeOutChannels; executionTrackNumber++ {
+	for executionTrackNumber := 0; executionTrackNumber < common_config.NumberOfParallellTimeOutChannels; executionTrackNumber++ {
 
 		go testInstructionExecutionTimeOutEngineObject.startTimeOutChannelReader(executionTrackNumber)
 	}

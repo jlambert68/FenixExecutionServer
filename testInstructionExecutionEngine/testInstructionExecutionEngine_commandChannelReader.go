@@ -8,20 +8,21 @@ import (
 )
 
 // Channel reader which is used for reading out commands to CommandEngine
-func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannelReader() {
+func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannelReader(executionTrackNumber int) {
 
 	var incomingChannelCommand ChannelCommandStruct
 	var channelSize int
 
 	for {
 		// Wait for incoming command over channel
-		incomingChannelCommand = <-*executionEngine.CommandChannelReference
+		incomingChannelCommand = <-*executionEngine.CommandChannelReferenceSlice[executionTrackNumber]
 
 		// If size of Channel > 'ExecutionEngineChannelWarningLevel' then log Warning message
-		channelSize = len(*executionEngine.CommandChannelReference)
+		channelSize = len(*executionEngine.CommandChannelReferenceSlice[executionTrackNumber])
 		if channelSize > ExecutionEngineChannelWarningLevel {
 			common_config.Logger.WithFields(logrus.Fields{
 				"Id":                                 "b2ee2644-d318-4a7f-882a-cddd80058608",
+				"executionTrackNumber":               executionTrackNumber,
 				"channelSize":                        channelSize,
 				"ExecutionEngineChannelWarningLevel": ExecutionEngineChannelWarningLevel,
 				"ExecutionEngineChannelSize":         ExecutionEngineChannelSize,
@@ -31,42 +32,55 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		switch incomingChannelCommand.ChannelCommand {
 
 		case ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue: //(A)
-			executionEngine.moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutions(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+			executionEngine.moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutions(
+				executionTrackNumber,
+				incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		case ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker: //(B)
-			executionEngine.checkForTestInstructionsExecutionsWaitingToBeSentToWorker(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+			executionEngine.checkForTestInstructionsExecutionsWaitingToBeSentToWorker(
+				executionTrackNumber,
+				incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		case ChannelCommandCheckOngoingTestInstructionExecutions: // NOT USED FOR NOW
-			executionEngine.checkOngoingExecutionsForTestInstructions()
+			executionEngine.checkOngoingExecutionsForTestInstructions(executionTrackNumber)
 
 		case ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions: // (C)
-			executionEngine.updateStatusOnTestCaseExecution(incomingChannelCommand)
+			executionEngine.updateStatusOnTestCaseExecution(
+				executionTrackNumber,
+				incomingChannelCommand)
 
 		case ChannelCommandLookForZombieTestInstructionExecutionsInUnderExecution:
-			executionEngine.triggerLookForZombieTestInstructionExecutionsInUnderExecution()
+			executionEngine.triggerLookForZombieTestInstructionExecutionsInUnderExecution(executionTrackNumber)
 
 		case ChannelCommandProcessTestCaseExecutionsOnExecutionQueue:
-			executionEngine.processTestCaseExecutionsOnExecutionQueue(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+			executionEngine.processTestCaseExecutionsOnExecutionQueue(
+				executionTrackNumber,
+				incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 		case ChannelCommandSendZombieTestCaseExecutionThatAreStuckOnExecutionQueue:
-			executionEngine.triggerLookForZombieTestCaseExecutionsOnExecutionQueue()
+			executionEngine.triggerLookForZombieTestCaseExecutionsOnExecutionQueue(executionTrackNumber)
 
 		case ChannelCommandLookForZombieTestInstructionExecutionsOnExecutionQueue:
-			executionEngine.triggerLookForZombieTestInstructionExecutionsOnExecutionQueue()
+			executionEngine.triggerLookForZombieTestInstructionExecutionsOnExecutionQueue(executionTrackNumber)
 
 		case ChannelCommandLookForZombieTestInstructionExecutionsThatHaveTimedOut:
-			executionEngine.triggerLookForZombieTestInstructionExecutionsThatHaveTimedOut()
+			executionEngine.triggerLookForZombieTestInstructionExecutionsThatHaveTimedOut(executionTrackNumber)
 
 		case ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut:
-			executionEngine.triggerProcessTestInstructionExecutionsThatHaveTimedOut(incomingChannelCommand.ChannelCommandTestInstructionExecutions)
+			executionEngine.triggerProcessTestInstructionExecutionsThatHaveTimedOut(
+				executionTrackNumber,
+				incomingChannelCommand.ChannelCommandTestInstructionExecutions)
 
 		case ChannelCommandProcessFinalTestInstructionExecutionResultMessage:
-			executionEngine.triggerProcessReportCompleteTestInstructionExecutionResultSaveToCloudDB(incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
+			executionEngine.triggerProcessReportCompleteTestInstructionExecutionResultSaveToCloudDB(
+				executionTrackNumber,
+				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
 		// No other command is supported
 		default:
 			executionEngine.logger.WithFields(logrus.Fields{
 				"Id":                     "6bf37452-da99-4e7e-aa6a-4627b05d1bdb",
+				"executionTrackNumber":   executionTrackNumber,
 				"incomingChannelCommand": incomingChannelCommand,
 			}).Fatalln("Unknown command in CommandChannel for TestInstructionEngine")
 		}
@@ -75,9 +89,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 }
 
 // Check ExecutionQueue for TestInstructions and move them to ongoing Executions-table
-func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutions(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutions(
+	executionTrackNumber int,
+	channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
-	executionEngine.moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB(channelCommandTestCasesExecution)
+	executionEngine.moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB(
+		executionTrackNumber,
+		channelCommandTestCasesExecution)
 	/*
 		// Trigger TestInstructionEngine to check if there are TestInstructions that should be sent to workers
 		channelCommandMessage := ChannelCommandStruct{
@@ -91,9 +109,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 }
 
 // Check for new executions for TestInstructions that should be sent to workers
-func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecution(incomingChannelCommand ChannelCommandStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecution(
+	executionTrackNumber int,
+	incomingChannelCommand ChannelCommandStruct) {
 
-	err := executionEngine.updateStatusOnTestCaseExecutionInCloudDB(incomingChannelCommand.ChannelCommandTestCaseExecutions)
+	err := executionEngine.updateStatusOnTestCaseExecutionInCloudDB(
+		executionTrackNumber,
+		incomingChannelCommand.ChannelCommandTestCaseExecutions)
 
 	// If there is a Channel reference present then send back Error-message from DB-update
 	if incomingChannelCommand.ReturnChannelWithDBErrorReference != nil {
@@ -107,21 +129,27 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 }
 
 // Check for ongoing executions  for TestInstructions for change in status that should be propagated to other places
-func (executionEngine *TestInstructionExecutionEngineStruct) checkOngoingExecutionsForTestInstructions() {
+func (executionEngine *TestInstructionExecutionEngineStruct) checkOngoingExecutionsForTestInstructions(
+	executionTrackNumber int) {
 	fmt.Println("ÄÄÄÄÄÄÄÄÄÄÄÄÄ CODE IS MISSING FOR THIS ONE!!! ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ")
 }
 
 // Update TestCaseExecutionStatus based on result on individual TestInstructionExecution-results
-func (executionEngine *TestInstructionExecutionEngineStruct) checkForTestInstructionsExecutionsWaitingToBeSentToWorker(channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) checkForTestInstructionsExecutionsWaitingToBeSentToWorker(
+	executionTrackNumber int,
+	channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
-	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker(channelCommandTestCasesExecution)
+	executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorker(
+		executionTrackNumber,
+		channelCommandTestCasesExecution)
 }
 
 // Look for Zombie-TransactionsExecutions that were sent to Worker, but was lost in some way
-func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsInUnderExecution() {
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsInUnderExecution(
+	executionTrackNumber int) {
 
 	// Look for Zombie-TestInstructionExecutions in UnderExecution
-	_ = executionEngine.sendAllZombieTestInstructionsUnderExecution()
+	_ = executionEngine.sendAllZombieTestInstructionsUnderExecution(executionTrackNumber)
 
 	// Trigger TestInstructionEngine to check if there are any Zombie-TestCaseExecutions stuck OnExecutionQueue
 	channelCommandMessage := ChannelCommandStruct{
@@ -130,14 +158,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombi
 	}
 
 	// Send Message on Channel
-	*executionEngine.CommandChannelReference <- channelCommandMessage
+	*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 
 }
 
 // Look for Zombie-TestCaseExecutions that are waiting on OnQueue, but was lost in some way
-func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestCaseExecutionsOnExecutionQueue() {
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestCaseExecutionsOnExecutionQueue(
+	executionTrackNumber int) {
 
-	_ = executionEngine.lookForZombieTestCaseExecutionsOnExecutionQueue()
+	_ = executionEngine.lookForZombieTestCaseExecutionsOnExecutionQueue(executionTrackNumber)
 
 	// Trigger TestInstructionEngine to check if there are any Zombie-TestInstructionsExecutions stuck OnExecutionQueue
 	channelCommandMessage := ChannelCommandStruct{
@@ -146,46 +175,57 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombi
 	}
 
 	// Send Message on Channel
-	*executionEngine.CommandChannelReference <- channelCommandMessage
+	*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 
 }
 
 // Look for Zombie-TestCaseExecutions that are waiting on OnQueue, but was lost in some way
 func (executionEngine *TestInstructionExecutionEngineStruct) processTestCaseExecutionsOnExecutionQueue(
+	executionTrackNumber int,
 	channelCommandTestCasesExecution []ChannelCommandTestCaseExecutionStruct) {
 
-	_ = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
+	_ = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
+		executionTrackNumber,
+		channelCommandTestCasesExecution)
 
 }
 
 // Look for Zombie-TestInstructionExecutions that are waiting on OnQueue, but was lost in some way
-func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsOnExecutionQueue() {
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsOnExecutionQueue(
+	executionTrackNumber int) {
 
-	_ = executionEngine.sendAllZombieTestInstructionsOnExecutionQueue()
+	_ = executionEngine.sendAllZombieTestInstructionsOnExecutionQueue(executionTrackNumber)
 
 }
 
 // Look for Zombie-TestInstructionExecutions that have timed out, but was lost in some way
-func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsThatHaveTimedOut() {
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerLookForZombieTestInstructionExecutionsThatHaveTimedOut(
+	executionTrackNumber int) {
 
-	_ = executionEngine.findAllZombieTestInstructionExecutionsInTimeout()
+	_ = executionEngine.findAllZombieTestInstructionExecutionsInTimeout(executionTrackNumber)
 
 }
 
 // Process for Zombie-TestInstructionExecutions that have timed out
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestInstructionExecutionsThatHaveTimedOut(
+	executionTrackNumber int,
 	testInstructionExecutionsToProcess []ChannelCommandTestInstructionExecutionStruct) {
 
-	executionEngine.timeoutHandlerForTestInstructionsUnderExecution(testInstructionExecutionsToProcess)
+	executionEngine.timeoutHandlerForTestInstructionsUnderExecution(
+		executionTrackNumber,
+		testInstructionExecutionsToProcess)
 
 }
 
 // Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessReportCompleteTestInstructionExecutionResultSaveToCloudDB(
+	executionTrackNumber int,
 	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) {
 
 	go func() {
-		_ = executionEngine.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage)
+		_ = executionEngine.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(
+			executionTrackNumber,
+			finalTestInstructionExecutionResultMessage)
 	}()
 
 }

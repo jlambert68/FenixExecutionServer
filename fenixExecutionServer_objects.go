@@ -11,11 +11,11 @@ import (
 )
 
 type fenixExecutionServerObjectStruct struct {
-	logger                      *logrus.Logger
-	gcpAccessToken              *oauth2.Token
-	executionEngineChannelRef   *testInstructionExecutionEngine.ExecutionEngineChannelType
-	executionEngine             *testInstructionExecutionEngine.TestInstructionExecutionEngineStruct
-	executionWorkerVariablesMap *map[string]*common_config.ExecutionWorkerVariablesStruct
+	logger                         *logrus.Logger
+	gcpAccessToken                 *oauth2.Token
+	executionEngineChannelRefSlice []*testInstructionExecutionEngine.ExecutionEngineChannelType
+	executionEngine                *testInstructionExecutionEngine.TestInstructionExecutionEngineStruct
+	executionWorkerVariablesMap    *map[string]*common_config.ExecutionWorkerVariablesStruct
 }
 
 // Variable holding everything together

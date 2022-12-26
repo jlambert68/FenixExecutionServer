@@ -13,6 +13,7 @@ import (
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
+	executionTrackNumber int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
@@ -40,7 +41,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 			}
 
 			// Send Message on Channel
-			*executionEngine.CommandChannelReference <- channelCommandMessage
+			*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 		} else {
 			// No TestInstructionExecutions are waiting in ExecutionQueue, updateTestCaseExecutionWithStatus == true
 
@@ -53,7 +54,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 			}
 
 			// Send Message on Channel
-			*executionEngine.CommandChannelReference <- channelCommandMessage
+			*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 		}
 
 	} else {
@@ -62,7 +63,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExec
 }
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB(
+	executionTrackNumber int,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id":                          "3bd9e5cf-d108-4d99-94fa-8dc673dfcb68",
@@ -97,6 +100,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 	triggerUpdateTestCaseExecutionWithStatus = false
 
 	defer executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
+		executionTrackNumber,
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess,

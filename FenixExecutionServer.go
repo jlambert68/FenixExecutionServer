@@ -37,23 +37,36 @@ func fenixExecutionServerMain() {
 
 	// Set up BackendObject
 	fenixExecutionServerObject = &fenixExecutionServerObjectStruct{
-		logger:                    nil,
-		gcpAccessToken:            nil,
-		executionEngineChannelRef: nil,
-		executionEngine:           &testInstructionExecutionEngine.TestInstructionExecutionEngineStruct{},
+		logger:                         nil,
+		gcpAccessToken:                 nil,
+		executionEngineChannelRefSlice: nil,
+		executionEngine:                &testInstructionExecutionEngine.TestInstructionExecutionEngineStruct{},
 	}
 
 	// Init logger
-	fenixExecutionServerObject.InitLogger("log66.log")
+	fenixExecutionServerObject.InitLogger("log67.log")
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information
 	defer cleanup()
 
-	// Create Channel used for sending Commands to TestInstructionExecutionCommandsEngine
-	testInstructionExecutionEngine.ExecutionEngineCommandChannel = make(chan testInstructionExecutionEngine.ChannelCommandStruct, testInstructionExecutionEngine.ExecutionEngineChannelSize)
-	myCommandChannelRef := &testInstructionExecutionEngine.ExecutionEngineCommandChannel
-	fenixExecutionServerObject.executionEngineChannelRef = myCommandChannelRef
+	// Create one instance per execution track for channel
+	for executionTrackNumber := 0; executionTrackNumber < common_config.NumberOfParallellExecutionEngineCommandChannels; executionTrackNumber++ {
 
+		// Create Channel used for sending Commands to TestInstructionExecutionCommandsEngine
+		var executionEngineCommandChannel testInstructionExecutionEngine.ExecutionEngineChannelType
+		executionEngineCommandChannel = make(chan testInstructionExecutionEngine.ChannelCommandStruct, testInstructionExecutionEngine.ExecutionEngineChannelSize)
+
+		// Append to 'ExecutionEngineCommandChannelSlice'
+		testInstructionExecutionEngine.ExecutionEngineCommandChannelSlice = append(
+			testInstructionExecutionEngine.ExecutionEngineCommandChannelSlice,
+			executionEngineCommandChannel)
+
+		// Create reference to channel and append to fenixExecutionServerObject-slice
+		myCommandChannelRef := &executionEngineCommandChannel
+		fenixExecutionServerObject.executionEngineChannelRefSlice = append(
+			fenixExecutionServerObject.executionEngineChannelRefSlice,
+			myCommandChannelRef)
+	}
 	// Initiate logger in TestInstructionEngine
 	fenixExecutionServerObject.executionEngine.SetLogger(fenixExecutionServerObject.logger)
 
@@ -75,8 +88,9 @@ func fenixExecutionServerMain() {
 	//its status. Messages are sent to BroadcastEngine using channels
 	go broadcastingEngine.InitiateAndStartBroadcastNotifyEngine()
 
+	Fixa nedanstående reference
 	// Start Receiver channel for Commands
-	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRef)
+	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*fenixExecutionServerObject.executionEngineChannelRefSlice)
 
 	// Start Receiver channel for TimeOutEngine
 	testInstructionTimeOutEngine.TestInstructionExecutionTimeOutEngineObject.InitiateTestInstructionExecutionTimeOutEngineChannelReader()

@@ -19,6 +19,7 @@ import (
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
+	executionTrackNumber int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testInstructionExecutionsReference *[]broadcastingEngine.TestInstructionExecutionStruct,
@@ -58,7 +59,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 			}
 
 			// Send message on ExecutionEngineChannel
-			*executionEngine.CommandChannelReference <- channelCommandMessage
+			*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 		}
 
 	} else {
@@ -67,7 +68,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 }
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorker(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
+func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorker(
+	executionTrackNumber int,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id":                          "ffd43120-ad83-4f38-9ff5-877c572cc08e",
@@ -101,6 +104,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 	defer executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
+		executionTrackNumber,
 		&txn,
 		&doCommitNotRoleBack,
 		&testInstructionExecutions,
@@ -134,7 +138,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 			ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 		}
 
-		*executionEngine.CommandChannelReference <- channelCommandMessage
+		*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 
 		return
 	}

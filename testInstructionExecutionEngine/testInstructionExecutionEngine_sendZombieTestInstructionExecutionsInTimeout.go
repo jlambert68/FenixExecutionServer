@@ -10,7 +10,8 @@ import (
 )
 
 // TestInstructions  in UnderExecution that, of some reason, should be put into timeout-status
-func (executionEngine *TestInstructionExecutionEngineStruct) findAllZombieTestInstructionExecutionsInTimeout() (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) findAllZombieTestInstructionExecutionsInTimeout(
+	executionTrackNumber int) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id": "3a8e228e-a7e6-470e-927f-a961d1caa015",
@@ -51,7 +52,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) findAllZombieTestIn
 		}
 
 		// Send Message on Channel
-		*executionEngine.CommandChannelReference <- channelCommandMessage
+		*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 	}
 
 	return err

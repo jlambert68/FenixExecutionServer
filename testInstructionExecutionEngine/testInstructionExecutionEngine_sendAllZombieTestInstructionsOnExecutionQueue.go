@@ -12,7 +12,8 @@ import (
 )
 
 // TestInstructions that, of some reason, are stuck in OnExecutionQueue will be reprocessed
-func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestInstructionsOnExecutionQueue() (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestInstructionsOnExecutionQueue(
+	executionTrackNumber int) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id": "4975d842-23cc-4714-872d-453a990bf609",
@@ -52,7 +53,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestIn
 		}
 
 		// Send Message on Channel
-		*executionEngine.CommandChannelReference <- channelCommandMessage
+		*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 	}
 
 	return err

@@ -21,6 +21,7 @@ import (
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBack(
+	executionTrackNumber int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct) {
@@ -39,7 +40,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBack(
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 
-			ExecutionEngineCommandChannel <- channelCommandMessage
+			ExecutionEngineCommandChannelSlice[executionTrackNumber] <- channelCommandMessage
 
 		}()
 	} else {
@@ -50,14 +51,22 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBack(
 // PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB
 // Exposed version
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
-	ackNackResponse = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess)
+func (executionEngine *TestInstructionExecutionEngineStruct) PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
+	executionTrackNumber int,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
+	ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+
+	ackNackResponse = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
+		executionTrackNumber,
+		testCaseExecutionsToProcess)
 
 	return ackNackResponse
 }
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
+	executionTrackNumber int,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
@@ -92,6 +101,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	doCommitNotRoleBack = false
 
 	defer executionEngine.commitOrRoleBack(
+		executionTrackNumber,
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess) //txn.Commit(context.Background())

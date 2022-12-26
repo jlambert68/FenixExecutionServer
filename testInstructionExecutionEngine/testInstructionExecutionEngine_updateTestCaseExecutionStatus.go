@@ -68,7 +68,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 }
 
 // Update status, which came from Connector/Worker, on ongoing TestCaseExecutionUuid
-func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecutionInCloudDB(testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestCaseExecutionInCloudDB(
+	executionTrackNumber int,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id":                          "c11ebfee-0ca3-4288-af46-7fa9bbe26faa",

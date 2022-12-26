@@ -120,7 +120,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 				ReturnChannelWithDBErrorReference: &returnChannelWithDBError,
 			}
 
-			*executionEngine.CommandChannelReference <- channelCommandMessage
+			*executionEngine.CommandChannelReferenceSlice[executionTrack] <- channelCommandMessage
 
 			// Wait for errReturnMessage in return channel
 			var returnChannelMessage ReturnChannelWithDBErrorStruct
@@ -138,7 +138,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 				ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 			}
 
-			*executionEngine.CommandChannelReference <- channelCommandMessage
+			*executionEngine.CommandChannelReferenceSlice[executionTrack] <- channelCommandMessage
 
 		} else {
 
@@ -153,7 +153,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 				ReturnChannelWithDBErrorReference: &returnChannelWithDBError,
 			}
 
-			*executionEngine.CommandChannelReference <- channelCommandMessage
+			*executionEngine.CommandChannelReferenceSlice[executionTrack] <- channelCommandMessage
 
 			// Wait for errReturnMessage in return channel
 			var returnChannelMessage ReturnChannelWithDBErrorStruct
@@ -170,7 +170,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 					ChannelCommand:                   ChannelCommandCheckOngoingTestInstructionExecutions,
 					ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 				}
-				*executionEngine.CommandChannelReference <- channelCommandMessage
+				*executionEngine.CommandChannelReferenceSlice[executionTrack] <- channelCommandMessage
 
 			}
 		}
@@ -180,7 +180,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 }
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
-func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(
+	executionTrackNumber int,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Verify that the ExecutionStatus is a final status
 	// (0, 'TIE_INITIATED') -> NOT OK

@@ -9,7 +9,8 @@ import (
 )
 
 // TestCaseExecutions that, of some reason, are stuck on ExecutionQueue will be resent
-func (executionEngine *TestInstructionExecutionEngineStruct) lookForZombieTestCaseExecutionsOnExecutionQueue() (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) lookForZombieTestCaseExecutionsOnExecutionQueue(
+	executionTrackNumber int) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id": "ef2d1fdf-d584-48df-909d-f4c7fd9a2ea9",
@@ -50,7 +51,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) lookForZombieTestCa
 		}
 
 		// Send Message on Channel
-		*executionEngine.CommandChannelReference <- channelCommandMessage
+		*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 	}
 
 	return err

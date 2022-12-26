@@ -1,7 +1,6 @@
 package common_config
 
 import (
-	"FenixExecutionServer/testInstructionTimeOutEngine"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -181,7 +180,7 @@ func bToMb(b uint64) uint64 {
 func CalculateExecutionTrackNumber(testInstructionExecutionUuid string) (executionTrack int) {
 
 	var hex string
-	hex = testInstructionExecutionUuid[:testInstructionTimeOutEngine.NumberOfCharactersToUseFromTestInstructionExecutionUuid]
+	hex = testInstructionExecutionUuid[:NumberOfCharactersToUseFromTestInstructionExecutionUuid]
 
 	value, err := strconv.ParseInt(hex, 16, 64)
 	if err != nil {
@@ -195,7 +194,7 @@ func CalculateExecutionTrackNumber(testInstructionExecutionUuid string) (executi
 	}
 
 	// Calculate execution track from converted hex value
-	executionTrack = int(value % testInstructionTimeOutEngine.NumberOfParallellTimeOutChannels)
+	executionTrack = int(value % NumberOfParallellTimeOutChannels)
 
 	return executionTrack
 }

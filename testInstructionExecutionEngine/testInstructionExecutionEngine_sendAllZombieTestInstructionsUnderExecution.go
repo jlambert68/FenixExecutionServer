@@ -13,7 +13,8 @@ const SecondsWithOutAnswerFromWorker time.Duration = time.Second * 15
 
 // TestInstructions that, of some reason, are stuck in UnderExecution will be resent
 // If no response was received back from Worker, and 'some time' has passed
-func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestInstructionsUnderExecution() (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestInstructionsUnderExecution(
+	executionTrackNumber int) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id": "7dec5937-5436-494d-a66e-fb77b49bf6c4",
@@ -54,7 +55,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestIn
 		}
 
 		// Send Message on Channel
-		*executionEngine.CommandChannelReference <- channelCommandMessage
+		*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 	}
 
 	return err
