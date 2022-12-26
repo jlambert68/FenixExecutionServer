@@ -99,8 +99,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 			SendID: "18d960b0-a0dc-4058-9370-c66dce099e3d",
 		}
 
+		// Calculate Execution Track
+		var executionTrack int
+		executionTrack = common_config.CalculateExecutionTrackNumber(
+			testInstructionExecution.TestInstructionExecutionUuid)
+
 		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
-		*common_config.TimeOutChannelEngineCommandChannelReference <- tempTimeOutChannelCommand
+		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
 
 		// Update status for TestCaseExecutionUuid, based on incoming TestInstructionExecution
 		if triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions == true {
@@ -191,9 +196,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	// (10, 'TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN' -> OK
 	// (11, 'TIE_TIMEOUT_INTERRUPTION' -> OK
 
+	// Calculate Execution Track
+	var executionTrack int
+	executionTrack = common_config.CalculateExecutionTrackNumber(
+		finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
+
 	common_config.Logger.WithFields(logrus.Fields{
 		"id": "51054338-e8ac-49ef-bb30-0efebc98e029",
 		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+		"executionTrack": executionTrack,
 	}).Debug("Incoming 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
 
 	defer common_config.Logger.WithFields(logrus.Fields{
@@ -221,7 +232,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	}
 
 	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
-	*common_config.TimeOutChannelEngineCommandChannelReference <- tempTimeOutChannelCommand
+	*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
 
 	// Response from TimeOutEngine
 	var timeOutReturnChannelForTimeOutHasOccurredValue common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct

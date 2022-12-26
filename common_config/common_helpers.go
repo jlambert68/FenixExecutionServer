@@ -1,6 +1,7 @@
 package common_config
 
 import (
+	"FenixExecutionServer/testInstructionTimeOutEngine"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"log"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -173,4 +175,27 @@ func PrintMemUsage() {
 
 func bToMb(b uint64) uint64 {
 	return b / 1024 / 1024
+}
+
+// Calculate Execution-Track based on TestInstructionsExecutionUuid
+func CalculateExecutionTrackNumber(testInstructionExecutionUuid string) (executionTrack int) {
+
+	var hex string
+	hex = testInstructionExecutionUuid[:testInstructionTimeOutEngine.NumberOfCharactersToUseFromTestInstructionExecutionUuid]
+
+	value, err := strconv.ParseInt(hex, 16, 64)
+	if err != nil {
+		Logger.WithFields(logrus.Fields{
+			"id":                           "36b4a679-b44b-4f41-9518-d723639e5d72",
+			"testInstructionExecutionUuid": testInstructionExecutionUuid,
+			"hex":                          hex,
+		}).Error(fmt.Printf("Hex Conversion failed: %s. Will use track '0'", err))
+
+		value = 0
+	}
+
+	// Calculate execution track from converted hex value
+	executionTrack = int(value % testInstructionTimeOutEngine.NumberOfParallellTimeOutChannels)
+
+	return executionTrack
 }

@@ -4,7 +4,12 @@ import "time"
 
 // TimeOutChannelEngineCommandChannelReference
 // A reference to  channel for the TestInstructionExecutionEngine
-var TimeOutChannelEngineCommandChannelReference *TimeOutChannelEngineType
+//var TimeOutChannelEngineCommandChannelReference *TimeOutChannelEngineType
+
+// TimeOutChannelEngineCommandChannelReferenceSlice
+// A slice with references to  channels for the TestInstructionExecutionEngine
+// Each position in slice represents one execution track
+var TimeOutChannelEngineCommandChannelReferenceSlice []*TimeOutChannelEngineType
 
 // TimeOutChannelEngineType
 // The channel type

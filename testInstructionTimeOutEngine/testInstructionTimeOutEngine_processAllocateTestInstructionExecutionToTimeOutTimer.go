@@ -8,11 +8,13 @@ import (
 
 // Allocate a Timer before starting it. Used to handle really fast responses for TestInstructionExecutions so stuff doesn't happen in wrong order
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processAllocateTestInstructionExecutionToTimeOutTimer(
+	executionTrack int,
 	incomingTimeOutChannelCommand *common_config.TimeOutChannelCommandStruct) {
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"id":                            "2118f722-4d0e-4ae0-8c30-3e0de37b312a",
 		"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
+		"executionTrack":                executionTrack,
 	}).Debug("Incoming 'processAllocateTestInstructionExecutionToTimeOutTimer'")
 
 	defer common_config.Logger.WithFields(logrus.Fields{
@@ -30,7 +32,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	allocatedTimeOutTimerMapKey = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
 		testInstructionExecutionVersionAsString
 
-	_, existInMap = allocatedTimeOutTimerMap[allocatedTimeOutTimerMapKey]
+	_, existInMap = (AllocatedTimeOutTimerMapSlice[executionTrack])[allocatedTimeOutTimerMapKey]
 
 	// There should not be any existing TimeOut-timer allocated
 	if existInMap == true {
@@ -43,6 +45,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	}
 
 	// Add to allocation-map for TimeOut-timers
-	allocatedTimeOutTimerMap[allocatedTimeOutTimerMapKey] = allocatedTimeOutTimerMapKey
+	(AllocatedTimeOutTimerMapSlice[executionTrack])[allocatedTimeOutTimerMapKey] = allocatedTimeOutTimerMapKey
 
 }

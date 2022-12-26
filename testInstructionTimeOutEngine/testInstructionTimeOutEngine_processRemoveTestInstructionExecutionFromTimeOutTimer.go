@@ -9,41 +9,19 @@ import (
 
 // Add TestInstructionExecution to TimeOut-timer
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processRemoveTestInstructionExecutionFromTimeOutTimer(
+	executionTrack int,
 	incomingTimeOutChannelCommand *common_config.TimeOutChannelCommandStruct,
 	timeOutChannelCommand common_config.TimeOutChannelCommandType) {
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"id":                            "265c6141-c3be-43a8-a4cf-970435b2eaa3",
 		"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
+		"executionTrack":                executionTrack,
 	}).Debug("Incoming 'processRemoveTestInstructionExecutionFromTimeOutTimer'")
 
 	defer common_config.Logger.WithFields(logrus.Fields{
 		"id": "69054858-a8d5-4c1d-ad11-63c1d37453f4",
 	}).Debug("Outgoing 'processRemoveTestInstructionExecutionFromTimeOutTimer'")
-
-	for key, object := range timeOutMap {
-		common_config.Logger.WithFields(logrus.Fields{
-			"id":                           "52eeba90-d48e-430d-8b0e-5e068573e507",
-			"key":                          key,
-			"object.previousTimeOutMapKey": object.previousTimeOutMapKey,
-			"object.currentTimeOutMapKey":  object.currentTimeOutMapKey,
-			"object.nextTimeOutMapKey":     object.nextTimeOutMapKey,
-			"object.cancellableTimer":      object.cancellableTimer,
-		}).Debug("All items in 'timeOutMap' before 'processRemoveTestInstructionExecutionFromTimeOutTimer'")
-	}
-
-	defer func() {
-		for key, object := range timeOutMap {
-			common_config.Logger.WithFields(logrus.Fields{
-				"id":                           "ccd430d3-8399-4731-969f-e0673a67ffa5",
-				"key":                          key,
-				"object.previousTimeOutMapKey": object.previousTimeOutMapKey,
-				"object.currentTimeOutMapKey":  object.currentTimeOutMapKey,
-				"object.nextTimeOutMapKey":     object.nextTimeOutMapKey,
-				"object.cancellableTimer":      object.cancellableTimer,
-			}).Debug("All items in 'timeOutMap' after 'processRemoveTestInstructionExecutionFromTimeOutTimer'")
-		}
-	}()
 
 	// Create Map-key for 'timeOutMap'
 	var timeOutMapKeyToRemove string
@@ -60,7 +38,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	var existsInMap bool
 
 	// Extract object from TimeOut.timerMap
-	currentTimeOutObjectToRemove, existsInMap = timeOutMap[timeOutMapKeyToRemove]
+	currentTimeOutObjectToRemove, existsInMap = (*timeOutMapSlice[executionTrack])[timeOutMapKeyToRemove]
 	if existsInMap == false {
 
 		// Check if Remove-command comes from that an TestInstructionExecution was done or
@@ -73,20 +51,18 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				"id":                    "67a83431-0a18-458a-b0a1-032ad21de613",
 				"timeOutMapKeyToRemove": timeOutMapKeyToRemove,
 				"timeOutChannelCommand": timeOutChannelCommand,
-				"timeOutMap":            timeOutMap,
 			}).Warning("'timeOutMap' doesn't contain the object to be removed")
 
 		} else {
 
 			// Check if Timer already TimedOut
-			_, existsInMap = timedOutMap[timeOutMapKeyToRemove]
+			_, existsInMap = (*timedOutMapSlice[executionTrack])[timeOutMapKeyToRemove]
 			if existsInMap == false {
 				// log Error when the TimeOut occurred
 				common_config.Logger.WithFields(logrus.Fields{
 					"id":                    "ce9d00d7-e245-4687-bca6-028f2e059dc9",
 					"timeOutMapKeyToRemove": timeOutMapKeyToRemove,
 					"timeOutChannelCommand": timeOutChannelCommand,
-					"timeOutMap":            timeOutMap,
 				}).Error("'timeOutMap' doesn't contain the object to be removed")
 			}
 		}
@@ -100,7 +76,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// If timer TimedOut then add object to map with TimedOut Objects
 	if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToTimeOutFromTimer {
 
-		_, existsInMap = timedOutMap[timeOutMapKeyToRemove]
+		_, existsInMap = (*timedOutMapSlice[executionTrack])[timeOutMapKeyToRemove]
 		if existsInMap == true {
 			common_config.Logger.WithFields(logrus.Fields{
 				"id":                    "54f95fa7-f016-4c19-8232-40be29124a6b",
@@ -112,12 +88,12 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		}
 
 		// Add Object to Map with the Timed out Objects
-		timedOutMap[timeOutMapKeyToRemove] = currentTimeOutObjectToRemove
+		(*timedOutMapSlice[executionTrack])[timeOutMapKeyToRemove] = currentTimeOutObjectToRemove
 
 	}
 
 	// If the map only consist of 1 object then just remove it
-	if len(timeOutMap) == 1 {
+	if len((*timeOutMapSlice[executionTrack])) == 1 {
 
 		// Only Cancel Timer when TestInstructionExecution was finished, otherwise Timer has finished
 		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
@@ -131,10 +107,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		}
 
 		// Delete  current object from map
-		delete(timeOutMap, timeOutMapKeyToRemove)
+		delete((*timeOutMapSlice[executionTrack]), timeOutMapKeyToRemove)
 
 		// Clear reference to first MapKey
-		nextUpcomingObjectMapKeyWithTimeOut = ""
+		nextUpcomingObjectMapKeyWithTimeOutSlice[executionTrack] = ""
 
 		return
 	}
@@ -163,14 +139,14 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		}
 		// Delete current object
-		delete(timeOutMap, timeOutMapKeyToRemove)
+		delete((*timeOutMapSlice[executionTrack]), timeOutMapKeyToRemove)
 
 		// Set new reference to first MapKey
-		nextUpcomingObjectMapKeyWithTimeOut = nextTimeOutMapKey
+		nextUpcomingObjectMapKeyWithTimeOutSlice[executionTrack] = nextTimeOutMapKey
 
 		// Extract newTimeOutMapObject
 		var nextTimeOutMapObject *timeOutMapStruct
-		nextTimeOutMapObject, existsInMap = timeOutMap[nextTimeOutMapKey]
+		nextTimeOutMapObject, existsInMap = (*timeOutMapSlice[executionTrack])[nextTimeOutMapKey]
 		if existsInMap == false {
 
 			common_config.Logger.WithFields(logrus.Fields{
@@ -191,6 +167,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		// Start new TimeOut-timer for next TestInstructionExecution
 		go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(
+			executionTrack,
 			nextTimeOutMapObject,
 			incomingTimeOutChannelCommand,
 			nextTimeOutMapKey,
@@ -199,6 +176,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		// Update next object regarding previous object MapKey
 		_ = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
+			executionTrack,
 			nextTimeOutMapKey,
 			nextTimeOutMapKey,
 			"")
@@ -218,16 +196,18 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		<-currentTimeOutObjectToRemove.cancellableTimer.TimerHasBeenClosed
 		*/
 		// Delete current object
-		delete(timeOutMap, timeOutMapKeyToRemove)
+		delete((*timeOutMapSlice[executionTrack]), timeOutMapKeyToRemove)
 
 		// Update previous object regarding its next object
 		_ = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
+			executionTrack,
 			"",
 			previousTimeOutMapKey,
 			nextTimeOutMapKey)
 
 		// Update next object regarding its previous object
 		_ = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
+			executionTrack,
 			previousTimeOutMapKey,
 			nextTimeOutMapKey,
 			"")
@@ -247,10 +227,11 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		*/
 
 		// Delete current object
-		delete(timeOutMap, timeOutMapKeyToRemove)
+		delete((*timeOutMapSlice[executionTrack]), timeOutMapKeyToRemove)
 
 		// Update previous object regarding its next object
 		_ = testInstructionExecutionTimeOutEngineObject.updateTimeOutChannelCommandObject(
+			executionTrack,
 			"",
 			previousTimeOutMapKey,
 			previousTimeOutMapKey)

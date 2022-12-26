@@ -599,8 +599,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 			SendID:                                  "6e7185e2-8b59-4bf0-aebb-96ab290a19ef",
 		}
 
+		// Calculate Execution Track
+		var executionTrack int
+		executionTrack = common_config.CalculateExecutionTrackNumber(
+			testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+
 		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
-		*common_config.TimeOutChannelEngineCommandChannelReference <- tempTimeOutChannelCommand
+		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
 
 		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(testInstructionToBeSentToExecutionWorkers.domainUuid, testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
 
@@ -776,9 +781,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
 			SendID: "9d59fc1b-9b11-4adf-b175-1ebbc60eceae",
 		}
+		// Calculate Execution Track
+		var executionTrack int
+		executionTrack = common_config.CalculateExecutionTrackNumber(
+			testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
 
 		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
-		*common_config.TimeOutChannelEngineCommandChannelReference <- tempTimeOutChannelCommand
+		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
 
 	}
 
