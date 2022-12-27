@@ -15,7 +15,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) InitiateTestInstruc
 
 		executionEngine.CommandChannelReferenceSlice = append(
 			executionEngine.CommandChannelReferenceSlice,
-			&executionEngineCommandChannel)
+			&executionEngineCommandChannel[executionTrackNumber])
 
 		go executionEngine.startCommandChannelReader(executionTrackNumber)
 

@@ -61,12 +61,11 @@ func fenixExecutionServerMain() {
 			testInstructionExecutionEngine.ExecutionEngineCommandChannelSlice,
 			executionEngineCommandChannel)
 
-		// Create reference to channel and append to fenixExecutionServerObject-slice
-		myCommandChannelRef := &executionEngineCommandChannel
-		fenixExecutionServerObject.executionEngineChannelRefSlice = append(
-			fenixExecutionServerObject.executionEngineChannelRefSlice,
-			myCommandChannelRef)
 	}
+
+	// Create reference to channel and append to fenixExecutionServerObject-slice
+	myCommandChannelRefSlice := &testInstructionExecutionEngine.ExecutionEngineCommandChannelSlice
+
 	// Initiate logger in TestInstructionEngine
 	fenixExecutionServerObject.executionEngine.SetLogger(fenixExecutionServerObject.logger)
 
@@ -88,9 +87,8 @@ func fenixExecutionServerMain() {
 	//its status. Messages are sent to BroadcastEngine using channels
 	go broadcastingEngine.InitiateAndStartBroadcastNotifyEngine()
 
-	Fixa nedanstående reference
 	// Start Receiver channel for Commands
-	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*fenixExecutionServerObject.executionEngineChannelRefSlice)
+	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRefSlice)
 
 	// Start Receiver channel for TimeOutEngine
 	testInstructionTimeOutEngine.TestInstructionExecutionTimeOutEngineObject.InitiateTestInstructionExecutionTimeOutEngineChannelReader()

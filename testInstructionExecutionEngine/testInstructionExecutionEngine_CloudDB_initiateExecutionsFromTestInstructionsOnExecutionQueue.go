@@ -7,6 +7,7 @@ import (
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -91,6 +92,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 		}).Error("Problem to do 'DbPool.Begin'  in 'moveTestInstructionExecutionsFromExecutionQueueToOngoingExecutionsSaveToCloudDB'")
 
 		return
+	}
+
+	// Extract "lowest" TestCaseExecutionUuid
+	if len(testCaseExecutionsToProcess) > 0 {
+		var uuidSlice []string
+		for _, uuid := range testCaseExecutionsToProcess {
+			uuidSlice = append(uuidSlice, uuid.TestCaseExecutionUuid)
+		}
+		sort.Strings(uuidSlice)
+
+		// Define Execution Track based on "lowest "TestCaseExecutionUuid
+		executionTrackNumber = common_config.CalculateExecutionTrackNumber(uuidSlice[0])
 	}
 
 	// Standard is to do a Rollback
