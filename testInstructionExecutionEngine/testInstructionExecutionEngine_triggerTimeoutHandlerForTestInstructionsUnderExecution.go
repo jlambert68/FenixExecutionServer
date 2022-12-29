@@ -9,6 +9,7 @@ import (
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"sort"
 	"strconv"
 )
 
@@ -30,6 +31,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTe
 		channelCommandMessage := ChannelCommandStruct{
 			ChannelCommand:                   ChannelCommandUpdateExecutionStatusOnTestCaseExecutionExecutions,
 			ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
+		}
+
+		// Extract "lowest" TestCaseExecutionUuid
+		if len(testCaseExecutionsToProcess) > 0 {
+			var uuidSlice []string
+			for _, uuid := range testCaseExecutionsToProcess {
+				uuidSlice = append(uuidSlice, uuid.TestCaseExecutionUuid)
+			}
+			sort.Strings(uuidSlice)
+
+			// Define Execution Track based on "lowest "TestCaseExecutionUuid
+			executionTrackNumber = common_config.CalculateExecutionTrackNumber(uuidSlice[0])
 		}
 
 		// Send Message on Channel
@@ -91,14 +104,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTe
 
 	// Loop 'Timed Out' TestInstructionExecutions and update Executions status in DB
 	for _, tempTestInstructionExecutionToProcess := range testInstructionExecutionsToProcess {
-		err = executionEngine.updateStatusOnTimedOutTestInstructionsExecutionInCloudDB(txn, &tempTestInstructionExecutionToProcess)
+		err = executionEngine.updateStatusOnTimedOutTestInstructionsExecutionInCloudDB(
+			txn,
+			&tempTestInstructionExecutionToProcess)
 		if err != nil {
 			return
 		}
 	}
 
 	// Extract TestCaseExecutions to be able to update their Executions statuses, due to timed out TestInstructionExecutions
-	err = executionEngine.getTestCasesExecutionsFromTestInstructionExecutions(&testInstructionExecutionsToProcess, &testCaseExecutionsToProcess)
+	err = executionEngine.getTestCasesExecutionsFromTestInstructionExecutions(
+		&testInstructionExecutionsToProcess,
+		&testCaseExecutionsToProcess)
 	if err != nil {
 		return
 	}
@@ -110,7 +127,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) timeoutHandlerForTe
 }
 
 // Update status on 'timed out' TestInstructionExecutions
-func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimedOutTestInstructionsExecutionInCloudDB(dbTransaction pgx.Tx, timedOutTestInstructionExecutionToUpdate *ChannelCommandTestInstructionExecutionStruct) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimedOutTestInstructionsExecutionInCloudDB(
+	dbTransaction pgx.Tx,
+	timedOutTestInstructionExecutionToUpdate *ChannelCommandTestInstructionExecutionStruct) (err error) {
 
 	// If there are nothing to update then just exit
 	if timedOutTestInstructionExecutionToUpdate == nil {

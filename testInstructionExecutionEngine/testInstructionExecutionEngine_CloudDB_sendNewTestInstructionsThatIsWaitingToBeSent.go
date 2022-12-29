@@ -5,6 +5,7 @@ import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	"sort"
 	"strings"
 	"time"
 
@@ -19,12 +20,13 @@ import (
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
-	executionTrackNumber int,
+	executionTrackNumberReference *int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testInstructionExecutionsReference *[]broadcastingEngine.TestInstructionExecutionStruct,
 	channelCommandTestCaseExecutionReference *[]ChannelCommandTestCaseExecutionStruct) {
 
+	executionTrackNumber := *executionTrackNumberReference
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testInstructionExecutions := *testInstructionExecutionsReference
@@ -101,10 +103,22 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	// All TestCaseExecutions to update status on
 	var channelCommandTestCaseExecution []ChannelCommandTestCaseExecutionStruct
 
+	// Extract "lowest" TestCaseExecutionUuid
+	if len(testCaseExecutionsToProcess) > 0 {
+		var uuidSlice []string
+		for _, uuid := range testCaseExecutionsToProcess {
+			uuidSlice = append(uuidSlice, uuid.TestCaseExecutionUuid)
+		}
+		sort.Strings(uuidSlice)
+
+		// Define Execution Track based on "lowest "TestCaseExecutionUuid
+		executionTrackNumber = common_config.CalculateExecutionTrackNumber(uuidSlice[0])
+	}
+
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 	defer executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
-		executionTrackNumber,
+		&executionTrackNumber,
 		&txn,
 		&doCommitNotRoleBack,
 		&testInstructionExecutions,

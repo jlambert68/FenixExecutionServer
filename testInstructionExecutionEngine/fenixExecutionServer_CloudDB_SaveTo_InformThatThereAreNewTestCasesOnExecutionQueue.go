@@ -21,11 +21,12 @@ import (
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBack(
-	executionTrackNumber int,
+	executionTrackNumberReference *int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct) {
 
+	executionTrackNumber := *executionTrackNumberReference
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
@@ -52,12 +53,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBack(
 // Exposed version
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
-	executionTrackNumber int,
 	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
 	ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	ackNackResponse = executionEngine.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
-		executionTrackNumber,
 		testCaseExecutionsToProcess)
 
 	return ackNackResponse
@@ -65,7 +64,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) PrepareInformThatTh
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
-	executionTrackNumber int,
 	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Begin SQL Transaction
@@ -100,8 +98,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
 
+	var executionTrackNumber int
+
 	defer executionEngine.commitOrRoleBack(
-		executionTrackNumber,
+		&executionTrackNumber,
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess) //txn.Commit(context.Background())
@@ -145,6 +145,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 		}
 
 		return ackNackResponse
+	}
+
+	// Extract "lowest" TestCaseExecutionUuid
+	if len(testCaseExecutionsToProcess) > 0 {
+		var uuidSlice []string
+		for _, uuid := range testCaseExecutionsToProcess {
+			uuidSlice = append(uuidSlice, uuid.TestCaseExecutionUuid)
+		}
+		sort.Strings(uuidSlice)
+
+		// Define Execution Track based on "lowest "TestCaseExecutionUuid
+		executionTrackNumber = common_config.CalculateExecutionTrackNumber(uuidSlice[0])
 	}
 
 	// Save the Initiation of a new TestCaseExecutionUuid in the CloudDB

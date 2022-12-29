@@ -1,10 +1,12 @@
 package testInstructionExecutionEngine
 
 import (
+	"FenixExecutionServer/common_config"
 	"context"
 	"github.com/jackc/pgx/v4"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"sort"
 	"time"
 )
 
@@ -39,6 +41,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) lookForZombieTestCa
 	testCaseExecutionsToProcess, err = executionEngine.loadAllZombieTestCaseExecutionsOnExecutionQueue(txn)
 	if err != nil {
 		return err
+	}
+
+	// Extract "lowest" TestCaseExecutionUuid
+	if len(testCaseExecutionsToProcess) > 0 {
+		var uuidSlice []string
+		for _, uuid := range testCaseExecutionsToProcess {
+			uuidSlice = append(uuidSlice, uuid.TestCaseExecutionUuid)
+		}
+		sort.Strings(uuidSlice)
+
+		// Define Execution Track based on "lowest "TestCaseExecutionUuid
+		executionTrackNumber = common_config.CalculateExecutionTrackNumber(uuidSlice[0])
 	}
 
 	//  Load all TestCasesExecutions for Zombie-TestCaseExecutions that are stuck on ExecutionQueue

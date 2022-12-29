@@ -14,12 +14,13 @@ import (
 )
 
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
-	executionTrackNumber int,
+	executionTrackNumberReference *int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
 	updateTestCaseExecutionWithStatusReference *bool) {
 
+	executionTrackNumber := *executionTrackNumberReference
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testCaseExecutionsToProcess := *testCaseExecutionsToProcessReference
@@ -113,7 +114,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 	triggerUpdateTestCaseExecutionWithStatus = false
 
 	defer executionEngine.prepareInitiateExecutionsForTestInstructionsOnExecutionQueueSaveToCloudDBCommitOrRoleBackParallellSave(
-		executionTrackNumber,
+		&executionTrackNumber,
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess,

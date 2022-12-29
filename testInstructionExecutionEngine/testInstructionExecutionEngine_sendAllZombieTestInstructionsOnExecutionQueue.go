@@ -7,6 +7,7 @@ import (
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"math/rand"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -41,6 +42,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendAllZombieTestIn
 	testCaseExecutionsToProcess, err = executionEngine.loadAllZombieTestInstructionExecutionsOnExecutionQueue(txn)
 	if err != nil {
 		return err
+	}
+
+	// Extract "lowest" TestCaseExecutionUuid
+	if len(testCaseExecutionsToProcess) > 0 {
+		var uuidSlice []string
+		for _, uuid := range testCaseExecutionsToProcess {
+			uuidSlice = append(uuidSlice, uuid.TestCaseExecutionUuid)
+		}
+		sort.Strings(uuidSlice)
+
+		// Define Execution Track based on "lowest "TestCaseExecutionUuid
+		executionTrackNumber = common_config.CalculateExecutionTrackNumber(uuidSlice[0])
 	}
 
 	// Loop all TestCaseExecutions, with Zombie-TestInstructionExecutions, and trigger resend for the TestInstructionExecutions to Workers

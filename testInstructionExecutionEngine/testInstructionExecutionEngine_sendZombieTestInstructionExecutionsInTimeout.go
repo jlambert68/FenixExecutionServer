@@ -51,6 +51,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) findAllZombieTestIn
 			ChannelCommandTestInstructionExecutions: []ChannelCommandTestInstructionExecutionStruct{testInstructionExecutionToProcess},
 		}
 
+		// Define Execution Track based on "lowest "TestCaseExecutionUuid
+		executionTrackNumber = common_config.CalculateExecutionTrackNumber(testInstructionExecutionToProcess.TestInstructionExecutionUuid)
+
 		// Send Message on Channel
 		*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 	}
