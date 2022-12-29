@@ -47,7 +47,8 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 	executionTrackNumber = common_config.CalculateExecutionTrackNumber(finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
 
 	// Send Message to TestInstructionExecutionEngine via channel
-	*fenixExecutionServerObject.executionEngineChannelRefSlice[executionTrackNumber] <- channelCommandMessage
+	*fenixExecutionServerObject.executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
+	//*fenixExecutionServerObject.executionEngineChannelRefSlice[executionTrackNumber] <- channelCommandMessage
 
 	// Create Return message
 	returnMessage = &fenixExecutionServerGrpcApi.AckNackResponse{

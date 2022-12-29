@@ -27,6 +27,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 				"ExecutionEngineChannelWarningLevel": ExecutionEngineChannelWarningLevel,
 				"ExecutionEngineChannelSize":         ExecutionEngineChannelSize,
 			}).Warning("Number of messages on queue for 'ExecutionEngineChannel' has reached a critical level")
+		} else {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                                    "46ed3253-a3ac-47ea-9191-e18f5b30ef87",
+				"executionTrackNumber":                  executionTrackNumber,
+				"channelSize":                           channelSize,
+				"ExecutionEngineChannelWarningLevel":    ExecutionEngineChannelWarningLevel,
+				"ExecutionEngineChannelSize":            ExecutionEngineChannelSize,
+				"incomingChannelCommand.ChannelCommand": incomingChannelCommand.ChannelCommand,
+			}).Info("Incoming ExecutionEngineCommand")
 		}
 
 		switch incomingChannelCommand.ChannelCommand {

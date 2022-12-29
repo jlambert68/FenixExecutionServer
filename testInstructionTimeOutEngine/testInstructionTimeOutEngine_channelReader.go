@@ -33,6 +33,15 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				"timeOutChannelSize":         timeOutChannelSize,
 				"executionTrack":             executionTrack,
 			}).Warning("Number of messages on queue for 'TimeOutChannel' has reached a critical level")
+		} else {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                         "c97f1405-9347-4995-b625-0afc36f6dc04",
+				"channelSize":                channelSize,
+				"timeOutChannelWarningLevel": timeOutChannelWarningLevel,
+				"timeOutChannelSize":         timeOutChannelSize,
+				"executionTrack":             executionTrack,
+				"incomingTimeOutChannelCommand.TimeOutChannelCommand": incomingTimeOutChannelCommand.TimeOutChannelCommand,
+			}).Info("Incoming TimeOutEngine-command")
 		}
 
 		switch incomingTimeOutChannelCommand.TimeOutChannelCommand {

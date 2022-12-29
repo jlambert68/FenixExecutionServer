@@ -9,13 +9,13 @@ import (
 	"log"
 )
 
-// BroadcastEngineChannelWarningLevel
+// BroadcastEngineChannelSize
 // The size of the channel
-const BroadcastEngineChannelSize = 100
+const BroadcastEngineChannelSize = 500
 
 // BroadcastEngineChannelWarningLevel
 // The size of warning level for the channel
-const BroadcastEngineChannelWarningLevel = 90
+const BroadcastEngineChannelWarningLevel = 400
 
 var BroadcastEngineMessageChannel BroadcastEngineMessageChannelType
 
@@ -64,7 +64,7 @@ func InitiateAndStartBroadcastNotifyEngine() {
 		channelSize = len(BroadcastEngineMessageChannel)
 		if channelSize > BroadcastEngineChannelWarningLevel {
 			common_config.Logger.WithFields(logrus.Fields{
-				"Id":                                 "7dafce7a-eed9-448c-81b6-1015733dc1cb",
+				"Id":                                 "0e9d8dc0-08e8-4d41-ad07-0c16f5a00dde",
 				"channelSize":                        channelSize,
 				"BroadcastEngineChannelWarningLevel": BroadcastEngineChannelWarningLevel,
 				"BroadcastEngineChannelSize":         BroadcastEngineChannelSize,
