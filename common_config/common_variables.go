@@ -33,11 +33,11 @@ var Logger *logrus.Logger
 
 // NumberOfParallellTimeOutChannels
 // The number of parallell executions tracks for TimerOut-engine
-const NumberOfParallellTimeOutChannels = 8
+const NumberOfParallellTimeOutChannels = 20
 
 // Used to calculate which TimeOut-track to use
 const NumberOfCharactersToUseFromTestInstructionExecutionUuid = 4
 
 // NumberOfParallellExecutionEngineCommandChannels
 // The number of parallell executions tracks for ExecutionEngine
-const NumberOfParallellExecutionEngineCommandChannels = 10
+const NumberOfParallellExecutionEngineCommandChannels = 20

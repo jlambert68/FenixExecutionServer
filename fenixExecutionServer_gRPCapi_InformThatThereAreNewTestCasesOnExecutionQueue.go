@@ -5,6 +5,7 @@ import (
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	"sort"
 
 	"github.com/sirupsen/logrus"
 )
@@ -33,6 +34,11 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 		return returnMessage, nil
 	}
 
+	// If no TestCaseExecutions then return error
+	if len(testCaseExecutionsToProcessMessage.TestCaseExecutionsToProcess) == 0 {
+		return &fenixExecutionServerGrpcApi.AckNackResponse{AckNack: false, Comments: "Can't accept zero TestCaseExecutions in request"}, nil
+	}
+
 	// Convert TestCaseExecutions to process from gRPC-format into message format used within channel
 	var channelCommandTestCasesExecution []testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
 	for _, testCaseExecutionToProcessMessage := range testCaseExecutionsToProcessMessage.TestCaseExecutionsToProcess {
@@ -47,27 +53,39 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 	// Create TestInstructions to be saved on 'TestInstructionExecutionQueue'
 	//	returnMessage = fenixExecutionServerObject.prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(channelCommandTestCasesExecution)
 
-	returnMessage = testInstructionExecutionEngine.TestInstructionExecutionEngineObject.PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
-		channelCommandTestCasesExecution)
-
-	if returnMessage != nil {
-		// No errors when moving TestCases from queue into executing TestCases, so then start process TestInstruction
-		/*
-			defer func() {
-				// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
-				channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-					ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandCheckForTestInstructionExecutionWaitingOnQueue,
-					ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
-				}
-
-				// Send Message on Channel
-				*fenixExecutionServerObject.executionEngineChannelRef <- channelCommandMessage
-			}()
-
-
-		*/
-		return returnMessage, nil
+	// Send TestCaseExecutions to ExecutionEngineChannel
+	channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+		ChannelCommand:                   testInstructionExecutionEngine.ChannelCommandProcessTestCaseExecutionsOnExecutionQueue,
+		ChannelCommandTestCaseExecutions: channelCommandTestCasesExecution,
 	}
+
+	// Extract "lowest" TestCaseExecutionUuid
+	var executionTrackNumber int
+
+	if len(channelCommandTestCasesExecution) > 0 {
+		var uuidSlice []string
+		for _, uuid := range channelCommandTestCasesExecution {
+			uuidSlice = append(uuidSlice, uuid.TestCaseExecutionUuid)
+		}
+		sort.Strings(uuidSlice)
+
+		// Define Execution Track based on "lowest "TestCaseExecutionUuid
+		executionTrackNumber = common_config.CalculateExecutionTrackNumber(uuidSlice[0])
+	}
+
+	// Send Message on Channel
+	*fenixExecutionServerObject.executionEngineChannelRefSlice[executionTrackNumber] <- channelCommandMessage
+
+	/*
+		returnMessage = testInstructionExecutionEngine.TestInstructionExecutionEngineObject.PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
+			channelCommandTestCasesExecution)
+
+		if returnMessage != nil {
+			// No errors when moving TestCases from queue into executing TestCases, so then start process TestInstruction
+
+			return returnMessage, nil
+		}
+	*/
 
 	return &fenixExecutionServerGrpcApi.AckNackResponse{AckNack: true, Comments: ""}, nil
 }

@@ -44,7 +44,7 @@ func fenixExecutionServerMain() {
 	}
 
 	// Init logger
-	fenixExecutionServerObject.InitLogger("log73.log")
+	fenixExecutionServerObject.InitLogger("log74.log")
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information
 	defer cleanup()
