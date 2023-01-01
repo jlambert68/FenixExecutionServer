@@ -25,35 +25,40 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	var ctx context.Context
 	var returnMessageAckNack bool
 	var returnMessageString string
+	var err error
 
 	// Get WorkerVariablesReference
 	workerVariables := fenixExecutionWorkerObject.getWorkerVariablesReference(domainUuid)
 
-	// Set up connection to Server
-	err := fenixExecutionWorkerObject.SetConnectionToExecutionWorkerServer(domainUuid)
-	if err != nil {
+	// Only create a new connection of there are already are one
+	if workerVariables.FenixExecutionWorkerServerGrpcClient == nil {
 
-		// Set Error codes to return message
-		var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+		// Set up connection to Server
+		err = fenixExecutionWorkerObject.SetConnectionToExecutionWorkerServer(domainUuid)
+		if err != nil {
 
-		errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
-		errorCodes = append(errorCodes, errorCode)
+			// Set Error codes to return message
+			var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
+			var errorCode fenixExecutionWorkerGrpcApi.ErrorCodesEnum
 
-		// Create Return message
-		ackNackResponse := &fenixExecutionWorkerGrpcApi.AckNackResponse{
-			AckNack:    false,
-			Comments:   fmt.Sprintf("Couldn't set up connection to Worker with DomainUuid: %s", domainUuid),
-			ErrorCodes: errorCodes,
+			errorCode = fenixExecutionWorkerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+			errorCodes = append(errorCodes, errorCode)
+
+			// Create Return message
+			ackNackResponse := &fenixExecutionWorkerGrpcApi.AckNackResponse{
+				AckNack:    false,
+				Comments:   fmt.Sprintf("Couldn't set up connection to Worker with DomainUuid: %s", domainUuid),
+				ErrorCodes: errorCodes,
+			}
+			processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse{
+				AckNackResponse:                ackNackResponse,
+				TestInstructionExecutionUuid:   processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+				ExpectedExecutionDuration:      nil,
+				TestInstructionCanBeReExecuted: true, // Can be reprocessed because it was only Set up connection that failed
+			}
+
+			return processTestInstructionExecutionResponse
 		}
-		processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse{
-			AckNackResponse:                ackNackResponse,
-			TestInstructionExecutionUuid:   processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-			ExpectedExecutionDuration:      nil,
-			TestInstructionCanBeReExecuted: true, // Can be reprocessed because it was only Set up connection that failed
-		}
-
-		return processTestInstructionExecutionResponse
 	}
 
 	// Do gRPC-call

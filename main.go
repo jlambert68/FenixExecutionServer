@@ -3,11 +3,13 @@ package main
 import (
 	"FenixExecutionServer/common_config"
 	"github.com/sirupsen/logrus"
+	"net/http"
 	"strconv"
 
 	//"flag"
 	"fmt"
 	"log"
+	_ "net/http/pprof"
 	"os"
 )
 
@@ -22,7 +24,22 @@ func mustGetenv(k string) string {
 }
 
 func main() {
-	//time.Sleep(15 * time.Second)
+	// Profiling
+	go func() {
+		fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+	/*
+		config := metrics.DefaultConfig
+		config.Username = "jlambert"
+		config.Password = "jonasaradmin"
+		config.Database = "stats"
+
+		err := metrics.RunCollector(config)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+	*/
+
 	fenixExecutionServerMain()
 }
 

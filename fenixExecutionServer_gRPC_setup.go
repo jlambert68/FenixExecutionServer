@@ -56,7 +56,6 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) InitGrpcServ
 		"common_config.FenixExecutionExecutionServerPort: ": common_config.FenixExecutionExecutionServerPort,
 	}).Info("registerFenixExecutionServerGrpcServicesServer for TestExecution Server started")
 	registerFenixExecutionServerGrpcServicesServer.Serve(lis)
-	//}()
 
 }
 

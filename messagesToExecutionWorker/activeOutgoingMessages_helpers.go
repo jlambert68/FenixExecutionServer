@@ -68,9 +68,17 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		// When run on GCP, use credentials
 		if common_config.ExecutionLocationForWorker == common_config.GCP {
 			// Run on GCP
+			//if workerVariables.RemoteFenixExecutionWorkerServerConnection != nil {
+			// Close previous connection before dial
+			//	workerVariables.RemoteFenixExecutionWorkerServerConnection.Close()
+			//}
 			workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerWorkerAddressToDial, opts...)
 		} else {
 			// Run Local
+			//if workerVariables.RemoteFenixExecutionWorkerServerConnection != nil {
+			// Close previous connection before dial
+			//	workerVariables.RemoteFenixExecutionWorkerServerConnection.Close()
+			//}
 			workerVariables.RemoteFenixExecutionWorkerServerConnection, err = grpc.Dial(workerVariables.FenixExecutionServerWorkerAddressToDial, grpc.WithInsecure())
 		}
 

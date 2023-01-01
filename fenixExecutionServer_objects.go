@@ -8,12 +8,13 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"net"
+	"time"
 )
 
 type fenixExecutionServerObjectStruct struct {
 	logger                         *logrus.Logger
 	gcpAccessToken                 *oauth2.Token
-	executionEngineChannelRefSlice []*testInstructionExecutionEngine.ExecutionEngineChannelType
+	executionEngineChannelRefSlice *[]testInstructionExecutionEngine.ExecutionEngineChannelType
 	executionEngine                *testInstructionExecutionEngine.TestInstructionExecutionEngineStruct
 	executionWorkerVariablesMap    *map[string]*common_config.ExecutionWorkerVariablesStruct
 }
@@ -25,6 +26,9 @@ var fenixExecutionServerObject *fenixExecutionServerObjectStruct
 var (
 	registerFenixExecutionServerGrpcServicesServer *grpc.Server
 	lis                                            net.Listener
+
+	// channel used to deside when there are no more incoming gRPC-calls and to end application
+	endApplicationWhenNoIncomingGrpcCalls chan time.Time
 )
 
 // gRPC Server used for register clients Name, Ip and Por and Clients Test Enviroments and Clients Test Commandst

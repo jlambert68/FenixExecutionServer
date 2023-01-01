@@ -5,9 +5,11 @@ import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	"FenixExecutionServer/testInstructionTimeOutEngine"
+	"fmt"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"os"
+	"time"
 )
 
 // Used for only process cleanup once
@@ -44,7 +46,7 @@ func fenixExecutionServerMain() {
 	}
 
 	// Init logger
-	fenixExecutionServerObject.InitLogger("log74.log")
+	fenixExecutionServerObject.InitLogger("log83.log")
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information
 	defer cleanup()
@@ -65,6 +67,9 @@ func fenixExecutionServerMain() {
 
 	// Create reference to channel and append to fenixExecutionServerObject-slice
 	myCommandChannelRefSlice := &testInstructionExecutionEngine.ExecutionEngineCommandChannelSlice
+
+	//
+	fenixExecutionServerObject.executionEngineChannelRefSlice = myCommandChannelRefSlice
 
 	// Initiate logger in TestInstructionEngine
 	fenixExecutionServerObject.executionEngine.SetLogger(fenixExecutionServerObject.logger)
@@ -93,7 +98,58 @@ func fenixExecutionServerMain() {
 	// Start Receiver channel for TimeOutEngine
 	testInstructionTimeOutEngine.TestInstructionExecutionTimeOutEngineObject.InitiateTestInstructionExecutionTimeOutEngineChannelReader()
 
+	// Initiate Channel used to decide when application should end, due to no gRPC-activity
+	endApplicationWhenNoIncomingGrpcCalls = make(chan time.Time, 100)
+
 	// Start Backend gRPC-server
-	fenixExecutionServerObject.InitGrpcServer()
+	go fenixExecutionServerObject.InitGrpcServer()
+
+	// When did the last gRPC-message arrived
+	var latestGrpcMessageTimeStamp time.Time
+	latestGrpcMessageTimeStamp = time.Now()
+
+	// Minutes To Wait before ending application
+	var minutesToWait time.Duration
+	minutesToWait = 15 * time.Minute
+
+	for {
+
+		select {
+		case incomingGrpcMessageTimeStamp := <-endApplicationWhenNoIncomingGrpcCalls:
+			fmt.Println(incomingGrpcMessageTimeStamp)
+
+			// If incoming TimeStamp is after current then set that as new latest timestamp
+			if incomingGrpcMessageTimeStamp.After(latestGrpcMessageTimeStamp) {
+				latestGrpcMessageTimeStamp = incomingGrpcMessageTimeStamp
+			}
+
+		case <-time.After(minutesToWait):
+			fmt.Println("timeout: " + minutesToWait.String())
+
+			// If It has gone 15 minutes since last gPRC-message then end application
+			// Or restart gRPC-server if application runs locally
+			var timeDurationSinceLatestGrpcCall time.Duration
+			timeDurationSinceLatestGrpcCall = time.Now().Sub(latestGrpcMessageTimeStamp)
+			if timeDurationSinceLatestGrpcCall < 0 {
+				// Nothing has happened for 15 minutes
+
+				/*
+					var executionLocation common_config.ExecutionLocationTypeType
+					executionLocation = common_config.ExecutionLocationForFenixExecutionServer
+					select  executionLocation {
+					case comm
+					}
+
+
+				*/
+				fenixExecutionServerObject.StopGrpcServer()
+
+			} else {
+				// Less than 15 minutes so set new shorter timer
+				minutesToWait = time.Duration(time.Minute*15) - timeDurationSinceLatestGrpcCall
+			}
+		}
+
+	}
 
 }

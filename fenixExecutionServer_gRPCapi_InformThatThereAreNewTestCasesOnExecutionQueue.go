@@ -74,7 +74,9 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 	}
 
 	// Send Message on Channel
-	*fenixExecutionServerObject.executionEngineChannelRefSlice[executionTrackNumber] <- channelCommandMessage
+	var executionEngineChannelEngineChannelSlice []testInstructionExecutionEngine.ExecutionEngineChannelType
+	executionEngineChannelEngineChannelSlice = *fenixExecutionServerObject.executionEngineChannelRefSlice
+	executionEngineChannelEngineChannelSlice[executionTrackNumber] <- channelCommandMessage
 
 	/*
 		returnMessage = testInstructionExecutionEngine.TestInstructionExecutionEngineObject.PrepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
