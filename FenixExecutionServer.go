@@ -5,10 +5,10 @@ import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	"FenixExecutionServer/testInstructionTimeOutEngine"
-	"fmt"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -110,46 +110,136 @@ func fenixExecutionServerMain() {
 
 	// Minutes To Wait before ending application
 	var minutesToWait time.Duration
-	minutesToWait = 15 * time.Minute
+	minutesToWait = common_config.MinutesToShutDownWithOutAnyGrpcTraffic
+
+	// Wait group that keeps track that there was a respons from all response channels
+	var waitGroup sync.WaitGroup
+
+	// Array that save responses from TimeOutEngine
+	var timeOutResponsDurations []time.Duration
 
 	for {
 
+		// Either full time and then shut down or adjust time when incoming due to gRPC-traffic
 		select {
+
+		// Each incoming gRPC-call will set new baseline for waiting
 		case incomingGrpcMessageTimeStamp := <-endApplicationWhenNoIncomingGrpcCalls:
-			fmt.Println(incomingGrpcMessageTimeStamp)
 
 			// If incoming TimeStamp is after current then set that as new latest timestamp
 			if incomingGrpcMessageTimeStamp.After(latestGrpcMessageTimeStamp) {
 				latestGrpcMessageTimeStamp = incomingGrpcMessageTimeStamp
 			}
 
+			// If no incoming gRPC-traffic then this will be triggered
 		case <-time.After(minutesToWait):
-			fmt.Println("timeout: " + minutesToWait.String())
 
-			// If It has gone 15 minutes since last gPRC-message then end application
-			// Or restart gRPC-server if application runs locally
+			// If It has gone 'common_config.MinutesToShutDownWithOutAnyGrpcTraffic' minutes
+			// since last gPRC-message then end application
+			// Or just restart gRPC-server if application runs locally
 			var timeDurationSinceLatestGrpcCall time.Duration
 			timeDurationSinceLatestGrpcCall = time.Now().Sub(latestGrpcMessageTimeStamp)
-			if timeDurationSinceLatestGrpcCall < 0 {
-				// Nothing has happened for 15 minutes
+			if timeDurationSinceLatestGrpcCall < common_config.MinutesToShutDownWithOutAnyGrpcTraffic {
+				// Nothing has happened for 'MinutesToShutDownWithOutAnyGrpcTraffic' so check if there are any timer
+				// that should soon fire
 
-				/*
-					var executionLocation common_config.ExecutionLocationTypeType
-					executionLocation = common_config.ExecutionLocationForFenixExecutionServer
-					select  executionLocation {
-					case comm
+				// Initiate array for TimeOutEngine-responses
+				timeOutResponsDurations = make([]time.Duration, common_config.NumberOfParallellTimeOutChannels)
+
+				// Wait group should wait for all Channels to respond
+				waitGroup.Add(common_config.NumberOfParallellTimeOutChannels)
+
+				// Loop all TimeOut-tracks and send request for when next timeout occurs
+				for timeOutChannelCounter := 0; timeOutChannelCounter < common_config.NumberOfParallellTimeOutChannels; timeOutChannelCounter++ {
+
+					// Start question to each TimeOut-time as goroutine
+					go func(timeOutChannelCounter int) {
+
+						// Create Response channel from TimeOutEngine to get answer of durantion until next timeout
+						var timeOutResponseChannelForDurationUntilTimeOutOccurs common_config.TimeOutResponseChannelForDurationUntilTimeOutOccursType
+						timeOutResponseChannelForDurationUntilTimeOutOccurs = make(chan common_config.TimeOutResponseChannelForDurationUntilTimeOutOccursStruct)
+
+						var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+						tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+							TimeOutChannelCommand:                               common_config.TimeOutChannelCommandTimeUntilNextTimeOutTimerToFires,
+							TimeOutResponseChannelForDurationUntilTimeOutOccurs: &timeOutResponseChannelForDurationUntilTimeOutOccurs,
+
+							SendID: "c208cca2-036c-449d-a997-00788c944441",
+						}
+
+						// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
+						*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[timeOutChannelCounter] <- tempTimeOutChannelCommand
+
+						// Response from TimeOutEngine
+						var timeOutResponseChannelForDurationUntilTimeOutOccursResponse common_config.TimeOutResponseChannelForDurationUntilTimeOutOccursStruct
+
+						// Wait for response from TimeOutEngine
+						timeOutResponseChannelForDurationUntilTimeOutOccursResponse = <-timeOutResponseChannelForDurationUntilTimeOutOccurs
+
+						// Save response duration in array for all TimeOut-durations
+						timeOutResponsDurations[timeOutChannelCounter] = timeOutResponseChannelForDurationUntilTimeOutOccursResponse.DurationUntilTimeOutOccurs
+
+						// This goroutine is finished
+						waitGroup.Done()
+
+					}(timeOutChannelCounter)
+
+				}
+
+				// Wait for all goroutines to get answers over channels
+				waitGroup.Wait()
+
+				// Extract the lowest duration from TimeOutEngine
+				var lowestDuration time.Duration
+				var lowestDurationFirstValueFound bool = false
+
+				// Loop the all timeOutDuration-responses
+				for _, timeOutResponsDuration := range timeOutResponsDurations {
+
+					// '-1' as duration is used when there was an error or if there is no timeout-timer for this track
+					// Then just ignore that one, otherwise process
+					if timeOutResponsDuration != time.Duration(-1) {
+
+						// When first duration then just copy that value
+						if lowestDurationFirstValueFound == false {
+
+							lowestDurationFirstValueFound = true
+							lowestDuration = timeOutResponsDuration
+
+						} else {
+
+							// Is this duration lower than the previous lowest found, then this one is the new lowest duration
+							if timeOutResponsDuration < lowestDuration {
+								lowestDuration = timeOutResponsDuration
+							}
+						}
+					}
+				}
+
+				// Only act when all TimeOut-timers has more than 'MaxMinutesLeftUntilNextTimeOutTimer' left before timeout
+				if lowestDuration > common_config.MaxMinutesLeftUntilNextTimeOutTimer {
+
+					// If ExecutionServer runs in GCP the end application
+					if common_config.ExecutionLocationForFenixExecutionServer == common_config.GCP {
+						break
 					}
 
+					// Application runs locally then restart gRPC-server
+					if common_config.ExecutionLocationForFenixExecutionServer == common_config.LocalhostNoDocker {
+						fenixExecutionServerObject.StopGrpcServer()
+						go fenixExecutionServerObject.InitGrpcServer()
 
-				*/
-				fenixExecutionServerObject.StopGrpcServer()
+						// Reset max waiting time because application is running locally
+						minutesToWait = common_config.MinutesToShutDownWithOutAnyGrpcTraffic
+						latestGrpcMessageTimeStamp = time.Now()
+					}
+				} else {
 
-			} else {
-				// Less than 15 minutes so set new shorter timer
-				minutesToWait = time.Duration(time.Minute*15) - timeDurationSinceLatestGrpcCall
+					// Reset max waiting time because there is at least one upcoming TimeOut
+					minutesToWait = common_config.MinutesToShutDownWithOutAnyGrpcTraffic
+					latestGrpcMessageTimeStamp = time.Now()
+				}
 			}
 		}
-
 	}
-
 }

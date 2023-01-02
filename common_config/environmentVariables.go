@@ -1,5 +1,7 @@
 package common_config
 
+import "time"
+
 // ***********************************************************************************************************
 // The following variables receives their values from environment variables
 
@@ -32,3 +34,11 @@ var FenixExecutionWorkerAddress string
 // FenixExecutionExecutionServerPort
 // Execution Server Port to use, will have its value from Environment variables at startup
 var FenixExecutionExecutionServerPort int
+
+// MinutesToShutDownWithOutAnyGrpcTraffic
+// The number of minutes without any incoming gPRC-traffic before application is shut down
+var MinutesToShutDownWithOutAnyGrpcTraffic time.Duration = 15 * time.Minute
+
+// MaxMinutesLeftUntilNextTimeOutTimer
+// Number of minutes that the application can wait for a TimeOutTimer, after waited 'MinutesToShutDownWithOutAnyGrpcTraffic'
+var MaxMinutesLeftUntilNextTimeOutTimer = 2 * time.Minute

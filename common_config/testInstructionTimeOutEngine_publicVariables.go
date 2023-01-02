@@ -27,6 +27,7 @@ const (
 	TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut
 	TimeOutChannelCommandTimeOutTimerTriggered
 	TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer
+	TimeOutChannelCommandTimeUntilNextTimeOutTimerToFires
 )
 
 var TimeOutChannelCommandsForDebugPrinting []string = []string{
@@ -53,10 +54,11 @@ type TimeOutChannelCommandTestInstructionExecutionStruct struct {
 // TimeOutChannelCommandStruct
 // The struct for the message that are sent over the channel to the TimeOutEngine
 type TimeOutChannelCommandStruct struct {
-	TimeOutChannelCommand                     TimeOutChannelCommandType
-	TimeOutChannelTestInstructionExecutions   TimeOutChannelCommandTestInstructionExecutionStruct
-	TimeOutReturnChannelForTimeOutHasOccurred *TimeOutResponseChannelForTimeOutHasOccurredType
-	SendID                                    string
+	TimeOutChannelCommand                               TimeOutChannelCommandType
+	TimeOutChannelTestInstructionExecutions             TimeOutChannelCommandTestInstructionExecutionStruct
+	TimeOutReturnChannelForTimeOutHasOccurred           *TimeOutResponseChannelForTimeOutHasOccurredType
+	TimeOutResponseChannelForDurationUntilTimeOutOccurs *TimeOutResponseChannelForDurationUntilTimeOutOccursType
+	SendID                                              string
 	//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer *TimeOutReturnChannelForExistsTestInstructionExecutionWithinTimeOutTimerType
 }
 
@@ -68,4 +70,14 @@ type TimeOutResponseChannelForTimeOutHasOccurredType chan TimeOutResponseChannel
 // The struct for the message that are sent over the 'return-channel' when TimeOut has occurred
 type TimeOutResponseChannelForTimeOutHasOccurredStruct struct {
 	TimeOutWasTriggered bool
+}
+
+// TimeOutResponseChannelForDurationUntilTimeOutOccursType
+// Channel used for response from TimeOutEngine when extracting duration until TimeOut occurs
+type TimeOutResponseChannelForDurationUntilTimeOutOccursType chan TimeOutResponseChannelForDurationUntilTimeOutOccursStruct
+
+// TimeOutResponseChannelForDurationUntilTimeOutOccursStruct
+// The struct for the message that are sent over the 'return-channel' when responding duration until TimeOut occurs
+type TimeOutResponseChannelForDurationUntilTimeOutOccursStruct struct {
+	DurationUntilTimeOutOccurs time.Duration
 }
