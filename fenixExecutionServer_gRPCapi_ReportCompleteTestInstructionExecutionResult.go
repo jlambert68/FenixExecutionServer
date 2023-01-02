@@ -23,7 +23,12 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 	}).Debug("Outgoing 'gRPC - ReportCompleteTestInstructionExecutionResult'")
 
 	// Reset Application shut time timer when there is an incoming gRPC-call
-	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
+	var endApplicationWhenNoIncomingGrpcCallsSenderData endApplicationWhenNoIncomingGrpcCallsStruct
+	endApplicationWhenNoIncomingGrpcCallsSenderData = endApplicationWhenNoIncomingGrpcCallsStruct{
+		gRPCTimeStamp: time.Now(),
+		senderName:    "gRPC - ReportCompleteTestInstructionExecutionResult",
+	}
+	endApplicationWhenNoIncomingGrpcCalls <- endApplicationWhenNoIncomingGrpcCallsSenderData
 
 	// Current user
 	userID := finalTestInstructionExecutionResultMessage.ClientSystemIdentification.DomainUuid

@@ -21,7 +21,12 @@ func (s *fenixExecutionServerGrpcServicesServer) SendLogPostForExecution(logPost
 	}).Debug("Outgoing 'gRPC - SendLogPostForExecution'")
 
 	// Reset Application shut time timer when there is an incoming gRPC-call
-	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
+	var endApplicationWhenNoIncomingGrpcCallsSenderData endApplicationWhenNoIncomingGrpcCallsStruct
+	endApplicationWhenNoIncomingGrpcCallsSenderData = endApplicationWhenNoIncomingGrpcCallsStruct{
+		gRPCTimeStamp: time.Now(),
+		senderName:    "gRPC - SendLogPostForExecution",
+	}
+	endApplicationWhenNoIncomingGrpcCalls <- endApplicationWhenNoIncomingGrpcCallsSenderData
 
 	// Container to store all messages before process them
 	var logPostsMessages []*fenixExecutionServerGrpcApi.LogPostsMessage

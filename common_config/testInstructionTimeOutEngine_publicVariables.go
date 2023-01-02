@@ -38,6 +38,7 @@ var TimeOutChannelCommandsForDebugPrinting []string = []string{
 	"TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut",
 	"TimeOutChannelCommandTimeOutTimerTriggered",
 	"TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer",
+	"TimeOutChannelCommandTimeUntilNextTimeOutTimerToFires",
 }
 
 // TimeOutChannelCommandTestInstructionExecutionStruct

@@ -28,8 +28,13 @@ var (
 	lis                                            net.Listener
 
 	// channel used to deside when there are no more incoming gRPC-calls and to end application
-	endApplicationWhenNoIncomingGrpcCalls chan time.Time
+	endApplicationWhenNoIncomingGrpcCalls chan endApplicationWhenNoIncomingGrpcCallsStruct
 )
+
+type endApplicationWhenNoIncomingGrpcCallsStruct struct {
+	gRPCTimeStamp time.Time
+	senderName    string
+}
 
 // gRPC Server used for register clients Name, Ip and Por and Clients Test Enviroments and Clients Test Commandst
 type fenixExecutionServerGrpcServicesServer struct {

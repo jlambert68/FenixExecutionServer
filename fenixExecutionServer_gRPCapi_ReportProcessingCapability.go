@@ -22,7 +22,12 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportProcessingCapability(ctx 
 	}).Debug("Outgoing 'gRPC - ReportProcessingCapability'")
 
 	// Reset Application shut time timer when there is an incoming gRPC-call
-	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
+	var endApplicationWhenNoIncomingGrpcCallsSenderData endApplicationWhenNoIncomingGrpcCallsStruct
+	endApplicationWhenNoIncomingGrpcCallsSenderData = endApplicationWhenNoIncomingGrpcCallsStruct{
+		gRPCTimeStamp: time.Now(),
+		senderName:    "gRPC - ReportProcessingCapability",
+	}
+	endApplicationWhenNoIncomingGrpcCalls <- endApplicationWhenNoIncomingGrpcCallsSenderData
 
 	// Current user
 	userID := processingCapabilityMessage.ClientSystemIdentification.DomainUuid

@@ -24,7 +24,12 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 	}).Debug("Outgoing 'gRPC - InformThatThereAreNewTestCasesOnExecutionQueue'")
 
 	// Reset Application shut time timer when there is an incoming gRPC-call
-	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
+	var endApplicationWhenNoIncomingGrpcCallsSenderData endApplicationWhenNoIncomingGrpcCallsStruct
+	endApplicationWhenNoIncomingGrpcCallsSenderData = endApplicationWhenNoIncomingGrpcCallsStruct{
+		gRPCTimeStamp: time.Now(),
+		senderName:    "gRPC - InformThatThereAreNewTestCasesOnExecutionQueue",
+	}
+	endApplicationWhenNoIncomingGrpcCalls <- endApplicationWhenNoIncomingGrpcCallsSenderData
 
 	// Current user
 	userID := "gRPC-api doesn't support UserId"

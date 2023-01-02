@@ -6,6 +6,7 @@ import (
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 // TriggerSendNewTestInstructionsThatIsWaitingToBeSent - *********************************************************************
@@ -19,6 +20,14 @@ func (s *fenixExecutionServerGrpcServicesServer) TriggerSendNewTestInstructionsT
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "22d31274-ee65-4255-8de7-7188eab13bdb",
 	}).Debug("Outgoing 'gRPC - TriggerSendNewTestInstructionsThatIsWaitingToBeSent'")
+
+	// Reset Application shut time timer when there is an incoming gRPC-call
+	var endApplicationWhenNoIncomingGrpcCallsSenderData endApplicationWhenNoIncomingGrpcCallsStruct
+	endApplicationWhenNoIncomingGrpcCallsSenderData = endApplicationWhenNoIncomingGrpcCallsStruct{
+		gRPCTimeStamp: time.Now(),
+		senderName:    "gRPC - TriggerSendNewTestInstructionsThatIsWaitingToBeSent",
+	}
+	endApplicationWhenNoIncomingGrpcCalls <- endApplicationWhenNoIncomingGrpcCallsSenderData
 
 	// Current user
 	userID := "gRPC-api doesn't support UserId"
