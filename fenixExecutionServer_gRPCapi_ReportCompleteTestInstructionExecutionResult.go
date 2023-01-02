@@ -6,6 +6,7 @@ import (
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 // ReportCompleteTestInstructionExecutionResult - *********************************************************************
@@ -20,6 +21,9 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "61d0939d-bc96-46ea-9623-190cd2942d3e",
 	}).Debug("Outgoing 'gRPC - ReportCompleteTestInstructionExecutionResult'")
+
+	// Reset Application shut time timer when there is an incoming gRPC-call
+	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
 
 	// Current user
 	userID := finalTestInstructionExecutionResultMessage.ClientSystemIdentification.DomainUuid

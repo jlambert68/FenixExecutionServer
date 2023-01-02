@@ -5,6 +5,7 @@ import (
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 // ReportProcessingCapability - *********************************************************************
@@ -19,6 +20,9 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportProcessingCapability(ctx 
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "6b75f162-17c5-4c6c-a31c-502a9e76a826",
 	}).Debug("Outgoing 'gRPC - ReportProcessingCapability'")
+
+	// Reset Application shut time timer when there is an incoming gRPC-call
+	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
 
 	// Current user
 	userID := processingCapabilityMessage.ClientSystemIdentification.DomainUuid

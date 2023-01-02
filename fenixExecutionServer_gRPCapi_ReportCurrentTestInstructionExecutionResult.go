@@ -5,6 +5,7 @@ import (
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"io"
+	"time"
 )
 
 // ReportCurrentTestInstructionExecutionResult - *********************************************************************
@@ -18,6 +19,9 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCurrentTestInstructionExe
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "2a5d06a5-730d-447e-8a95-dbe4298122ce",
 	}).Debug("Outgoing 'gRPC - ReportCurrentTestInstructionExecutionResult'")
+
+	// Reset Application shut time timer when there is an incoming gRPC-call
+	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
 
 	// Container to store all messages before process them
 	var currentTestInstructionExecutionResultMessages []*fenixExecutionServerGrpcApi.CurrentTestInstructionExecutionResultMessage

@@ -6,6 +6,7 @@ import (
 	"context"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 // InformThatThereAreNewTestInstructionsOnExecutionQueue - *********************************************************************
@@ -19,6 +20,9 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestInstru
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "38224ef0-060d-4b64-b4ff-f1f68939b53b",
 	}).Debug("Outgoing 'gRPC - InformThatThereAreNewTestInstructionsOnExecutionQueue'")
+
+	// Reset Application shut time timer when there is an incoming gRPC-call
+	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
 
 	// Current user
 	userID := "gRPC-api doesn't support UserId"

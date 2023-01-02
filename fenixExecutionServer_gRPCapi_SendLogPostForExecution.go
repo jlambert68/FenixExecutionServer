@@ -5,6 +5,7 @@ import (
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"io"
+	"time"
 )
 
 // SendLogPostForExecution - *********************************************************************
@@ -18,6 +19,9 @@ func (s *fenixExecutionServerGrpcServicesServer) SendLogPostForExecution(logPost
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "3cabce48-2b4a-4e02-a8fa-00be9d108bbd",
 	}).Debug("Outgoing 'gRPC - SendLogPostForExecution'")
+
+	// Reset Application shut time timer when there is an incoming gRPC-call
+	endApplicationWhenNoIncomingGrpcCalls <- time.Now()
 
 	// Container to store all messages before process them
 	var logPostsMessages []*fenixExecutionServerGrpcApi.LogPostsMessage
