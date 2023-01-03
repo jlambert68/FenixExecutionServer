@@ -40,7 +40,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) InitiateTestInstruc
 	// Send Message on Channel, use first instance
 	*executionEngine.CommandChannelReferenceSlice[0] <- channelCommandMessage
 
+	// Trigger TestInstructionEngine to Load TestExecutionTimes from Database, if there are any, into TimeOutEngine
+	channelCommandMessage = ChannelCommandStruct{
+		ChannelCommand:                          ChannelCommandReCreateTimeOutTimersAtApplicationStartUp,
+		ChannelCommandTestCaseExecutions:        nil,
+		ChannelCommandTestInstructionExecutions: nil,
+	}
+
+	// Send Message on Channel, use first instance
+	*executionEngine.CommandChannelReferenceSlice[0] <- channelCommandMessage
+
 	return
+
 }
 
 // SetLogger

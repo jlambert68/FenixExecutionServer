@@ -85,6 +85,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 				executionTrackNumber,
 				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
+		case ChannelCommandReCreateTimeOutTimersAtApplicationStartUp:
+			executionEngine.triggerProcessReCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
+
 		// No other command is supported
 		default:
 			executionEngine.logger.WithFields(logrus.Fields{
@@ -94,7 +97,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 			}).Fatalln("Unknown command in CommandChannel for TestInstructionEngine")
 		}
 	}
-
 }
 
 // Check ExecutionQueue for TestInstructions and move them to ongoing Executions-table
@@ -235,5 +237,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessRepor
 			executionTrackNumber,
 			finalTestInstructionExecutionResultMessage)
 	}()
+
+}
+
+// Load TimeOut-times for TestInstructionExecutions and create new TimeOut-Timers in TimeOut-Engine
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessReCreateTimeOutTimersAtApplicationStartUp(
+	executionTrackNumber int) {
+
+	executionEngine.processReCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
 
 }

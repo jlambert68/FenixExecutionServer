@@ -5,9 +5,11 @@ import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	"FenixExecutionServer/testInstructionTimeOutEngine"
+	"cloud.google.com/go/firestore"
 	"fmt"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 	"os"
 	"sync"
 	"time"
@@ -47,7 +49,7 @@ func fenixExecutionServerMain() {
 	}
 
 	// Init logger
-	fenixExecutionServerObject.InitLogger("log88.log")
+	fenixExecutionServerObject.InitLogger("log90.log")
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information
 	defer cleanup()
@@ -93,11 +95,11 @@ func fenixExecutionServerMain() {
 	//its status. Messages are sent to BroadcastEngine using channels
 	go broadcastingEngine.InitiateAndStartBroadcastNotifyEngine()
 
-	// Start Receiver channel for Commands
-	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRefSlice)
-
 	// Start Receiver channel for TimeOutEngine
 	testInstructionTimeOutEngine.TestInstructionExecutionTimeOutEngineObject.InitiateTestInstructionExecutionTimeOutEngineChannelReader()
+
+	// Start Receiver channel for Commands
+	fenixExecutionServerObject.executionEngine.InitiateTestInstructionExecutionEngineCommandChannelReader(*myCommandChannelRefSlice)
 
 	// Initiate Channel used to decide when application should end, due to no gRPC-activity
 	endApplicationWhenNoIncomingGrpcCalls = make(chan endApplicationWhenNoIncomingGrpcCallsStruct, 100)
@@ -217,9 +219,50 @@ func fenixExecutionServerMain() {
 			// Or there were no TimeOut-timers left at all
 			if lowestDuration > common_config.MaxMinutesLeftUntilNextTimeOutTimer || lowestDurationFirstValueFound == false {
 
-				// If ExecutionServer runs in GCP the end application
-				if common_config.ExecutionLocationForFenixExecutionServer == common_config.GCP {
-					break
+				// If ExecutionServer runs in GCP then first Store timestamp for next wakeup time, and then end application
+				if common_config.ExecutionLocationForFenixExecutionServer != common_config.GCP {
+
+					// Only store data in FireStore-DB when there are ongoing TimeOut-timers
+					if lowestDurationFirstValueFound == true {
+
+						// Store TimeStamp in Firestore-DB
+						ctx := context.Background()
+
+						//opt := option. WithCredentialsFile("../../service_account.json")
+						fireStoreClient, err := firestore.NewClient(ctx, "mycloud-run-project") //, opt)
+						if err != nil {
+							fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+								"Id":  "348c45b2-cdb3-434d-accf-a0837e88552f",
+								"err": err,
+							}).Error("Problem when creating new FireStore client")
+						}
+						defer fireStoreClient.Close()
+
+						// If no TimeOut-timer exist then don't store any data in FireStore-DB
+
+						// Convert Wakeup timestamp into string
+						var wakeupTimeStamp time.Time
+						var wakeupTimeStampAsString string
+
+						// Wakeup time = Now() + "Duration until next Timer" - "Time Before timer should start"
+						wakeupTimeStamp = time.Now().Add(lowestDuration).Add(common_config.NumberOfMinutesBeforeNextTimeOutTimerToStart)
+						wakeupTimeStampAsString = wakeupTimeStamp.Format("2006-01-02 15:04:05 -0700 MST")
+
+						// Store TimeStamp in FireStore-Db
+						_, err = fireStoreClient.Collection("nextexecutionservertimeouttimer").Doc("timeouttimestamp").Set(ctx, map[string]interface{}{
+							"mytimestamp": wakeupTimeStampAsString,
+						})
+						if err != nil {
+							fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+								"Id":                      "6921816c-3fea-46ee-8f32-04526e1636ec",
+								"err":                     err,
+								"wakeupTimeStampAsString": wakeupTimeStampAsString,
+							}).Error("Problem when storing timestamp into FireStore-DB")
+						}
+					}
+
+					// End Application
+					os.Exit(0)
 				}
 
 				// Application runs locally then restart gRPC-server

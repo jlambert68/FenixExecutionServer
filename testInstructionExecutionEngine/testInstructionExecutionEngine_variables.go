@@ -48,6 +48,7 @@ const (
 	ChannelCommandLookForZombieTestInstructionExecutionsThatHaveTimedOut
 	ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut
 	ChannelCommandProcessFinalTestInstructionExecutionResultMessage
+	ChannelCommandReCreateTimeOutTimersAtApplicationStartUp
 )
 
 // ChannelCommandStruct
