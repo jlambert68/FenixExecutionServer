@@ -86,7 +86,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
 		case ChannelCommandReCreateTimeOutTimersAtApplicationStartUp:
-			executionEngine.triggerProcessReCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
+			executionEngine.triggerReCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
 
 		// No other command is supported
 		default:
@@ -241,9 +241,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessRepor
 }
 
 // Load TimeOut-times for TestInstructionExecutions and create new TimeOut-Timers in TimeOut-Engine
-func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessReCreateTimeOutTimersAtApplicationStartUp(
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerReCreateTimeOutTimersAtApplicationStartUp(
 	executionTrackNumber int) {
 
-	executionEngine.processReCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
+	executionEngine.reCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
 
 }

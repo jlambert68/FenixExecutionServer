@@ -35,6 +35,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		"incomingTimeOutMapCount": incomingTimeOutMapCount,
 	}).Debug("Number of incoming items '*timeOutMapSlice[executionTrack]'")
 
+	// Secure that number of TimeOut-timers has increased by one
 	defer func() {
 		outgoingTimeOutMapCount := len(*timeOutMapSlice[executionTrack])
 

@@ -3,6 +3,7 @@ package testInstructionExecutionEngine
 import (
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 // TestInstructionExecutionEngineStruct
@@ -76,6 +77,7 @@ type ChannelCommandTestInstructionExecutionStruct struct {
 	TestInstructionExecutionUuid            string
 	TestInstructionExecutionVersion         int32
 	TestInstructionExecutionCanBeReExecuted bool
+	TestInstructionTimeOutTime              time.Time
 }
 
 // ReturnChannelWithDBErrorType

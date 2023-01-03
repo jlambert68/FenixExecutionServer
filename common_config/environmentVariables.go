@@ -41,6 +41,8 @@ var MinutesToShutDownWithOutAnyGrpcTraffic time.Duration = 5 * time.Minute
 
 // MaxMinutesLeftUntilNextTimeOutTimer
 // Number of minutes that the application can wait for a TimeOutTimer, after waited 'MinutesToShutDownWithOutAnyGrpcTraffic'
+// If TimeOutTimer > MaxMinutesLeftUntilNextTimeOutTimer then application shuts down and saves the timer value in FireStore-DB
+// A Crone Job in GCP autostarts the application 'NumberOfMinutesBeforeNextTimeOutTimerToStart' before TimeOut is expected
 var MaxMinutesLeftUntilNextTimeOutTimer = 5 * time.Minute
 
 // NumberOfMinutesBeforeNextTimeOutTimerToStart

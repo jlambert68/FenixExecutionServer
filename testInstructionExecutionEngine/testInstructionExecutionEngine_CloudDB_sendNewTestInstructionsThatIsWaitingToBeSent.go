@@ -579,7 +579,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 }
 
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
-func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstructionExecutionsToWorker(
+	testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
 		"id": "79164f56-efe1-4700-910d-4f6783e305bd",
@@ -625,7 +626,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
 		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
 
-		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(testInstructionToBeSentToExecutionWorkers.domainUuid, testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
+		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(
+			testInstructionToBeSentToExecutionWorkers.domainUuid,
+			testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
 
 		executionEngine.logger.WithFields(logrus.Fields{
 			"id":                 "7a725e82-d3f4-4cb6-9910-099d8d6dc14e",
