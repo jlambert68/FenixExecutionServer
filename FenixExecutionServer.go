@@ -265,7 +265,7 @@ func fenixExecutionServerMain() {
 							fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 								"Id":                      "83363cbe-684a-48ab-b142-a12ba7e96b99",
 								"wakeupTimeStampAsString": wakeupTimeStampAsString,
-							}).Error("Expected to be woken up at this time by GCP Cron Job")
+							}).Info("Expected to be woken up at this time by the GCP Cron Job")
 						}
 
 					}
