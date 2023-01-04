@@ -37,7 +37,7 @@ var FenixExecutionExecutionServerPort int
 
 // MinutesToShutDownWithOutAnyGrpcTraffic
 // The number of minutes without any incoming gPRC-traffic before application is shut down
-var MinutesToShutDownWithOutAnyGrpcTraffic time.Duration = 5 * time.Minute
+var MinutesToShutDownWithOutAnyGrpcTraffic time.Duration = 10 * time.Minute
 
 // MaxMinutesLeftUntilNextTimeOutTimer
 // Number of minutes that the application can wait for a TimeOutTimer, after waited 'MinutesToShutDownWithOutAnyGrpcTraffic'

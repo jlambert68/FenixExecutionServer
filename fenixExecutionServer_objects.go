@@ -41,7 +41,3 @@ type fenixExecutionServerGrpcServicesServer struct {
 	fenixExecutionServerGrpcApi.UnimplementedFenixExecutionServerGrpcServicesServer
 	logger *logrus.Logger
 }
-
-//TODO FIXA DENNA PATH, HMMM borde köra i DB framöver
-// For now hardcoded MerklePath
-//var merkleFilterPath string = //"AccountEnvironment/ClientJuristictionCountryCode/MarketSubType/MarketName/" //SecurityType/"

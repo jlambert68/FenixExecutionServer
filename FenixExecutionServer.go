@@ -49,7 +49,7 @@ func fenixExecutionServerMain() {
 	}
 
 	// Init logger
-	fenixExecutionServerObject.InitLogger("log90.log")
+	fenixExecutionServerObject.InitLogger("log91.log")
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information
 	defer cleanup()
@@ -220,7 +220,8 @@ func fenixExecutionServerMain() {
 			if lowestDuration > common_config.MaxMinutesLeftUntilNextTimeOutTimer || lowestDurationFirstValueFound == false {
 
 				// If ExecutionServer runs in GCP then first Store timestamp for next wakeup time, and then end application
-				if common_config.ExecutionLocationForFenixExecutionServer != common_config.GCP {
+				//if common_config.ExecutionLocationForFenixExecutionServer != common_config.GCP { // Local
+				if common_config.ExecutionLocationForFenixExecutionServer == common_config.GCP { // GCP
 
 					// Only store data in FireStore-DB when there are ongoing TimeOut-timers
 					if lowestDurationFirstValueFound == true {
@@ -258,7 +259,15 @@ func fenixExecutionServerMain() {
 								"err":                     err,
 								"wakeupTimeStampAsString": wakeupTimeStampAsString,
 							}).Error("Problem when storing timestamp into FireStore-DB")
+						} else {
+
+							// Log What time to be woken up by GCP cron job
+							fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+								"Id":                      "83363cbe-684a-48ab-b142-a12ba7e96b99",
+								"wakeupTimeStampAsString": wakeupTimeStampAsString,
+							}).Error("Expected to be woken up at this time by GCP Cron Job")
 						}
+
 					}
 
 					// End Application
