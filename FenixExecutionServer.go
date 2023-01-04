@@ -270,6 +270,13 @@ func fenixExecutionServerMain() {
 
 					}
 
+					// Log that ExecutionServer is shutting down
+					fenixExecutionServerObject.logger.WithFields(logrus.Fields{
+						"Id":                     "b77ddbb8-3834-4591-ba59-eea2ff7affd5",
+						"ApplicationRuntimeUuid": common_config.ApplicationRuntimeUuid,
+					}).Info("Fenix ExecutionServer is shutting down")
+
+					//TODO fix so when application i shut down by GCP then run code for saving Timers to FireStore-DB
 					// End Application
 					os.Exit(0)
 				}

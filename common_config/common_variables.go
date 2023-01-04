@@ -6,6 +6,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+// ApplicationRuntimeUuid
+// Keeps a unique id for the runtime instance of the application
+var ApplicationRuntimeUuid string
+
 // Used for keeping track of the proto file versions for ExecutionServer and this Worker
 var highestFenixExecutionServerProtoFileVersion int32 = -1
 

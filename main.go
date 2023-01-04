@@ -2,6 +2,7 @@ package main
 
 import (
 	"FenixExecutionServer/common_config"
+	uuidGenerator "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
@@ -44,6 +45,10 @@ func main() {
 }
 
 func init() {
+
+	// Create Unique Uuid for run time instance
+	common_config.ApplicationRuntimeUuid = uuidGenerator.New().String()
+	fmt.Println("ApplicationRuntimeUuid: " + common_config.ApplicationRuntimeUuid)
 
 	var err error
 
