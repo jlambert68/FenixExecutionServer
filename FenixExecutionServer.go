@@ -49,7 +49,12 @@ func fenixExecutionServerMain() {
 	}
 
 	// Init logger
-	fenixExecutionServerObject.InitLogger("log91.log")
+	if common_config.ExecutionLocationForFenixExecutionServer == common_config.GCP {
+		// Always use standard output in GCP to be able for GCP to pick up logs
+		fenixExecutionServerObject.InitLogger("")
+	} else {
+		fenixExecutionServerObject.InitLogger("log92.log")
+	}
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information
 	defer cleanup()
