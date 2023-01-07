@@ -83,6 +83,11 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				executionTrack,
 				incomingTimeOutChannelCommand)
 
+		case common_config.TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer:
+			testInstructionExecutionTimeOutEngineObject.removeAllocationForTestInstructionExecutionToTimeOutTimer(
+				executionTrack,
+				incomingTimeOutChannelCommand)
+
 		// No other command is supported
 		default:
 			common_config.Logger.WithFields(logrus.Fields{
@@ -151,6 +156,17 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
 
 	testInstructionExecutionTimeOutEngineObject.processTimeUntilNextTimeOutTimerToFires(
+		executionTrack,
+		&incomingTimeOutChannelCommand)
+
+}
+
+// Remove Allocation for a Timer.
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) removeAllocationForTestInstructionExecutionToTimeOutTimer(
+	executionTrack int,
+	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
+
+	testInstructionExecutionTimeOutEngineObject.processRemoveAllocationForTestInstructionExecutionToTimeOutTimer(
 		executionTrack,
 		&incomingTimeOutChannelCommand)
 

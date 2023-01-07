@@ -216,10 +216,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	// Prepare message data to be sent over Broadcast system
 	for _, testInstructionExecutionStatusMessage := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
+		var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
+
 		// Only BroadCast 'TIE_EXECUTING' if we got an AckNack=true as respons
 		if testInstructionExecutionStatusMessage.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
 
-			var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
 			testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
 				TestCaseExecutionUuid:           testInstructionExecutionStatusMessage.testCaseExecutionUuid,
 				TestCaseExecutionVersion:        strconv.Itoa(testInstructionExecutionStatusMessage.testCaseExecutionVersion),
@@ -227,42 +228,64 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 				TestInstructionExecutionVersion: "1", //TODO Add version in sending API
 				TestInstructionExecutionStatus:  fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING)],
 			}
-
-			// Add TestInstructionExecution to slice of executions to be sent over Broadcast system
-			testInstructionExecutions = append(testInstructionExecutions, testInstructionExecution)
-
-			// Make the list of TestCaseExecutions to be able to update Status on TestCaseExecutions
-			var tempTestCaseExecutionsMap map[string]string
-			var tempTestCaseExecutionsMapKey string
-			var existInMap bool
-			tempTestCaseExecutionsMap = make(map[string]string)
-
-			// Create the MapKey used for Map
-			tempTestCaseExecutionsMapKey = testInstructionExecutionStatusMessage.testCaseExecutionUuid + strconv.Itoa(testInstructionExecutionStatusMessage.testCaseExecutionVersion)
-			_, existInMap = tempTestCaseExecutionsMap[tempTestCaseExecutionsMapKey]
-
-			if existInMap == false {
-				// Only add to slice when it's a new TestCaseExecutions not handled yet in Map
-				var newTempChannelCommandTestCaseExecution ChannelCommandTestCaseExecutionStruct
-				newTempChannelCommandTestCaseExecution = ChannelCommandTestCaseExecutionStruct{
-					TestCaseExecutionUuid:    testInstructionExecutionStatusMessage.testCaseExecutionUuid,
-					TestCaseExecutionVersion: int32(testInstructionExecutionStatusMessage.testCaseExecutionVersion),
-				}
-
-				channelCommandTestCaseExecution = append(channelCommandTestCaseExecution, newTempChannelCommandTestCaseExecution)
-
-				// Add to map that this TestCaseExecution has been added to slice
-				tempTestCaseExecutionsMap[tempTestCaseExecutionsMapKey] = tempTestCaseExecutionsMapKey
+		} else {
+			//  BroadCast 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' if we got an AckNack=false as respons
+			testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
+				TestCaseExecutionUuid:           testInstructionExecutionStatusMessage.testCaseExecutionUuid,
+				TestCaseExecutionVersion:        strconv.Itoa(testInstructionExecutionStatusMessage.testCaseExecutionVersion),
+				TestInstructionExecutionUuid:    testInstructionExecutionStatusMessage.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+				TestInstructionExecutionVersion: "1", //TODO Add version in sending API
+				TestInstructionExecutionStatus:  fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)],
 			}
 		}
+		// Add TestInstructionExecution to slice of executions to be sent over Broadcast system
+		testInstructionExecutions = append(testInstructionExecutions, testInstructionExecution)
+
+		// Make the list of TestCaseExecutions to be able to update Status on TestCaseExecutions
+		var tempTestCaseExecutionsMap map[string]string
+		var tempTestCaseExecutionsMapKey string
+		var existInMap bool
+		tempTestCaseExecutionsMap = make(map[string]string)
+
+		// Create the MapKey used for Map
+		tempTestCaseExecutionsMapKey = testInstructionExecutionStatusMessage.testCaseExecutionUuid + strconv.Itoa(testInstructionExecutionStatusMessage.testCaseExecutionVersion)
+		_, existInMap = tempTestCaseExecutionsMap[tempTestCaseExecutionsMapKey]
+
+		if existInMap == false {
+			// Only add to slice when it's a new TestCaseExecutions not handled yet in Map
+			var newTempChannelCommandTestCaseExecution ChannelCommandTestCaseExecutionStruct
+			newTempChannelCommandTestCaseExecution = ChannelCommandTestCaseExecutionStruct{
+				TestCaseExecutionUuid:    testInstructionExecutionStatusMessage.testCaseExecutionUuid,
+				TestCaseExecutionVersion: int32(testInstructionExecutionStatusMessage.testCaseExecutionVersion),
+			}
+
+			channelCommandTestCaseExecution = append(channelCommandTestCaseExecution, newTempChannelCommandTestCaseExecution)
+
+			// Add to map that this TestCaseExecution has been added to slice
+			tempTestCaseExecutionsMap[tempTestCaseExecutionsMapKey] = tempTestCaseExecutionsMapKey
+		}
+
 	}
 
-	// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine
+	// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as respons
 	err = executionEngine.setTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "7d998314-1a9c-40bb-a7f2-9017b26db58f",
+			"error": err,
+		}).Error("Problem when sending TestInstructionExecutions to TimeOutEngine")
+
+		return
+
+	}
+
+	//Remove Allocation for TimeOut-timer because we got an AckNack=false as respons
+	err = executionEngine.removeTimeOutTimerAllocationsForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+	if err != nil {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "640602b0-04be-4206-987b-4ccc1cb5d46c",
 			"error": err,
 		}).Error("Problem when sending TestInstructionExecutions to TimeOutEngine")
 
@@ -772,7 +795,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 }
 
-// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine
+// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as respons
 func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
 
 	// If there are nothing to update then just exit
@@ -783,33 +806,82 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 	// Create TimeOut-message for all TestInstructionExecutions
 	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
-		// Create a message with TestInstructionExecution to be sent to TimeOutEngine
-		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
-		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
-			TestCaseExecutionUuid:                   testInstructionExecution.testCaseExecutionUuid,
-			TestCaseExecutionVersion:                int32(testInstructionExecution.testCaseExecutionVersion),
-			TestInstructionExecutionUuid:            testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-			TestInstructionExecutionVersion:         1,
-			TestInstructionExecutionCanBeReExecuted: testInstructionExecution.processTestInstructionExecutionResponse.TestInstructionCanBeReExecuted,
-			TimeOutTime:                             testInstructionExecution.processTestInstructionExecutionResponse.ExpectedExecutionDuration.AsTime(),
+		// Process only TestInstructionExecutions if we got an AckNack=true as respons
+		if testInstructionExecution.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+			// Create a message with TestInstructionExecution to be sent to TimeOutEngine
+			var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+			tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+				TestCaseExecutionUuid:                   testInstructionExecution.testCaseExecutionUuid,
+				TestCaseExecutionVersion:                int32(testInstructionExecution.testCaseExecutionVersion),
+				TestInstructionExecutionUuid:            testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+				TestInstructionExecutionVersion:         1,
+				TestInstructionExecutionCanBeReExecuted: testInstructionExecution.processTestInstructionExecutionResponse.TestInstructionCanBeReExecuted,
+				TimeOutTime:                             testInstructionExecution.processTestInstructionExecutionResponse.ExpectedExecutionDuration.AsTime(),
+			}
+
+			var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+			tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+				TimeOutChannelCommand:                   common_config.TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer,
+				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
+				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+				SendID: "9d59fc1b-9b11-4adf-b175-1ebbc60eceae",
+			}
+			// Calculate Execution Track
+			var executionTrack int
+			executionTrack = common_config.CalculateExecutionTrackNumber(
+				testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+
+			// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
+			*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
+
 		}
+	}
 
-		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
-		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
-			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandAddTestInstructionExecutionToTimeOutTimer,
-			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
-			//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
-			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-			SendID: "9d59fc1b-9b11-4adf-b175-1ebbc60eceae",
+	return err
+}
+
+// Remove Allocations for TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=false as respons
+func (executionEngine *TestInstructionExecutionEngineStruct) removeTimeOutTimerAllocationsForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+
+	// If there are nothing to update then just exit
+	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {
+		return nil
+	}
+
+	// Create TimeOut-message for all TestInstructionExecutions
+	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
+
+		// Process only TestInstructionExecutions if we got an AckNack=fasle as respons
+		if testInstructionExecution.processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
+			// Create a message with TestInstructionExecution to be sent to TimeOutEngine
+			var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+			tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+				TestCaseExecutionUuid:                   testInstructionExecution.testCaseExecutionUuid,
+				TestCaseExecutionVersion:                int32(testInstructionExecution.testCaseExecutionVersion),
+				TestInstructionExecutionUuid:            testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+				TestInstructionExecutionVersion:         1,
+				TestInstructionExecutionCanBeReExecuted: testInstructionExecution.processTestInstructionExecutionResponse.TestInstructionCanBeReExecuted,
+				TimeOutTime:                             testInstructionExecution.processTestInstructionExecutionResponse.ExpectedExecutionDuration.AsTime(),
+			}
+
+			var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+			tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+				TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer,
+				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
+				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+				SendID: "3f5b5990-c7c6-4cba-9136-f90ba7530981",
+			}
+			// Calculate Execution Track
+			var executionTrack int
+			executionTrack = common_config.CalculateExecutionTrackNumber(
+				testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+
+			// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
+			*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
+
 		}
-		// Calculate Execution Track
-		var executionTrack int
-		executionTrack = common_config.CalculateExecutionTrackNumber(
-			testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
-
-		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
-		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
-
 	}
 
 	return err
