@@ -404,6 +404,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessage.testInstructionExecutionOrder)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessage.testInstructionOriginalUuid)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, false) // TestInstructionExecutionHasFinished
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessage.queueTimeStamp)
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessage.executionPriority)
 
 		dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
@@ -413,7 +415,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
 		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"SentTimeStamp\", \"TestInstructionExecutionStatus\", \"ExecutionStatusUpdateTimeStamp\", " +
 		" \"TestDataSetUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"TestInstructionInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", " +
-		"\"TestInstructionOriginalUuid\", \"TestInstructionExecutionHasFinished\") "
+		"\"TestInstructionOriginalUuid\", \"TestInstructionExecutionHasFinished\", \"QueueTimeStamp\"," +
+		" \"ExecutionPriority\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
