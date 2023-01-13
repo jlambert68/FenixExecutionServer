@@ -21,7 +21,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	//testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
-	testCaseExecutionsReference *[]broadcastingEngine.TestCaseExecutionStruct) {
+	testCaseExecutionsReference *[]broadcastingEngine.TestCaseExecutionBroadcastMessageStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
@@ -104,7 +104,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	doCommitNotRoleBack = false
 
 	// All TestCaseExecutions
-	var testCaseExecutions []broadcastingEngine.TestCaseExecutionStruct
+	var testCaseExecutions []broadcastingEngine.TestCaseExecutionBroadcastMessageStruct
 
 	defer executionEngine.updateStatusOnTestCaseExecutionInCloudDBCommitOrRoleBack(
 		&txn,
@@ -153,8 +153,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	// Prepare message data to be sent over Broadcast system
 	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
 
-		var testCaseExecution broadcastingEngine.TestCaseExecutionStruct
-		testCaseExecution = broadcastingEngine.TestCaseExecutionStruct{
+		var testCaseExecution broadcastingEngine.TestCaseExecutionBroadcastMessageStruct
+		testCaseExecution = broadcastingEngine.TestCaseExecutionBroadcastMessageStruct{
 			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
 			TestCaseExecutionVersion: strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion),
 			TestCaseExecutionStatus: fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(

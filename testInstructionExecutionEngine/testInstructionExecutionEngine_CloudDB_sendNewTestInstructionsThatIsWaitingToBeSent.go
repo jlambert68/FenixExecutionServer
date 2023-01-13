@@ -23,7 +23,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	executionTrackNumberReference *int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
-	testInstructionExecutionsReference *[]broadcastingEngine.TestInstructionExecutionStruct,
+	testInstructionExecutionsReference *[]broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct,
 	channelCommandTestCaseExecutionReference *[]ChannelCommandTestCaseExecutionStruct) {
 
 	executionTrackNumber := *executionTrackNumberReference
@@ -98,7 +98,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// All TestInstructionExecutions
-	var testInstructionExecutions []broadcastingEngine.TestInstructionExecutionStruct
+	var testInstructionExecutions []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
 
 	// All TestCaseExecutions to update status on
 	var channelCommandTestCaseExecution []ChannelCommandTestCaseExecutionStruct
@@ -216,30 +216,39 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	// Prepare message data to be sent over Broadcast system
 	for _, testInstructionExecutionStatusMessage := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
-		var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
+		// Create the BroadCastMessage for the TestInstructionExecution
+		var testInstructionExecutionBroadcastMessages []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+		testInstructionExecutionBroadcastMessages, err = executionEngine.loadTestInstructionExecutionDetailsForBroadcastMessage(
+			txn,
+			testInstructionExecutionStatusMessage.processTestInstructionExecutionResponse.TestInstructionExecutionUuid)
+
+		if err != nil {
+
+			return
+		}
+
+		// There should only be one message
+		var testInstructionExecutionDetailsForBroadcastSystem broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+		testInstructionExecutionDetailsForBroadcastSystem = testInstructionExecutionBroadcastMessages[0]
 
 		// Only BroadCast 'TIE_EXECUTING' if we got an AckNack=true as respons
 		if testInstructionExecutionStatusMessage.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
-
-			testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
-				TestCaseExecutionUuid:           testInstructionExecutionStatusMessage.testCaseExecutionUuid,
-				TestCaseExecutionVersion:        strconv.Itoa(testInstructionExecutionStatusMessage.testCaseExecutionVersion),
-				TestInstructionExecutionUuid:    testInstructionExecutionStatusMessage.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-				TestInstructionExecutionVersion: "1", //TODO Add version in sending API
-				TestInstructionExecutionStatus:  fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING)],
-			}
+			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
+				fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(
+					fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING)]
+			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
+				strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING))
 		} else {
 			//  BroadCast 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' if we got an AckNack=false as respons
-			testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
-				TestCaseExecutionUuid:           testInstructionExecutionStatusMessage.testCaseExecutionUuid,
-				TestCaseExecutionVersion:        strconv.Itoa(testInstructionExecutionStatusMessage.testCaseExecutionVersion),
-				TestInstructionExecutionUuid:    testInstructionExecutionStatusMessage.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-				TestInstructionExecutionVersion: "1", //TODO Add version in sending API
-				TestInstructionExecutionStatus:  fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)],
-			}
+			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
+				fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(
+					fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)]
+			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
+				strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN))
 		}
+
 		// Add TestInstructionExecution to slice of executions to be sent over Broadcast system
-		testInstructionExecutions = append(testInstructionExecutions, testInstructionExecution)
+		testInstructionExecutions = append(testInstructionExecutions, testInstructionExecutionDetailsForBroadcastSystem)
 
 		// Make the list of TestCaseExecutions to be able to update Status on TestCaseExecutions
 		var tempTestCaseExecutionsMap map[string]string

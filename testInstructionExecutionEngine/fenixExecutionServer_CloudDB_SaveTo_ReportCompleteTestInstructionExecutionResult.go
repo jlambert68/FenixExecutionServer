@@ -21,7 +21,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
 	thereExistsOnGoingTestInstructionExecutionsReference *bool,
 	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference *bool,
-	testInstructionExecutionReference *broadcastingEngine.TestInstructionExecutionStruct) {
+	testInstructionExecutionReference *broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
@@ -38,7 +38,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
 			BroadcastTimeStamp:        strings.Split(time.Now().UTC().String(), " m=")[0],
 			TestCaseExecutions:        nil,
-			TestInstructionExecutions: []broadcastingEngine.TestInstructionExecutionStruct{testInstructionExecution},
+			TestInstructionExecutions: []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct{testInstructionExecution},
 		}
 
 		// Send message to BroadcastEngine over channel
@@ -329,7 +329,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 
 	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecutionUuid-status
 	var triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions bool
-	var testInstructionExecution broadcastingEngine.TestInstructionExecutionStruct
+	var testInstructionExecutionMessageToBroadcastSystem broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
 
 	defer executionEngine.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,
@@ -337,7 +337,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 		&testCaseExecutionsToProcess,
 		&thereExistsOnGoingTestInstructionExecutionsOnQueue,
 		&triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions,
-		&testInstructionExecution) //txn.Commit(context.Background())
+		&testInstructionExecutionMessageToBroadcastSystem) //txn.Commit(context.Background())
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB2(txn, finalTestInstructionExecutionResultMessage)
@@ -384,13 +384,33 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	}
 
 	// Create the BroadCastMessage for the TestInstructionExecution
-	testInstructionExecution = broadcastingEngine.TestInstructionExecutionStruct{
-		TestCaseExecutionUuid:           testCaseExecutionsToProcess[0].TestCaseExecutionUuid,
-		TestCaseExecutionVersion:        strconv.Itoa(int(testCaseExecutionsToProcess[0].TestCaseExecutionVersion)),
-		TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
-		TestInstructionExecutionVersion: "1", // TODO fix to dynamic value if this is needed
-		TestInstructionExecutionStatus:  fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus)],
+	var testInstructionExecutionBroadcastMessages []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+	testInstructionExecutionBroadcastMessages, err = executionEngine.loadTestInstructionExecutionDetailsForBroadcastMessage(
+		txn,
+		finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
+
+	if err != nil {
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:                      false,
+			Comments:                     err.Error(),
+			ErrorCodes:                   errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
 	}
+
+	// There should only be one message
+	testInstructionExecutionMessageToBroadcastSystem = testInstructionExecutionBroadcastMessages[0]
 
 	// If this is the last on TestInstructionExecution and any of them ended with a 'Non-OK-status' then stop pick new TestInstructionExecutions from Queue
 	var testInstructionExecutionSiblingsStatus []*testInstructionExecutionSiblingsStatusStruct
@@ -618,7 +638,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 
 }
 
-// Verify if siblings to current finsihed TestInstructionExecutions are all finished and if any of them ended with a Non-OK-status
+// Verify if siblings to current finished TestInstructionExecutions are all finished and if any of them ended with a Non-OK-status
 func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus(
 	dbTransaction pgx.Tx,
 	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (
@@ -633,16 +653,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 
 	// Create SQL that only List TestInstructionExecutions that did not end with a OK-status
 	sqlToExecute_part1 := ""
-	//sqlToExecute_part1 = sqlToExecute_part1 + "CREATE TEMP TABLE " + tempTableName + " AS "
 
 	sqlToExecute_part1 = sqlToExecute_part1 + "SELECT TIUE.\"TestCaseExecutionUuid\",  TIUE.\"TestCaseExecutionVersion\" "
 	sqlToExecute_part1 = sqlToExecute_part1 + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
-	sqlToExecute_part1 = sqlToExecute_part1 + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + "' AND "
+	sqlToExecute_part1 = sqlToExecute_part1 + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" +
+		finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + "' AND "
 	sqlToExecute_part1 = sqlToExecute_part1 + "TIUE.\"TestInstructionInstructionExecutionVersion\" = 1; "
 
-	//sqlToExecute = sqlToExecute + "DROP TABLE " + tempTableName + ";"
-
-	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute_part1)
 
@@ -703,7 +720,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", " +
 		"TIUE.\"TestInstructionExecutionStatus\" "
 	sqlToExecute_part2 = sqlToExecute_part2 + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
-	sqlToExecute_part2 = sqlToExecute_part2 + "WHERE TIUE.\"TestCaseExecutionUuid\" = '" + currentTestCaseExecution.testCaseExecutionUuid + "' AND "
+	sqlToExecute_part2 = sqlToExecute_part2 + "WHERE TIUE.\"TestCaseExecutionUuid\" = '" +
+		currentTestCaseExecution.testCaseExecutionUuid + "' AND "
 	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestCaseExecutionVersion\" = " + testCaseExecutionVersionAsString + " AND "
 	sqlToExecute_part2 = sqlToExecute_part2 + "(TIUE.\"TestInstructionExecutionStatus\" < 4 OR "
 	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestInstructionExecutionStatus\" > 5);"
@@ -752,5 +770,125 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 	}
 
 	return testInstructionExecutionSiblingsStatus, err
+
+}
+
+// Load TestInstructionExecution-details to be sent over Broadcast-system
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionDetailsForBroadcastMessage(
+	dbTransaction pgx.Tx,
+	testInstructionExecutionUuid string) (
+	[]broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct, error) {
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"SentTimeStamp\", TIUE.\"ExpectedExecutionEndTimeStamp\" "
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionExecutionStatus\", TIUE.\"TestInstructionExecutionEndTimeStamp\" "
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionExecutionHasFinished\", TIUE.\"UniqueDatabaseRowCounter\" "
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionCanBeReExecuted\", TIUE.\"ExecutionStatusUpdateTimeStamp\" "
+	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
+	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "'; "
+
+	// Query DB
+	// Execute Query CloudDB
+	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "f0fbac73-b7e6-4eea-9932-4ce49d690fd8",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	// Temporary variables used when scanning from database
+	var (
+		tempTestCaseExecutionUuid                string
+		tempTestCaseExecutionVersion             int
+		tempTestInstructionExecutionUuid         string
+		tempTestInstructionExecutionVersion      int
+		tempSentTimeStamp                        time.Time
+		tempExpectedExecutionEndTimeStamp        time.Time
+		tempTestInstructionExecutionStatusValue  int
+		tempTestInstructionExecutionEndTimeStamp time.Time
+		tempTestInstructionExecutionHasFinished  bool
+		tempUniqueDatabaseRowCounter             int
+		tempTestInstructionCanBeReExecuted       bool
+		tempExecutionStatusUpdateTimeStamp       time.Time
+	)
+
+	// Variable to store Message to be broadcast
+	var testInstructionExecutionBroadcastMessages []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+
+	// Extract data from DB result set
+	for rows.Next() {
+		var tempTestInstructionExecutionBroadcastMessage broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+
+		err = rows.Scan(
+			tempTestCaseExecutionUuid,
+			tempTestCaseExecutionVersion,
+			tempTestInstructionExecutionUuid,
+			tempTestInstructionExecutionVersion,
+			tempSentTimeStamp,
+			tempExpectedExecutionEndTimeStamp,
+			tempTestInstructionExecutionStatusValue,
+			tempTestInstructionExecutionEndTimeStamp,
+			tempTestInstructionExecutionHasFinished,
+			tempUniqueDatabaseRowCounter,
+			tempTestInstructionCanBeReExecuted,
+			tempExecutionStatusUpdateTimeStamp,
+		)
+
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "ab5ec697-c33e-49d1-8f03-e297a05ffccc",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+
+		// Convert 'tempVariables' into a 'TestInstructionExecutionBroadcastMessage'
+		tempTestInstructionExecutionBroadcastMessage = broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct{
+			TestCaseExecutionUuid:           tempTestCaseExecutionUuid,
+			TestCaseExecutionVersion:        strconv.Itoa(int(tempTestCaseExecutionVersion)),
+			TestInstructionExecutionUuid:    tempTestInstructionExecutionUuid,
+			TestInstructionExecutionVersion: strconv.Itoa(int(tempTestInstructionExecutionVersion)),
+			SentTimeStamp:                   common_config.GenerateDatetimeFromTimeInputForDB(tempSentTimeStamp),
+			ExpectedExecutionEndTimeStamp:   common_config.GenerateDatetimeFromTimeInputForDB(tempExpectedExecutionEndTimeStamp),
+			TestInstructionExecutionStatusName: fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(
+				tempTestInstructionExecutionStatusValue)],
+			TestInstructionExecutionStatusValue:  strconv.Itoa(int(tempTestInstructionExecutionStatusValue)),
+			TestInstructionExecutionEndTimeStamp: common_config.GenerateDatetimeFromTimeInputForDB(tempTestInstructionExecutionEndTimeStamp),
+			TestInstructionExecutionHasFinished:  strconv.FormatBool(tempTestInstructionExecutionHasFinished),
+			UniqueDatabaseRowCounter:             strconv.Itoa(int(tempUniqueDatabaseRowCounter)),
+			TestInstructionCanBeReExecuted:       strconv.FormatBool(tempTestInstructionExecutionHasFinished),
+			ExecutionStatusUpdateTimeStamp:       common_config.GenerateDatetimeFromTimeInputForDB(tempExecutionStatusUpdateTimeStamp),
+		}
+
+		// Add TestCaseExecutionUUID and its TestCaseExecutionVersion to slice of messages
+		testInstructionExecutionBroadcastMessages = append(testInstructionExecutionBroadcastMessages, tempTestInstructionExecutionBroadcastMessage)
+
+	}
+
+	// Verify that we got exactly one row from database
+	if len(testInstructionExecutionBroadcastMessages) != 1 {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "84270631-b49c-486a-9ea9-704979d6b387",
+			"testInstructionExecutionBroadcastMessages": testInstructionExecutionBroadcastMessages,
+			"Number of Rows": len(testInstructionExecutionBroadcastMessages),
+		}).Error("The result gave not exactly ONE row from database")
+
+		return nil, errors.New("the result gave not exactly ONE row from database")
+
+	}
+
+	return testInstructionExecutionBroadcastMessages, err
 
 }
