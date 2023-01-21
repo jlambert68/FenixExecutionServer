@@ -783,7 +783,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", "
-	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionExecutionVersion\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", "
 	sqlToExecute = sqlToExecute + "TIUE.\"SentTimeStamp\", TIUE.\"ExpectedExecutionEndTimeStamp\", "
 	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\", TIUE.\"TestInstructionExecutionEndTimeStamp\", "
 	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionHasFinished\", TIUE.\"UniqueDatabaseRowCounter\", "
