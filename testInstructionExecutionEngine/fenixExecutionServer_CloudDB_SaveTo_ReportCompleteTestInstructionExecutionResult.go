@@ -588,7 +588,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "f0fbac73-b7e6-4eea-9932-4ce49d690fd8",
+			"Id":           "7291dbb2-7ee7-459d-ba4c-41f9634ccc85",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
@@ -783,11 +783,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionExecutionVersion\" "
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"SentTimeStamp\", TIUE.\"ExpectedExecutionEndTimeStamp\" "
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionExecutionStatus\", TIUE.\"TestInstructionExecutionEndTimeStamp\" "
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionExecutionHasFinished\", TIUE.\"UniqueDatabaseRowCounter\" "
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionCanBeReExecuted\", TIUE.\"ExecutionStatusUpdateTimeStamp\" "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "TIUE.\"SentTimeStamp\", TIUE.\"ExpectedExecutionEndTimeStamp\" "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\", TIUE.\"TestInstructionExecutionEndTimeStamp\" "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionHasFinished\", TIUE.\"UniqueDatabaseRowCounter\" "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionCanBeReExecuted\", TIUE.\"ExecutionStatusUpdateTimeStamp\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "'; "
 
