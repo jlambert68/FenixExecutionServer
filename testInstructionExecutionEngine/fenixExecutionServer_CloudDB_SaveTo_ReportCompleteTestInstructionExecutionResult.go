@@ -782,11 +782,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
-	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionExecutionVersion\" "
-	sqlToExecute = sqlToExecute + "TIUE.\"SentTimeStamp\", TIUE.\"ExpectedExecutionEndTimeStamp\" "
-	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\", TIUE.\"TestInstructionExecutionEndTimeStamp\" "
-	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionHasFinished\", TIUE.\"UniqueDatabaseRowCounter\" "
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionExecutionVersion\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"SentTimeStamp\", TIUE.\"ExpectedExecutionEndTimeStamp\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\", TIUE.\"TestInstructionExecutionEndTimeStamp\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionHasFinished\", TIUE.\"UniqueDatabaseRowCounter\", "
 	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionCanBeReExecuted\", TIUE.\"ExecutionStatusUpdateTimeStamp\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "'; "
