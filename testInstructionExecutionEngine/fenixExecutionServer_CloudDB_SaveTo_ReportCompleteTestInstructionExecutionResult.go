@@ -812,9 +812,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		tempTestInstructionExecutionUuid         string
 		tempTestInstructionExecutionVersion      int
 		tempSentTimeStamp                        time.Time
-		tempExpectedExecutionEndTimeStamp        time.Time
+		tempExpectedExecutionEndTimeStamp        *time.Time
 		tempTestInstructionExecutionStatusValue  int
-		tempTestInstructionExecutionEndTimeStamp time.Time
+		tempTestInstructionExecutionEndTimeStamp *time.Time
 		tempTestInstructionExecutionHasFinished  bool
 		tempUniqueDatabaseRowCounter             int
 		tempTestInstructionCanBeReExecuted       bool
@@ -829,18 +829,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		var tempTestInstructionExecutionBroadcastMessage broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
 
 		err = rows.Scan(
-			tempTestCaseExecutionUuid,
-			tempTestCaseExecutionVersion,
-			tempTestInstructionExecutionUuid,
-			tempTestInstructionExecutionVersion,
-			tempSentTimeStamp,
-			tempExpectedExecutionEndTimeStamp,
-			tempTestInstructionExecutionStatusValue,
-			tempTestInstructionExecutionEndTimeStamp,
-			tempTestInstructionExecutionHasFinished,
-			tempUniqueDatabaseRowCounter,
-			tempTestInstructionCanBeReExecuted,
-			tempExecutionStatusUpdateTimeStamp,
+			&tempTestCaseExecutionUuid,
+			&tempTestCaseExecutionVersion,
+			&tempTestInstructionExecutionUuid,
+			&tempTestInstructionExecutionVersion,
+			&tempSentTimeStamp,
+			&tempExpectedExecutionEndTimeStamp,
+			&tempTestInstructionExecutionStatusValue,
+			&tempTestInstructionExecutionEndTimeStamp,
+			&tempTestInstructionExecutionHasFinished,
+			&tempUniqueDatabaseRowCounter,
+			&tempTestInstructionCanBeReExecuted,
+			&tempExecutionStatusUpdateTimeStamp,
 		)
 
 		if err != nil {
@@ -854,6 +854,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			return nil, err
 		}
 
+		// Handle Null-values
+		var tempExpectedExecutionEndTimeStampAsString string
+		if tempExpectedExecutionEndTimeStamp == nil {
+			tempExpectedExecutionEndTimeStampAsString = ""
+		} else {
+			tempExpectedExecutionEndTimeStampAsString = common_config.GenerateDatetimeFromTimeInputForDB(*tempExpectedExecutionEndTimeStamp)
+		}
+
+		var tempTestInstructionExecutionEndTimeStampAsString string
+		if tempExpectedExecutionEndTimeStamp == nil {
+			tempTestInstructionExecutionEndTimeStampAsString = ""
+		} else {
+			tempTestInstructionExecutionEndTimeStampAsString = common_config.GenerateDatetimeFromTimeInputForDB(*tempTestInstructionExecutionEndTimeStamp)
+		}
+
 		// Convert 'tempVariables' into a 'TestInstructionExecutionBroadcastMessage'
 		tempTestInstructionExecutionBroadcastMessage = broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct{
 			TestCaseExecutionUuid:           tempTestCaseExecutionUuid,
@@ -861,11 +876,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			TestInstructionExecutionUuid:    tempTestInstructionExecutionUuid,
 			TestInstructionExecutionVersion: strconv.Itoa(int(tempTestInstructionExecutionVersion)),
 			SentTimeStamp:                   common_config.GenerateDatetimeFromTimeInputForDB(tempSentTimeStamp),
-			ExpectedExecutionEndTimeStamp:   common_config.GenerateDatetimeFromTimeInputForDB(tempExpectedExecutionEndTimeStamp),
+			ExpectedExecutionEndTimeStamp:   tempExpectedExecutionEndTimeStampAsString,
 			TestInstructionExecutionStatusName: fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_name[int32(
 				tempTestInstructionExecutionStatusValue)],
 			TestInstructionExecutionStatusValue:  strconv.Itoa(int(tempTestInstructionExecutionStatusValue)),
-			TestInstructionExecutionEndTimeStamp: common_config.GenerateDatetimeFromTimeInputForDB(tempTestInstructionExecutionEndTimeStamp),
+			TestInstructionExecutionEndTimeStamp: tempTestInstructionExecutionEndTimeStampAsString,
 			TestInstructionExecutionHasFinished:  strconv.FormatBool(tempTestInstructionExecutionHasFinished),
 			UniqueDatabaseRowCounter:             strconv.Itoa(int(tempUniqueDatabaseRowCounter)),
 			TestInstructionCanBeReExecuted:       strconv.FormatBool(tempTestInstructionExecutionHasFinished),
