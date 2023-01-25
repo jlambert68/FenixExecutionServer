@@ -326,8 +326,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 	// map[TestInstructionExecutionStatus]=PrioritizationOrder
 	var statusOrderDecisionMap = map[int]int{
 		0:  0,
-		1:  1,
-		4:  2,
+		4:  1,
+		1:  2,
 		5:  3,
 		7:  4,
 		10: 5,

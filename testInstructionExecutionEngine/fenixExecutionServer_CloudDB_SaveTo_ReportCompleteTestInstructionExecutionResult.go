@@ -863,7 +863,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		}
 
 		var tempTestInstructionExecutionEndTimeStampAsString string
-		if tempExpectedExecutionEndTimeStamp == nil {
+		if tempTestInstructionExecutionEndTimeStamp == nil {
 			tempTestInstructionExecutionEndTimeStampAsString = ""
 		} else {
 			tempTestInstructionExecutionEndTimeStampAsString = common_config.GenerateDatetimeFromTimeInputForDB(*tempTestInstructionExecutionEndTimeStamp)
