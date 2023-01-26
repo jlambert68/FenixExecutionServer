@@ -25,8 +25,6 @@ type BroadcastEngineMessageChannelType chan BroadcastingMessageForExecutionsStru
 
 type BroadcastingMessageForExecutionsStruct struct {
 	OriginalMessageCreationTimeStamp string                                           `json:"originalmessagecreationtimestamp"`
-	BroadcastTimeStamp               string                                           `json:"broadcasttimestamp"`
-	PreviousBroadcastTimeStamp       string                                           `json:"previousbroadcasttimestamp"`
 	TestCaseExecutions               []TestCaseExecutionBroadcastMessageStruct        `json:"testcaseexecutions"`
 	TestInstructionExecutions        []TestInstructionExecutionBroadcastMessageStruct `json:"testinstructionexecutions"`
 }
@@ -39,6 +37,8 @@ type TestCaseExecutionBroadcastMessageStruct struct {
 	ExecutionStopTimeStamp         string `json:"executionstoptimestamp"`         // The timestamp when the execution was ended
 	ExecutionHasFinished           string `json:"executionhasfinished"`           // A simple status telling if the execution has ended or not
 	ExecutionStatusUpdateTimeStamp string `json:"executionstatusupdatetimestamp"` // The timestamp when the status was last updated
+	BroadcastTimeStamp             string `json:"broadcasttimestamp"`
+	PreviousBroadcastTimeStamp     string `json:"previousbroadcasttimestamp"`
 }
 
 type TestInstructionExecutionBroadcastMessageStruct struct {
@@ -55,6 +55,8 @@ type TestInstructionExecutionBroadcastMessageStruct struct {
 	UniqueDatabaseRowCounter             string `json:"uniquedatabaserowcounter"`
 	TestInstructionCanBeReExecuted       string `json:"testinstructioncanbereexecuted"`
 	ExecutionStatusUpdateTimeStamp       string `json:"executionstatusupdatetimestamp"`
+	BroadcastTimeStamp                   string `json:"broadcasttimestamp"`
+	PreviousBroadcastTimeStamp           string `json:"previousbroadcasttimestamp"`
 }
 
 var err error
@@ -70,6 +72,12 @@ func InitiateAndStartBroadcastNotifyEngine() {
 	var broadcastTimestamp time.Time
 	var previousBroadCastTimestamp time.Time
 	var firstTime bool = true
+	var previousBroadcastTimeStampPerTestCaseExecutionMap map[string]time.Time // map[TestCaseExecutionUuid + TestCasExectionVersion]time.Time
+	var previousBroadcastTimeStampPerTestCaseExecutionMapKey string
+	var existInMap bool
+
+	// Initiate Mape that keeps track of PreviousBroadcastTimeStamp used for TestCaseExecutions-data and TestInstructionExecutions-data
+	previousBroadcastTimeStampPerTestCaseExecutionMap = make(map[string]time.Time) // map[TestCaseExecutionUuid + TestCasExectionVersion]time.Time
 
 	for {
 
@@ -102,10 +110,6 @@ func InitiateAndStartBroadcastNotifyEngine() {
 			broadcastTimestamp = time.Now()
 		}
 
-		// Set Broadcast Timestamps
-		broadcastingMessageForExecutions.BroadcastTimeStamp = strings.Split(broadcastTimestamp.UTC().String(), " m=")[0]
-		broadcastingMessageForExecutions.PreviousBroadcastTimeStamp = strings.Split(previousBroadCastTimestamp.UTC().String(), " m=")[0]
-
 		// secure when there exists 'nil' in message, regarding "TestCaseExecutions"
 		if broadcastingMessageForExecutions.TestCaseExecutions == nil {
 			broadcastingMessageForExecutions.TestCaseExecutions = make([]TestCaseExecutionBroadcastMessageStruct, 0)
@@ -116,6 +120,51 @@ func InitiateAndStartBroadcastNotifyEngine() {
 			broadcastingMessageForExecutions.TestInstructionExecutions = make([]TestInstructionExecutionBroadcastMessageStruct, 0)
 		}
 
+		// Set Broadcast Timestamps for "TestCaseExecutions"
+		for testCaseExecutionsStatusMessageCounter, tempTestCaseExecutionsStatusMessage := range broadcastingMessageForExecutions.TestCaseExecutions {
+			previousBroadcastTimeStampPerTestCaseExecutionMapKey = tempTestCaseExecutionsStatusMessage.TestCaseExecutionUuid +
+				tempTestCaseExecutionsStatusMessage.TestCaseExecutionVersion
+
+			_, existInMap = previousBroadcastTimeStampPerTestCaseExecutionMap[previousBroadcastTimeStampPerTestCaseExecutionMapKey]
+			if existInMap == false {
+				// No Previous Timestamp exist for this TestCaseExecution
+				previousBroadcastTimeStampPerTestCaseExecutionMap[previousBroadcastTimeStampPerTestCaseExecutionMapKey] = broadcastTimestamp
+				previousBroadCastTimestamp = broadcastTimestamp
+
+			} else {
+				// Extract Previous Timestamp and set new Timestamp
+				previousBroadCastTimestamp = previousBroadcastTimeStampPerTestCaseExecutionMap[previousBroadcastTimeStampPerTestCaseExecutionMapKey]
+				previousBroadcastTimeStampPerTestCaseExecutionMap[previousBroadcastTimeStampPerTestCaseExecutionMapKey] = broadcastTimestamp
+			}
+			// Update TestCaseExecutionsStatusMessage with Broadcast-Timestamps
+			broadcastingMessageForExecutions.TestCaseExecutions[testCaseExecutionsStatusMessageCounter].BroadcastTimeStamp = strings.Split(broadcastTimestamp.UTC().String(), " m=")[0]
+			broadcastingMessageForExecutions.TestCaseExecutions[testCaseExecutionsStatusMessageCounter].PreviousBroadcastTimeStamp = strings.Split(previousBroadCastTimestamp.UTC().String(), " m=")[0]
+
+		}
+
+		// Set Broadcast Timestamps for "TestInstructionExecutions"
+		for testInstructionExecutionsStatusMessageCounter, tempTestInstructionExecution := range broadcastingMessageForExecutions.TestInstructionExecutions {
+			previousBroadcastTimeStampPerTestCaseExecutionMapKey = tempTestInstructionExecution.TestCaseExecutionUuid +
+				tempTestInstructionExecution.TestCaseExecutionVersion
+
+			_, existInMap = previousBroadcastTimeStampPerTestCaseExecutionMap[previousBroadcastTimeStampPerTestCaseExecutionMapKey]
+			if existInMap == false {
+				// No Previous Timestamp exist for this TestCaseExecution
+				previousBroadcastTimeStampPerTestCaseExecutionMap[previousBroadcastTimeStampPerTestCaseExecutionMapKey] = broadcastTimestamp
+				previousBroadCastTimestamp = broadcastTimestamp
+
+			} else {
+				// Extract Previous Timestamp and set new Timestamp
+				previousBroadCastTimestamp = previousBroadcastTimeStampPerTestCaseExecutionMap[previousBroadcastTimeStampPerTestCaseExecutionMapKey]
+				previousBroadcastTimeStampPerTestCaseExecutionMap[previousBroadcastTimeStampPerTestCaseExecutionMapKey] = broadcastTimestamp
+			}
+			// Update TestInstructionExecution with Broadcast-Timestamps
+			broadcastingMessageForExecutions.TestInstructionExecutions[testInstructionExecutionsStatusMessageCounter].BroadcastTimeStamp = strings.Split(broadcastTimestamp.UTC().String(), " m=")[0]
+			broadcastingMessageForExecutions.TestInstructionExecutions[testInstructionExecutionsStatusMessageCounter].PreviousBroadcastTimeStamp = strings.Split(previousBroadCastTimestamp.UTC().String(), " m=")[0]
+
+		}
+
+		// Create json as string
 		broadcastingMessageForExecutionsAsByteSlice, err = json.Marshal(broadcastingMessageForExecutions)
 		broadcastingMessageForExecutionsAsByteSliceAsString = string(broadcastingMessageForExecutionsAsByteSlice)
 
