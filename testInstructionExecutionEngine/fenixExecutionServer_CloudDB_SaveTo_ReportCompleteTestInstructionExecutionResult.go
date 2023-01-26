@@ -36,9 +36,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 		// Create message to be sent to BroadcastEngine
 		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
 		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
-			BroadcastTimeStamp:        strings.Split(time.Now().UTC().String(), " m=")[0],
-			TestCaseExecutions:        nil,
-			TestInstructionExecutions: []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct{testInstructionExecution},
+			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
+			TestCaseExecutions:               nil,
+			TestInstructionExecutions:        []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct{testInstructionExecution},
 		}
 
 		// Send message to BroadcastEngine over channel

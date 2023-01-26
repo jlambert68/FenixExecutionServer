@@ -742,8 +742,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 
 	// Convert TestInstruction slice into map-structure
 	testCaseExecutionQueueMessagesMap := make(map[string]*tempTestCaseExecutionQueueInformationStruct)
-	for _, testCaseExecutionQueueMessages := range testCaseExecutionQueueMessages {
-		testCaseExecutionQueueMessagesMap[testCaseExecutionQueueMessages.testCaseUuid] = testCaseExecutionQueueMessages
+	for _, testCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
+		testCaseExecutionQueueMessagesMap[testCaseExecutionQueueMessage.testCaseUuid] = testCaseExecutionQueueMessage
 	}
 
 	// Create Insert Statement for TestCaseExecutionUuid that will be put on ExecutionQueue

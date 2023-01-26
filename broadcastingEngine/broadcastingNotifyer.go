@@ -7,6 +7,8 @@ import (
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"log"
+	"strings"
+	"time"
 )
 
 // BroadcastEngineChannelSize
@@ -22,9 +24,11 @@ var BroadcastEngineMessageChannel BroadcastEngineMessageChannelType
 type BroadcastEngineMessageChannelType chan BroadcastingMessageForExecutionsStruct
 
 type BroadcastingMessageForExecutionsStruct struct {
-	BroadcastTimeStamp        string                                           `json:"timestamp"`
-	TestCaseExecutions        []TestCaseExecutionBroadcastMessageStruct        `json:"testcaseexecutions"`
-	TestInstructionExecutions []TestInstructionExecutionBroadcastMessageStruct `json:"testinstructionexecutions"`
+	OriginalMessageCreationTimeStamp string                                           `json:"originalmessagecreationtimestamp"`
+	BroadcastTimeStamp               string                                           `json:"broadcasttimestamp"`
+	PreviousBroadcastTimeStamp       string                                           `json:"previousbroadcasttimestamp"`
+	TestCaseExecutions               []TestCaseExecutionBroadcastMessageStruct        `json:"testcaseexecutions"`
+	TestInstructionExecutions        []TestInstructionExecutionBroadcastMessageStruct `json:"testinstructionexecutions"`
 }
 
 type TestCaseExecutionBroadcastMessageStruct struct {
@@ -63,6 +67,9 @@ func InitiateAndStartBroadcastNotifyEngine() {
 	var broadcastingMessageForExecutionsAsByteSliceAsString string
 	var err error
 	var channelSize int
+	var broadcastTimestamp time.Time
+	var previousBroadCastTimestamp time.Time
+	var firstTime bool = true
 
 	for {
 
@@ -78,6 +85,26 @@ func InitiateAndStartBroadcastNotifyEngine() {
 				"BroadcastEngineChannelSize":         BroadcastEngineChannelSize,
 			}).Warning("Number of messages on queue for 'BroadcastEngineMessageChannel' has reached a critical level")
 		}
+
+		// Move previous Broadcast Timestamp to Previous timestamp variable
+		// Use by GUI-client to secure that all  messages was received by the GUI-client
+		if firstTime == true {
+			firstTime = false
+
+			broadcastTimestamp = time.Now()
+			previousBroadCastTimestamp = broadcastTimestamp
+
+		} else {
+
+			previousBroadCastTimestamp = broadcastTimestamp
+
+			// Generate new Broadcast Timestamp
+			broadcastTimestamp = time.Now()
+		}
+
+		// Set Broadcast Timestamps
+		broadcastingMessageForExecutions.BroadcastTimeStamp = strings.Split(broadcastTimestamp.UTC().String(), " m=")[0]
+		broadcastingMessageForExecutions.PreviousBroadcastTimeStamp = strings.Split(previousBroadCastTimestamp.UTC().String(), " m=")[0]
 
 		// secure when there exists 'nil' in message, regarding "TestCaseExecutions"
 		if broadcastingMessageForExecutions.TestCaseExecutions == nil {
@@ -101,5 +128,7 @@ func InitiateAndStartBroadcastNotifyEngine() {
 		if err != nil {
 			log.Println("error sending notification:", err)
 		}
+
+		previousBroadCastTimestamp = broadcastTimestamp
 	}
 }

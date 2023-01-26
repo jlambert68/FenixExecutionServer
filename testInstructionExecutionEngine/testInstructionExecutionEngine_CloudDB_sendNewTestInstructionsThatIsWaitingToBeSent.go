@@ -38,9 +38,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		// Create message to be sent to BroadcastEngine
 		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
 		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
-			BroadcastTimeStamp:        strings.Split(time.Now().UTC().String(), " m=")[0],
-			TestCaseExecutions:        nil,
-			TestInstructionExecutions: testInstructionExecutions,
+			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
+			TestCaseExecutions:               nil,
+			TestInstructionExecutions:        testInstructionExecutions,
 		}
 
 		// Send message to BroadcastEngine over channel

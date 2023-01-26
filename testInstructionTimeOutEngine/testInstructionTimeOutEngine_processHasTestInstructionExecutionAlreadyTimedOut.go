@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Add TestInstructionExecution to TimeOut-timer
+// Check if TestInstructionExecution already had TimedOut
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processHasTestInstructionExecutionAlreadyTimedOut(
 	executionTrack int,
 	incomingTimeOutChannelCommand *common_config.TimeOutChannelCommandStruct) {

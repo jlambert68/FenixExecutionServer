@@ -34,9 +34,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		// Create message to be sent to BroadcastEngine
 		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
 		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
-			BroadcastTimeStamp:        strings.Split(time.Now().UTC().String(), " m=")[0],
-			TestCaseExecutions:        testCaseExecutions,
-			TestInstructionExecutions: nil,
+			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
+			TestCaseExecutions:               testCaseExecutions,
+			TestInstructionExecutions:        nil,
 		}
 
 		// Send message to BroadcastEngine over channel

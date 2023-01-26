@@ -128,7 +128,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 }
 
-// Check if TestInstructionExecution alrady had TimedOut
+// Check if TestInstructionExecution already had TimedOut
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) hasTestInstructionExecutionAlreadyTimedOut(
 	executionTrack int,
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
