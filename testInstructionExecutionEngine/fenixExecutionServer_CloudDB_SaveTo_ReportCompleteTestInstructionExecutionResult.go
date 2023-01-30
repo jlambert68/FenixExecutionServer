@@ -167,7 +167,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 			// If there are Ongoing TestInstructionsExecutions then secure that they are triggered to be sent to Worker
 			if thereExistsOnGoingTestInstructionExecutions == true {
 				channelCommandMessage = ChannelCommandStruct{
-					ChannelCommand:                   ChannelCommandCheckOngoingTestInstructionExecutions,
+					ChannelCommand:                   ChannelCommandCheckForTestInstructionExecutionsWaitingToBeSentToWorker, // ChannelCommandCheckOngoingTestInstructionExecutions,
 					ChannelCommandTestCaseExecutions: testCaseExecutionsToProcess,
 				}
 				*executionEngine.CommandChannelReferenceSlice[executionTrack] <- channelCommandMessage
