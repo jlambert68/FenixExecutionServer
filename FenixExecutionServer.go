@@ -235,7 +235,7 @@ func fenixExecutionServerMain() {
 						ctx := context.Background()
 
 						//opt := option. WithCredentialsFile("../../service_account.json")
-						fireStoreClient, err := firestore.NewClient(ctx, "mycloud-run-project") //, opt)
+						fireStoreClient, err := firestore.NewClient(ctx, common_config.GCPProjectId) //, opt)
 						if err != nil {
 							fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 								"Id":  "348c45b2-cdb3-434d-accf-a0837e88552f",

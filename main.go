@@ -127,4 +127,8 @@ func init() {
 		os.Exit(0)
 
 	}
+
+	// GCP Project to where the application is deployed
+	common_config.GCPProjectId = mustGetenv("ProjectId")
+
 }

@@ -48,3 +48,6 @@ var MaxMinutesLeftUntilNextTimeOutTimer = 5 * time.Minute
 // NumberOfMinutesBeforeNextTimeOutTimerToStart
 // Number of minutes that the application will start up before next TimeOut-Timer will fire
 var NumberOfMinutesBeforeNextTimeOutTimerToStart = -2 * time.Minute
+
+// GCPProjectId is the GCP project where the application will be deployed into
+var GCPProjectId string
