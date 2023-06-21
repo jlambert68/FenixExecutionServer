@@ -23,7 +23,7 @@ var AllocatedTimeOutTimerMapSlice []map[string]string
 //var TimeOutChannelEngineCommandChannel common_config.TimeOutChannelEngineType
 
 // TimeOutChannelEngineCommandChannelSlice
-// A Slice with all parallell channel for the TestInstructionExecutionEngine, one per execution track
+// A Slice with all parallel channel for the TestInstructionExecutionEngine, one per execution track
 var TimeOutChannelEngineCommandChannelSlice []common_config.TimeOutChannelEngineType
 
 // TimeOutReturnChannelForExistsTestInstructionExecutionWithinTimeOutTimerType

@@ -2,6 +2,7 @@ package testInstructionTimeOutEngine
 
 import (
 	"FenixExecutionServer/common_config"
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"time"
 )
@@ -48,9 +49,27 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	if existsInMap == false {
 
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":             "25124f1b-6402-4eb2-a27b-e3b41798a952",
+			"Id":             "342d8b62-ca31-4459-8ac7-7020ad34a392",
 			"timeOutdMapKey": timeOutdMapKey,
 		}).Error("couldn't find the TestInstructionObject in TimeOut-map, something is very wrong")
+
+		for timeOutMapSliceCounter, timeOutMap := range timeOutMapSlice {
+			for timeOutMapKey, timeOutMapObject := range *timeOutMap {
+
+				timeOutMapValues := fmt.Sprintf(
+					"timeOutMapSliceCounter:%s, "+
+						"timeOutMapKey:%s, "+
+						"timeOutMapObject.previousTimeOutMapKey:%s, "+
+						"timeOutMapObject.currentTimeOutMapKey:%s, "+
+						"timeOutMapObject.nextTimeOutMapKey:%s",
+					timeOutMapSliceCounter,
+					timeOutMapKey,
+					timeOutMapObject.previousTimeOutMapKey,
+					timeOutMapObject.currentTimeOutMapKey,
+					timeOutMapObject.nextTimeOutMapKey)
+				fmt.Print(timeOutMapValues)
+			}
+		}
 
 		// Sending is over channel is not necessary, but I will keep the program running to have more log data.
 		// The most correct would be to end program, but....

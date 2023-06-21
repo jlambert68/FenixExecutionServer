@@ -2,6 +2,7 @@ package testInstructionTimeOutEngine
 
 import (
 	"FenixExecutionServer/common_config"
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"strconv"
 	"time"
@@ -40,7 +41,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	_, existsInMap = (AllocatedTimeOutTimerMapSlice[executionTrack])[timeOutdMapKey]
 	if existsInMap == true {
 
-		// TestInstructionExecution hasn't timed out due to Timer  hasn't started yet
+		// TestInstructionExecution hasn't timed out due to Timer hasn't started yet
 		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
 		timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
 			TimeOutWasTriggered: false}
@@ -79,6 +80,24 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			"Id":             "25124f1b-6402-4eb2-a27b-e3b41798a952",
 			"timeOutdMapKey": timeOutdMapKey,
 		}).Error("couldn't find the TestInstructionObject in TimeOut-map, something is very wrong")
+
+		for timeOutMapSliceCounter, timeOutMap := range timeOutMapSlice {
+			for timeOutMapKey, timeOutMapObject := range *timeOutMap {
+
+				timeOutMapValues := fmt.Sprintf(
+					"timeOutMapSliceCounter:%s, "+
+						"timeOutMapKey:%s, "+
+						"timeOutMapObject.previousTimeOutMapKey:%s, "+
+						"timeOutMapObject.currentTimeOutMapKey:%s, "+
+						"timeOutMapObject.nextTimeOutMapKey:%s",
+					timeOutMapSliceCounter,
+					timeOutMapKey,
+					timeOutMapObject.previousTimeOutMapKey,
+					timeOutMapObject.currentTimeOutMapKey,
+					timeOutMapObject.nextTimeOutMapKey)
+				fmt.Print(timeOutMapValues)
+			}
+		}
 
 		// Sending is over channel is not necessary, but I will keep the program running to have more log data.
 		// The most correct would be to end program, but....
