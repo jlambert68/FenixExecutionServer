@@ -136,10 +136,9 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		// Shouldn't happen
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{
-				"ID":             "e0e2175f-6ea0-4437-92dd-5f83359c8ea5",
-				"error":          err,
-				"domainUuid":     domainUuid,
-				"ctx.Deadline()": ctx.Deadline(),
+				"ID":         "e0e2175f-6ea0-4437-92dd-5f83359c8ea5",
+				"error":      err,
+				"domainUuid": domainUuid,
 			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'ProcessTestInstructionExecution'")
 
 			// Only return the error after last attempt
