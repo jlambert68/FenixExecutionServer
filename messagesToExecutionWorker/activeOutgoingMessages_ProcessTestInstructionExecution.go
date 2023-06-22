@@ -62,7 +62,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	}
 
 	// Do gRPC-call
-	//ctx := context.Background()
+	ctx = context.Background()
 	//ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	// Add Client Deadline
 	clientDeadline := time.Now().Add(time.Duration(common_config.DeadlineForOutgoingGrpc) * time.Millisecond)
