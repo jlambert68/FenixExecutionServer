@@ -91,6 +91,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	sqlToExecute = sqlToExecute + "ORDER BY TIUE.\"SentTimeStamp\" ASC "
 	sqlToExecute = sqlToExecute + "; "
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "18cf15d9-917f-4c39-9c0b-4138a1fd8a2f",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadAllZombieTestInstructionExecutionsUnderExecution'")
+	}
+
 	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)

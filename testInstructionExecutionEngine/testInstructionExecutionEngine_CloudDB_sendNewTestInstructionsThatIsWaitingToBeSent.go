@@ -386,6 +386,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	sqlToExecute = sqlToExecute + "ORDER BY DP.\"DomainUuid\" ASC, TIUE.\"TestInstructionExecutionUuid\" ASC "
 	sqlToExecute = sqlToExecute + "; "
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "eb59969b-d76c-46fd-9d54-f6fa53c28113",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadNewTestInstructionToBeSentToExecutionWorkers'")
+	}
+
 	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
@@ -454,6 +462,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 
 	sqlToExecute = sqlToExecute + "ORDER BY TIAUE.\"TestInstructionExecutionUuid\" ASC, TIAUE.\"TestInstructionAttributeUuid\" ASC "
 	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "92f9ceec-1fb1-45e8-9166-091d2762a13c",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadNewTestInstructionToBeSentToExecutionWorkers'")
+	}
 
 	// Query DB
 	// Execute Query CloudDB
@@ -711,6 +727,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 		return nil
 	}
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "f7c27d7b-478a-490e-abcc-419bbbd3e3dd",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'updateStatusOnTestInstructionsExecutionInCloudDB'")
+	}
+
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
@@ -773,6 +797,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	// If no positive responses the just exit
 	if len(sqlToExecute) == 0 {
 		return nil
+	}
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "481128c9-2070-4f56-a821-f93e1a8c79bb",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'updateStatusOnTestCasesExecutionInCloudDB'")
 	}
 
 	// Execute Query CloudDB

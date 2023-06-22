@@ -102,6 +102,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	sqlToExecute = sqlToExecute + "HAVING TIUE.\"TestInstructionExecutionStatus\"  NOT IN (4) " // 4=TestInstructionExecution ended OK
 	sqlToExecute = sqlToExecute + ";"
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "36989958-b28e-4225-8cef-7888393d1b8f",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadAllZombieTestInstructionExecutionsOnExecutionQueue'")
+	}
+
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
@@ -136,6 +144,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	sqlToExecute = sqlToExecute + "WHERE tmp.\"TestCaseExecutionUuid\"  IS NULL AND "
 	sqlToExecute = sqlToExecute + "tmp.\"TestCaseExecutionVersion\" IS NULL "
 	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "70214c17-2712-4a25-ab30-e4f784fc65c9",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadAllZombieTestInstructionExecutionsOnExecutionQueue'")
+	}
 
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)

@@ -124,6 +124,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	sqlToExecute = sqlToExecute + "ORDER BY TIUE.\"ExpectedExecutionEndTimeStamp\" ASC "
 	sqlToExecute = sqlToExecute + ";"
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "358764d5-40ab-4d7e-a4e3-fe75d68a2f36",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadAllZombieTestInstructionExecutionsIWithOngoingTimeoutTimers'")
+	}
+
 	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)

@@ -258,6 +258,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		"TIUE.\"TestInstructionName\" ASC "
 	sqlToExecute = sqlToExecute + ";"
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "989787b6-d306-4d44-9167-f2c1eae5b701",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadTestInstructionExecutionStatusMessages'")
+	}
+
 	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
@@ -503,6 +511,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 	sqlToExecute = sqlToExecute + "GROUP BY TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestCaseExecutionVersion\" "
 	sqlToExecute = sqlToExecute + ";"
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "53223886-a996-4190-8306-5fb06aaaca01",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadNumberOfTestInstructionExecutionsOnExecutionQueue'")
+	}
+
 	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
@@ -603,6 +619,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		SqlToExecuteRowLock = SqlToExecuteRowLock + "WHERE TCEUE.\"TestCaseExecutionUuid\" = '" + testCaseExecutionStatusMessage.TestCaseExecutionUuid + "' AND "
 		SqlToExecuteRowLock = SqlToExecuteRowLock + "TCEUE.\"TestCaseExecutionVersion\" = " + testCaseExecutionVersionAsString + " "
 		SqlToExecuteRowLock = SqlToExecuteRowLock + "FOR UPDATE; "
+
+		// Log SQL to be executed if Environment variable is true
+		if common_config.LogAllSQLs == true {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                  "2f275d87-3862-45fb-b39c-10237de31b05",
+				"SqlToExecuteRowLock": SqlToExecuteRowLock,
+			}).Debug("SQL to be executed within 'updateTestCaseExecutionsWithNewTestCaseExecutionStatus'")
+		}
 
 		// Execute Query CloudDB
 		rows, err := dbTransaction.Query(context.Background(), SqlToExecuteRowLock)
@@ -730,6 +754,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		// If no positive responses the just exit
 		if len(sqlToExecute) == 0 {
 			return nil
+		}
+
+		// Log SQL to be executed if Environment variable is true
+		if common_config.LogAllSQLs == true {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "54fa8563-4b6d-4313-bb11-c63844ab89be",
+				"sqlToExecute": sqlToExecute,
+			}).Debug("SQL to be executed within 'updateTestCaseExecutionsWithNewTestCaseExecutionStatus'")
 		}
 
 		// Execute Query CloudDB

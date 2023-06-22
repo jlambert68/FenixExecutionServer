@@ -291,6 +291,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	sqlToExecute = sqlToExecute + "ORDER BY TIEQ2.\"ExecutionPriority\" ASC, TIEQ2.\"TestCaseExecutionUuid\" ASC, TIEQ2.\"TestInstructionExecutionOrder\" ASC, TIEQ2.\"QueueTimeStamp\" ASC) "
 	sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "6ff37f82-f925-48fa-97ac-7ea379b36585",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadTestInstructionExecutionQueueMessages'")
+	}
+
 	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
@@ -420,6 +428,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "09acc12b-f0f2-402c-bde9-206bde49e35e",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'saveTestInstructionsInOngoingExecutionsSaveToCloudDB'")
+	}
+
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
@@ -478,6 +494,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) clearTestInstructio
 	sqlToExecute = sqlToExecute + "WHERE TIEQ.\"UniqueCounter\" IN "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLINIntegerArray(testInstructionExecutionsToBeDeletedFromQueue)
 	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "bcd7ac6b-f0ba-423a-bce4-debc07689104",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'clearTestInstructionExecutionQueueSaveToCloudDB'")
+	}
 
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)

@@ -181,6 +181,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimed
 		return nil
 	}
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "9f8bbb5b-7de8-4644-b904-85b2b8c0139c",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'updateStatusOnTimedOutTestInstructionsExecutionInCloudDB'")
+	}
+
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 

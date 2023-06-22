@@ -564,6 +564,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngo
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "65e7793b-a5c7-4fa1-8506-5ea9e6a8d7af",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB'")
+	}
+
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
@@ -623,6 +631,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) clearTestCasesExecu
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLINIntegerArray(testCaseExecutionsToBeDeletedFromQueue)
 	sqlToExecute = sqlToExecute + ";"
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "3050217d-45aa-4d64-be44-61bd4cf9e165",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'clearTestCasesExecutionQueueSaveToCloudDB'")
+	}
+
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
@@ -672,6 +688,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAn
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestCases\" TC "
 	sqlToExecute = sqlToExecute + "WHERE TC.\"TestCaseUuid\" IN " + common_config.GenerateSQLINArray(testCasesUuidsToBeUsedInSQL) + " "
 	sqlToExecute = sqlToExecute + "ORDER BY TC.\"TestCaseUuid\" ASC, TC.\"TestCaseVersion\" DESC; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "936d48b6-f9ec-4144-8fdd-5e04c6801370",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB'")
+	}
 
 	// Query DB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
@@ -885,6 +909,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "455bfa83-d0d1-48ae-9978-daab419ac5cf",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'SaveTestInstructionsToExecutionQueueSaveToCloudDB'")
+	}
+
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
@@ -968,6 +1000,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 		"\"TestInstructionAttributeTypeUuid\", \"TestInstructionAttributeTypeName\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "63d409bd-eea6-4724-b886-388dceadae17",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'saveTestInstructionAttributesUnderExecutionSaveToCloudDB'")
+	}
 
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)

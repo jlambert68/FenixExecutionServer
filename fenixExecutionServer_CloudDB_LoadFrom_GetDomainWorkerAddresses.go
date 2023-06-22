@@ -56,6 +56,14 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadDomainWo
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"DomainParameters\" DP "
 	sqlToExecute = sqlToExecute + "ORDER BY DP.\"DomainUuid\" ASC; "
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "14523b99-0cb9-4384-857a-de3607420c1f",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadDomainWorkerAddresses'")
+	}
+
 	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)

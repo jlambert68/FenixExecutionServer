@@ -526,6 +526,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 		return nil
 	}
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "32cc50e1-b8b1-40a0-bb0b-5e9fbf8dce23",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'updateStatusOnTestInstructionsExecutionInCloudDB2'")
+	}
+
 	// Execute Query CloudDB
 	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 
@@ -581,6 +589,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + "'; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "4169f712-36dc-42dd-a9dc-5c8503d8f373",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadTestCaseExecutionAndTestCaseExecutionVersion'")
+	}
 
 	// Query DB
 	// Execute Query CloudDB
@@ -790,6 +806,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionCanBeReExecuted\", TIUE.\"ExecutionStatusUpdateTimeStamp\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "'; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "7e87fd13-e360-4ca3-b1af-3d508a2a1b9d",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'areAllOngoingTestInstructionExecutionsFinishedAndAreAnyTestInstructionExecutionEndedWithNonOkStatus'")
+	}
 
 	// Query DB
 	// Execute Query CloudDB

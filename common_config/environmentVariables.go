@@ -51,3 +51,5 @@ var NumberOfMinutesBeforeNextTimeOutTimerToStart = -2 * time.Minute
 
 // GCPProjectId is the GCP project where the application will be deployed into
 var GCPProjectId string
+
+var LogAllSQLs bool

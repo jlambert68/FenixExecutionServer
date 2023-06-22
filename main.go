@@ -131,4 +131,15 @@ func init() {
 	// GCP Project to where the application is deployed
 	common_config.GCPProjectId = mustGetenv("ProjectId")
 
+	// Should all SQL-queries be logged before executed
+	var tempBoolAsString string
+	var tempBool bool
+	tempBoolAsString = mustGetenv("LogAllSQLs")
+	tempBool, err = strconv.ParseBool(tempBoolAsString)
+	if err != nil {
+		fmt.Println("Couldn't convert environment variable 'LogAllSQLs' to a boolean, error: ", err)
+		os.Exit(0)
+	}
+	common_config.LogAllSQLs = tempBool
+
 }

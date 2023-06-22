@@ -87,6 +87,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestCa
 	sqlToExecute = sqlToExecute + "ORDER BY TCEQ.\"QueueTimeStamp\" ASC "
 	sqlToExecute = sqlToExecute + "; "
 
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "104bc872-b6b5-404f-b955-30263e7e79e6",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadAllZombieTestCaseExecutionsOnExecutionQueue'")
+	}
+
 	// Query DB
 	// Execute Query CloudDB
 	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
