@@ -45,3 +45,6 @@ const NumberOfCharactersToUseFromTestInstructionExecutionUuid = 4
 // NumberOfParallellExecutionEngineCommandChannels
 // The number of parallell executions tracks for ExecutionEngine
 const NumberOfParallellExecutionEngineCommandChannels = 20
+
+// Deadline for outgoing gRPC-call, in millisecond
+const DeadlineForOutgoingGrpc = 10000

@@ -63,7 +63,10 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 
 	// Do gRPC-call
 	//ctx := context.Background()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	//ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// Add Client Deadline
+	clientDeadline := time.Now().Add(time.Duration(common_config.DeadlineForOutgoingGrpc) * time.Millisecond)
+	ctx, cancel := context.WithDeadline(ctx, clientDeadline)
 	defer func() {
 		common_config.Logger.WithFields(logrus.Fields{
 			"ID": "e4992093-6d22-40d6-a30c-f1e14e05253d",
@@ -133,9 +136,10 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		// Shouldn't happen
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{
-				"ID":         "e0e2175f-6ea0-4437-92dd-5f83359c8ea5",
-				"error":      err,
-				"domainUuid": domainUuid,
+				"ID":             "e0e2175f-6ea0-4437-92dd-5f83359c8ea5",
+				"error":          err,
+				"domainUuid":     domainUuid,
+				"ctx.Deadline()": ctx.Deadline(),
 			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'ProcessTestInstructionExecution'")
 
 			// Only return the error after last attempt
