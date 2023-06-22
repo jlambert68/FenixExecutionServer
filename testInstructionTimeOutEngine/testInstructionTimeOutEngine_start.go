@@ -10,9 +10,9 @@ import (
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) InitiateTestInstructionExecutionTimeOutEngineChannelReader() {
 
 	common_config.Logger.WithFields(logrus.Fields{
-		"id":                               "4076cea7-3252-496d-9b3d-83488e699a3b",
-		"NumberOfParallellTimeOutChannels": common_config.NumberOfParallellTimeOutChannels,
-	}).Info("Will use parallell TimeOutChannels")
+		"id":                              "4076cea7-3252-496d-9b3d-83488e699a3b",
+		"NumberOfParallelTimeOutChannels": common_config.NumberOfParallellTimeOutChannels,
+	}).Info("Will use parallel TimeOutChannels")
 
 	// Initate 'nextUpcomingObjectMapKeyWithTimeOutSlice'
 	nextUpcomingObjectMapKeyWithTimeOutSlice = make([]string, common_config.NumberOfParallellTimeOutChannels)

@@ -24,22 +24,27 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	}).Debug("Outgoing 'processHasTestInstructionExecutionAlreadyTimedOut'")
 
 	// Create Map-key for 'timedOutMap'
-	var timeOutdMapKey string
+	var timeOutMapKey string
 
 	var testInstructionExecutionVersionAsString string
 	testInstructionExecutionVersionAsString = strconv.Itoa(
 		int(incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionVersion))
 
-	timeOutdMapKey = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
+	timeOutMapKey = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
 		testInstructionExecutionVersionAsString
 
 	// Object to be removed from TimeOut-timer
-	var currentTimeOutdObject *timeOutMapStruct
 	var existsInMap bool
 
 	// If there are an ongoing allocation then the Timer hasn't started yet so then NO Timer has TimedOut
-	_, existsInMap = (AllocatedTimeOutTimerMapSlice[executionTrack])[timeOutdMapKey]
+	_, existsInMap = (AllocatedTimeOutTimerMapSlice[executionTrack])[timeOutMapKey]
 	if existsInMap == true {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":             "373a1899-145d-451e-acc4-e6c5bbf516fe",
+			"executionTrack": executionTrack,
+			"timeOutMapKey":  timeOutMapKey,
+		}).Debug("Timer found in 'AllocatedTimeOutTimerMapSlice' so Timer can't be TimedOut yet")
 
 		// TestInstructionExecution hasn't timed out due to Timer hasn't started yet
 		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
@@ -53,12 +58,12 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	}
 
 	// Check if TestInstructionExecution has already timedOut
-	currentTimeOutdObject, existsInMap = (*timedOutMapSlice[executionTrack])[timeOutdMapKey]
+	_, existsInMap = (*timedOutMapSlice[executionTrack])[timeOutMapKey]
 	if existsInMap == true {
 
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":             "3ff8adb7-f3d3-4bf3-8c05-8a0711cf7bcd",
-			"timeOutdMapKey": timeOutdMapKey,
+			"Id":            "3ff8adb7-f3d3-4bf3-8c05-8a0711cf7bcd",
+			"timeOutMapKey": timeOutMapKey,
 		}).Debug("TestInstructionObject has already TimedOut")
 
 		// TestInstructionExecution has already timed out so create response to caller
@@ -73,19 +78,20 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	}
 
 	// Get current TestInstructionExecution from timeOut-map
-	currentTimeOutdObject, existsInMap = (*timeOutMapSlice[executionTrack])[timeOutdMapKey]
+	var currentTimeOutObject *timeOutMapStruct
+	currentTimeOutObject, existsInMap = (*timeOutMapSlice[executionTrack])[timeOutMapKey]
 	if existsInMap == false {
 
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":             "25124f1b-6402-4eb2-a27b-e3b41798a952",
-			"timeOutdMapKey": timeOutdMapKey,
+			"Id":            "25124f1b-6402-4eb2-a27b-e3b41798a952",
+			"timeOutMapKey": timeOutMapKey,
 		}).Error("couldn't find the TestInstructionObject in TimeOut-map, something is very wrong")
 
 		for timeOutMapSliceCounter, timeOutMap := range timeOutMapSlice {
 			for timeOutMapKey, timeOutMapObject := range *timeOutMap {
 
 				timeOutMapValues := fmt.Sprintf(
-					"timeOutMapSliceCounter:%s, "+
+					"timeOutMapSliceCounter:%d, "+
 						"timeOutMapKey:%s, "+
 						"timeOutMapObject.previousTimeOutMapKey:%s, "+
 						"timeOutMapObject.currentTimeOutMapKey:%s, "+
@@ -112,10 +118,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		return
 	}
 
-	// If 'cancellableTimer' = nil and 'timeOutdMapKey' != 'currentTimeOutdObject.currentTimeOutMapKey'
+	// If 'cancellableTimer' = nil and 'timeOutMapKey' != 'currentTimeOutObject.currentTimeOutMapKey'
 	// then this is not the first object in line to TimeOut, just return that it has not TimedOut yet
-	if currentTimeOutdObject.cancellableTimer == nil &&
-		currentTimeOutdObject.currentTimeOutMapKey != nextUpcomingObjectMapKeyWithTimeOutSlice[executionTrack] {
+	if currentTimeOutObject.cancellableTimer == nil &&
+		currentTimeOutObject.currentTimeOutMapKey != nextUpcomingObjectMapKeyWithTimeOutSlice[executionTrack] {
 
 		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
 		timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
@@ -129,7 +135,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 	// Nothing had timed outs so extract when Timer will time out
 	var durationToTimeOut time.Duration
-	durationToTimeOut, _ = currentTimeOutdObject.cancellableTimer.WhenWillTimerTimeOut()
+	durationToTimeOut, _ = currentTimeOutObject.cancellableTimer.WhenWillTimerTimeOut()
 
 	// remove 25% of TimerOut-time safety margin
 	var timeDurationUntilTimerSignal time.Duration
