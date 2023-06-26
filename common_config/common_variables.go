@@ -48,3 +48,6 @@ const NumberOfParallellExecutionEngineCommandChannels = 20
 
 // Deadline for outgoing gRPC-call, in millisecond
 const DeadlineForOutgoingGrpc = 10000
+
+// Max number of Resent to Worker before error
+const MaxResendToWorkerWhenNoAnswer = 10

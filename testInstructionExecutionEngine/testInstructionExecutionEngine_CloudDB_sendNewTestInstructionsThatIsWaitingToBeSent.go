@@ -709,17 +709,97 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 	// Create Update Statement for response regarding TestInstructionExecution
 	for _, testInstructionExecutionResponse := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
-		// Only save information about TestInstructionExecution if we got a positive response from Worker
+		var tempTestInstructionExecutionStatus string
+		var numberOfResend int
+
+		// Save information about TestInstructionExecution when we got a positive response from Worker
 		if testInstructionExecutionResponse.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+			tempTestInstructionExecutionStatus = "1" // TIE_EXECUTING
 
-			sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
-			sqlToExecute = sqlToExecute + fmt.Sprintf("SET \"ExpectedExecutionEndTimeStamp\" = '%s', ", common_config.ConvertGrpcTimeStampToStringForDB(testInstructionExecutionResponse.processTestInstructionExecutionResponse.ExpectedExecutionDuration))
-			sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" = '%s', ", "1") // TIE_EXECUTING
-			sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", currentDataTimeStamp)
-			sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionResponse.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
-
+		} else {
+			// Extract how many times the TestInstructionExecution have been restarted
+			sqlToExecute = ""
+			sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", " +
+				"TIUE.\"ExecutionResendCounter\" "
+			sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
+			sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE TIUE.\"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionResponse.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+			sqlToExecute = sqlToExecute + " AND "
+			sqlToExecute = sqlToExecute + "TIUE.\"ExpectedExecutionEndTimeStamp\" IS NULL AND " +
+				"TIUE.\"TestInstructionCanBeReExecuted\" = true "
+			sqlToExecute = sqlToExecute + "ORDER BY TIUE.\"TestInstructionInstructionExecutionVersion\" DESC "
+			sqlToExecute = sqlToExecute + "LIMIT 1"
 			sqlToExecute = sqlToExecute + "; "
+
+			// Log SQL to be executed if Environment variable is true
+			if common_config.LogAllSQLs == true {
+				common_config.Logger.WithFields(logrus.Fields{
+					"Id":           "2533b723-05b7-489d-937d-fdfbcfcd97b2",
+					"sqlToExecute": sqlToExecute,
+				}).Debug("SQL to be executed within 'updateStatusOnTestInstructionsExecutionInCloudDB'")
+			}
+
+			// Execute Query CloudDB
+			rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
+
+			if err != nil {
+				executionEngine.logger.WithFields(logrus.Fields{
+					"Id":           "38fe43e8-ac27-4cbe-af05-79e2bd3193cd",
+					"Error":        err,
+					"sqlToExecute": sqlToExecute,
+				}).Error("Something went wrong when executing SQL")
+
+				return err
+			}
+
+			// Extract data from DB result set
+			for rows.Next() {
+
+				var tempTestInstructionExecutionUuid string
+				var tempTestInstructionInstructionExecutionVersion string
+				var tempExecutionResendCounter int32
+
+				err := rows.Scan(
+
+					&tempTestInstructionExecutionUuid,
+					&tempTestInstructionInstructionExecutionVersion,
+					&tempExecutionResendCounter,
+				)
+
+				if err != nil {
+
+					executionEngine.logger.WithFields(logrus.Fields{
+						"Id":           "27b6a771-22ce-43a7-abcc-d32da0347785",
+						"Error":        err,
+						"sqlToExecute": sqlToExecute,
+					}).Error("Something went wrong when processing result from database")
+
+					return err
+				}
+			}
+
+			if numberOfResend+1 < common_config.MaxResendToWorkerWhenNoAnswer {
+
+				// Save information about TestInstructionExecution when we got unknown error response from Worker
+				tempTestInstructionExecutionStatus = "9" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
+				numberOfResend = numberOfResend + 1
+
+			} else {
+
+				// Max number of reruns already achieved, Save information about TestInstructionExecution when we got unknown error response from Worker
+				tempTestInstructionExecutionStatus = "8" // TIE_UNEXPECTED_INTERRUPTION
+			}
 		}
+
+		sqlToExecute = ""
+		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
+		sqlToExecute = sqlToExecute + fmt.Sprintf("SET \"ExpectedExecutionEndTimeStamp\" = '%s', ", common_config.ConvertGrpcTimeStampToStringForDB(testInstructionExecutionResponse.processTestInstructionExecutionResponse.ExpectedExecutionDuration))
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" = '%s', ", tempTestInstructionExecutionStatus)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", currentDataTimeStamp)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"numberOfResend\" = %d ", numberOfResend)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionResponse.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+
+		sqlToExecute = sqlToExecute + "; "
+
 	}
 
 	// If no positive responses the just exit
@@ -730,7 +810,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 	// Log SQL to be executed if Environment variable is true
 	if common_config.LogAllSQLs == true {
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "f7c27d7b-478a-490e-abcc-419bbbd3e3dd",
+			"Id":           "f7c27d7b-478a-490e-abcc-419bind3e3dd",
 			"sqlToExecute": sqlToExecute,
 		}).Debug("SQL to be executed within 'updateStatusOnTestInstructionsExecutionInCloudDB'")
 	}
@@ -780,18 +860,25 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	sqlToExecute := ""
 
 	// Create Update Statement for response regarding TestInstructionExecution
-	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
+	for _, testInstructionExecutionResponse := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
-		// Only save information about TestInstructionExecution if we got a positive response from Worker
-		if testInstructionExecution.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+		var tempTestInstructionExecutionStatus string
 
-			sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
-			sqlToExecute = sqlToExecute + fmt.Sprintf("SET \"TestCaseExecutionStatus\" = '%s', ", "1") // TCE_EXECUTING
-			sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", currentDataTimeStamp)
-			sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' AND ", testInstructionExecution.testCaseExecutionUuid)
-			sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionVersion\" = '%s' ", strconv.Itoa(testInstructionExecution.testCaseExecutionVersion))
-			sqlToExecute = sqlToExecute + "; "
+		// Save information about TestInstructionExecution when we got a positive response from Worker
+		if testInstructionExecutionResponse.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+			tempTestInstructionExecutionStatus = "1" // TIE_EXECUTING
+		} else {
+			// Save information about TestInstructionExecution when we got unknown error response from Worker
+			tempTestInstructionExecutionStatus = "3" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
 		}
+
+		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
+		sqlToExecute = sqlToExecute + fmt.Sprintf("SET \"TestCaseExecutionStatus\" = '%s', ", tempTestInstructionExecutionStatus)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", currentDataTimeStamp)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' AND ", testInstructionExecutionResponse.testCaseExecutionUuid)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionVersion\" = '%s' ", strconv.Itoa(testInstructionExecutionResponse.testCaseExecutionVersion))
+		sqlToExecute = sqlToExecute + "; "
+
 	}
 
 	// If no positive responses the just exit
