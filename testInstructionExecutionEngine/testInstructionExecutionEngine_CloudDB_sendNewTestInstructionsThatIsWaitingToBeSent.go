@@ -755,7 +755,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 			for rows.Next() {
 
 				var tempTestInstructionExecutionUuid string
-				var tempTestInstructionInstructionExecutionVersion string
+				var tempTestInstructionInstructionExecutionVersion int32
 				var tempExecutionResendCounter int32
 
 				err := rows.Scan(
