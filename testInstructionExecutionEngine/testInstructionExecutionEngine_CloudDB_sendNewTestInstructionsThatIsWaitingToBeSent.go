@@ -720,7 +720,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 			// Extract how many times the TestInstructionExecution have been restarted
 			sqlToExecute = ""
 			sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", " +
-				"TIUE.\"ExecutionResendCounter\" "
+				"TIUE.\"TestInstructionExecutionResendCounter\" "
 			sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
 			sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE TIUE.\"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionResponse.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
 			sqlToExecute = sqlToExecute + " AND "
@@ -795,7 +795,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 		sqlToExecute = sqlToExecute + fmt.Sprintf("SET \"ExpectedExecutionEndTimeStamp\" = '%s', ", common_config.ConvertGrpcTimeStampToStringForDB(testInstructionExecutionResponse.processTestInstructionExecutionResponse.ExpectedExecutionDuration))
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" = '%s', ", tempTestInstructionExecutionStatus)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s' ", currentDataTimeStamp)
-		sqlToExecute = sqlToExecute + fmt.Sprintf("\"numberOfResend\" = %d ", numberOfResend)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionResendCounter\" = %d ", numberOfResend)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionResponse.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
 
 		sqlToExecute = sqlToExecute + "; "
