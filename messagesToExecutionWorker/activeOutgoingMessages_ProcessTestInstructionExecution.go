@@ -62,11 +62,11 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	}
 
 	// Do gRPC-call
-	ctx = context.Background()
-	//ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	//ctx = context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	// Add Client Deadline
-	clientDeadline := time.Now().Add(time.Duration(common_config.DeadlineForOutgoingGrpc) * time.Millisecond)
-	ctx, cancel := context.WithDeadline(ctx, clientDeadline)
+	//clientDeadline := time.Now().Add(time.Duration(common_config.DeadlineForOutgoingGrpc) * time.Millisecond)
+	//ctx, cancel := context.WithDeadline(ctx, clientDeadline)
 	defer func() {
 		common_config.Logger.WithFields(logrus.Fields{
 			"ID": "e4992093-6d22-40d6-a30c-f1e14e05253d",
