@@ -267,8 +267,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	}
 
 	// Query DB
-	// Execute Query CloudDB
-	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -520,8 +523,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 	}
 
 	// Query DB
-	// Execute Query CloudDB
-	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -628,8 +634,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 			}).Debug("SQL to be executed within 'updateTestCaseExecutionsWithNewTestCaseExecutionStatus'")
 		}
 
-		// Execute Query CloudDB
-		rows, err := dbTransaction.Query(context.Background(), SqlToExecuteRowLock)
+		// Query DB
+		var ctx context.Context
+		ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer timeOutCancel()
+
+		rows, err := dbTransaction.Query(ctx, SqlToExecuteRowLock)
 
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{

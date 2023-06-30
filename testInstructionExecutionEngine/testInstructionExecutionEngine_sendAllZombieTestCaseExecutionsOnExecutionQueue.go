@@ -96,8 +96,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestCa
 	}
 
 	// Query DB
-	// Execute Query CloudDB
-	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{

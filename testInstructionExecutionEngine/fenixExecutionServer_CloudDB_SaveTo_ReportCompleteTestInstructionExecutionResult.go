@@ -599,8 +599,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	}
 
 	// Query DB
-	// Execute Query CloudDB
-	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
@@ -676,8 +679,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 		finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + "' AND "
 	sqlToExecute_part1 = sqlToExecute_part1 + "TIUE.\"TestInstructionInstructionExecutionVersion\" = 1; "
 
-	// Execute Query CloudDB
-	rows, err := dbTransaction.Query(context.Background(), sqlToExecute_part1)
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute_part1)
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
@@ -816,8 +823,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	}
 
 	// Query DB
-	// Execute Query CloudDB
-	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{

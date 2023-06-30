@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 // At start up this function will load all TestInstructionExecutions that is still ongoing and recreate their TimeOut-timers in TimeOut-Engine
@@ -133,8 +134,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	}
 
 	// Query DB
-	// Execute Query CloudDB
-	rows, err := dbTransaction.Query(context.Background(), sqlToExecute)
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
