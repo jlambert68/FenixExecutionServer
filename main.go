@@ -142,4 +142,15 @@ func init() {
 	}
 	common_config.LogAllSQLs = tempBool
 
+	// Max number of DB-connection from Pool. Not stored because it is re-read when connecting the DB-pool
+	_ = mustGetenv("DB_POOL_MAX_CONNECTIONS")
+
+	_, err = strconv.Atoi(mustGetenv("DB_POOL_MAX_CONNECTIONS"))
+	if err != nil {
+		fmt.Println("Couldn't convert environment variable 'DB_POOL_MAX_CONNECTIONS' to an integer, error: ", err)
+		os.Exit(0)
+
+	}
+
+
 }
