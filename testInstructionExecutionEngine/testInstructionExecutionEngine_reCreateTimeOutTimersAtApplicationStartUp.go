@@ -139,6 +139,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{

@@ -272,6 +272,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -528,6 +529,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -640,6 +642,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		defer timeOutCancel()
 
 		rows, err := dbTransaction.Query(ctx, SqlToExecuteRowLock)
+		defer rows.Close()
 
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{

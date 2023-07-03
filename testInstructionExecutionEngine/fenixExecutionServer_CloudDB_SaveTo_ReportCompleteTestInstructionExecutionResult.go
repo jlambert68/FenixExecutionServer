@@ -604,6 +604,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
@@ -685,6 +686,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute_part1)
+	defer rows.Close()
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
@@ -753,6 +755,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 	// Execute Query CloudDB
 	//TODO change so we use the dbTransaction instead so rows will be locked ----- comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
 	rows2, err := dbTransaction.Query(context.Background(), sqlToExecute_part2) // fenixSyncShared.DbPool.Query(context.Background(), sqlToExecute_part2)
+	defer rows2.Close()
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
@@ -828,6 +831,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{

@@ -400,6 +400,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -477,6 +478,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	// Query DB
 	// Execute Query CloudDB
 	rows, err = dbTransaction.Query(context.Background(), sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -747,6 +749,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 			defer timeOutCancel()
 
 			rows, err := dbTransaction.Query(ctx, sqlToExecute)
+			defer rows.Close()
 
 			if err != nil {
 				executionEngine.logger.WithFields(logrus.Fields{

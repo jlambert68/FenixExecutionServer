@@ -305,6 +305,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{

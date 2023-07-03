@@ -71,6 +71,7 @@ func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) loadDomainWo
 	defer timeOutCancel()
 
 	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
 
 	if err != nil {
 		fenixExecutionServerObject.logger.WithFields(logrus.Fields{
