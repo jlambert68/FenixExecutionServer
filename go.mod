@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.17.2
 	github.com/jlambert68/FenixGrpcApi v0.0.0-20221208135827-8fc2262b6c0d
-	github.com/jlambert68/FenixSyncShared v0.0.0-20221208091411-9a347e92e03d
+	github.com/jlambert68/FenixSyncShared v0.0.0-20230703094150-8d1c9829298f
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/net v0.0.0-20221014081412-f15817d10f9b
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
