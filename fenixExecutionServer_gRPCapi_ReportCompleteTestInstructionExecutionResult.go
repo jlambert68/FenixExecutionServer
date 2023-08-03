@@ -53,7 +53,52 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 
 	// Define Execution Track based on "lowest "TestCaseExecutionUuid
 	var executionTrackNumber int
-	executionTrackNumber = common_config.CalculateExecutionTrackNumber(finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
+	executionTrackNumber = common_config.CalculateExecutionTrackNumber(
+		finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
+
+	// Check if the TestInstruction is kept in this ExecutionServer-instance
+
+	// Create Response channel from TimeOutEngine to get answer if TestInstructionExecution is handled by this instance
+	var timeOutResponseChannelForTimeOutHasOccurred common_config.TimeOutResponseChannelForTimeOutHasOccurredType
+	timeOutResponseChannelForTimeOutHasOccurred = make(chan common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct)
+
+	// Create a message with TestInstructionExecution to be sent to TimeOutEngine for check if it is handled by this instance
+	var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceStruct
+	tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceStruct{
+		TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
+		TestInstructionExecutionVersion: 1,
+	}
+
+	var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+	tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+		TimeOutChannelCommand:                                                   0,
+		TimeOutChannelTestInstructionExecutions:                                 common_config.TimeOutChannelCommandTestInstructionExecutionStruct{},
+		TimeOutReturnChannelForTimeOutHasOccurred:                               nil,
+		TimeOutResponseChannelForDurationUntilTimeOutOccurs:                     nil,
+		TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstance: common_config.TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut{},
+		SendID: "",
+	}
+	tempTimeOutChannelCommands = common_config.TimeOutChannelCommandStruct{
+		TimeOutChannelCommand:                     common_config.X,
+		TimeOutChannelTestInstructionExecutions:   common_config.TimeOutChannelCommandTestInstructionExecutionStruct{},
+		TimeOutReturnChannelForTimeOutHasOccurred: &timeOutResponseChannelForTimeOutHasOccurred,
+		//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+		SendID: "d5fe76fa-3d85-4f20-b7c8-79e24be5fac0",
+	}
+
+	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
+	*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrackNumber] <- tempTimeOutChannelCommand
+
+	// Response from TimeOutEngine
+	var timeOutReturnChannelForTimeOutHasOccurredValue common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
+
+	// Wait for response from TimeOutEngine
+	timeOutReturnChannelForTimeOutHasOccurredValue = <-timeOutResponseChannelForTimeOutHasOccurred
+
+	// Verify that TestInstructionExecution hasn't TimedOut yet
+	if timeOutReturnChannelForTimeOutHasOccurredValue.TimeOutWasTriggered == true {
+		// TestInstructionExecution had already TimedOut
+	}
 
 	// Send Message to TestInstructionExecutionEngine via channel
 	*fenixExecutionServerObject.executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
@@ -61,10 +106,11 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 
 	// Create Return message
 	returnMessage = &fenixExecutionServerGrpcApi.AckNackResponse{
-		AckNack:                      true,
-		Comments:                     "",
-		ErrorCodes:                   nil,
-		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		AckNack:    true,
+		Comments:   "",
+		ErrorCodes: nil,
+		ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(
+			common_config.GetHighestFenixExecutionServerProtoFileVersion()),
 	}
 
 	return returnMessage, nil

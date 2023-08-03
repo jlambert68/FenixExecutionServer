@@ -57,11 +57,12 @@ type TimeOutChannelCommandTestInstructionExecutionStruct struct {
 // TimeOutChannelCommandStruct
 // The struct for the message that are sent over the channel to the TimeOutEngine
 type TimeOutChannelCommandStruct struct {
-	TimeOutChannelCommand                               TimeOutChannelCommandType
-	TimeOutChannelTestInstructionExecutions             TimeOutChannelCommandTestInstructionExecutionStruct
-	TimeOutReturnChannelForTimeOutHasOccurred           *TimeOutResponseChannelForTimeOutHasOccurredType
-	TimeOutResponseChannelForDurationUntilTimeOutOccurs *TimeOutResponseChannelForDurationUntilTimeOutOccursType
-	SendID                                              string
+	TimeOutChannelCommand                                                   TimeOutChannelCommandType
+	TimeOutChannelTestInstructionExecutions                                 TimeOutChannelCommandTestInstructionExecutionStruct
+	TimeOutReturnChannelForTimeOutHasOccurred                               *TimeOutResponseChannelForTimeOutHasOccurredType
+	TimeOutResponseChannelForDurationUntilTimeOutOccurs                     *TimeOutResponseChannelForDurationUntilTimeOutOccursType
+	TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstance *TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceType
+	SendID                                                                  string
 	//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer *TimeOutReturnChannelForExistsTestInstructionExecutionWithinTimeOutTimerType
 }
 
@@ -83,4 +84,14 @@ type TimeOutResponseChannelForDurationUntilTimeOutOccursType chan TimeOutRespons
 // The struct for the message that are sent over the 'return-channel' when responding duration until TimeOut occurs
 type TimeOutResponseChannelForDurationUntilTimeOutOccursStruct struct {
 	DurationUntilTimeOutOccurs time.Duration
+}
+
+// TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceType
+// Channel used for the response back to caller for if the TestInstruction is handled by this ExecutionServer-instance or not
+type TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceType chan TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceStruct
+
+// TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceStruct
+// The struct tells if the TestInstruction is handled by this ExecutionServer-instance or not
+type TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceStruct struct {
+	TestInstructionIsHandledByThisExecutionInstance bool
 }
