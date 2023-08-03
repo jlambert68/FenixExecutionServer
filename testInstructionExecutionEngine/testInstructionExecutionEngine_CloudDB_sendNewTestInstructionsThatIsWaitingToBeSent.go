@@ -716,7 +716,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 
 		var tempTestInstructionExecutionStatus string
 		var numberOfResend int
-
+		//TODO - kolla här
 		// Save information about TestInstructionExecution when we got a positive response from Worker
 		if testInstructionExecutionResponse.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
 			tempTestInstructionExecutionStatus = "1" // TIE_EXECUTING
