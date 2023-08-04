@@ -29,6 +29,7 @@ const (
 	TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer
 	TimeOutChannelCommandTimeUntilNextTimeOutTimerToFires
 	TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer
+	TimeOutChannelCommandVerifyIfTestInstructionIsHandledByThisExecutionInstance
 )
 
 var TimeOutChannelCommandsForDebugPrinting []string = []string{

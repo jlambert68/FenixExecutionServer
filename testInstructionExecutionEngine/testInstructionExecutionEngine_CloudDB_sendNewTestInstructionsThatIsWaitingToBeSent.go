@@ -1,7 +1,7 @@
 package testInstructionExecutionEngine
 
 import (
-	"FenixExecutionServer/broadcastingEngine"
+	"FenixExecutionServer/broadcastingEngine_ExecutionStatusUpdate"
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
@@ -23,7 +23,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	executionTrackNumberReference *int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
-	testInstructionExecutionsReference *[]broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct,
+	testInstructionExecutionsReference *[]broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct,
 	channelCommandTestCaseExecutionReference *[]ChannelCommandTestCaseExecutionStruct) {
 
 	executionTrackNumber := *executionTrackNumberReference
@@ -36,15 +36,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		dbTransaction.Commit(context.Background())
 
 		// Create message to be sent to BroadcastEngine
-		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
-		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
+		var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
+		broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
 			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
 			TestCaseExecutions:               nil,
 			TestInstructionExecutions:        testInstructionExecutions,
 		}
 
 		// Send message to BroadcastEngine over channel
-		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+		broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
 		defer common_config.Logger.WithFields(logrus.Fields{
 			"id":                               "dc384f61-13a6-4f3b-9e1d-345669cf3947",
@@ -98,7 +98,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// All TestInstructionExecutions
-	var testInstructionExecutions []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+	var testInstructionExecutions []broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 
 	// All TestCaseExecutions to update status on
 	var channelCommandTestCaseExecution []ChannelCommandTestCaseExecutionStruct
@@ -217,7 +217,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	for _, testInstructionExecutionStatusMessage := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
 		// Create the BroadCastMessage for the TestInstructionExecution
-		var testInstructionExecutionBroadcastMessages []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+		var testInstructionExecutionBroadcastMessages []broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 		testInstructionExecutionBroadcastMessages, err = executionEngine.loadTestInstructionExecutionDetailsForBroadcastMessage(
 			txn,
 			testInstructionExecutionStatusMessage.processTestInstructionExecutionResponse.TestInstructionExecutionUuid)
@@ -228,7 +228,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		}
 
 		// There should only be one message
-		var testInstructionExecutionDetailsForBroadcastSystem broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+		var testInstructionExecutionDetailsForBroadcastSystem broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 		testInstructionExecutionDetailsForBroadcastSystem = testInstructionExecutionBroadcastMessages[0]
 
 		// Only BroadCast 'TIE_EXECUTING' if we got an AckNack=true as respons

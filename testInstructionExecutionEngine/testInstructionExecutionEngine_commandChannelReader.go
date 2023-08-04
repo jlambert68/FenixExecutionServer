@@ -88,6 +88,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		case ChannelCommandReCreateTimeOutTimersAtApplicationStartUp:
 			executionEngine.triggerReCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
 
+		case ChannelCommandTestInstructionIsNotHandledByThisExecutionInstance:
+			executionEngine.triggerTestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB(
+				executionTrackNumber,
+				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
+
 		// No other command is supported
 		default:
 			executionEngine.logger.WithFields(logrus.Fields{
@@ -245,5 +250,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerReCreateTime
 	executionTrackNumber int) {
 
 	executionEngine.reCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
+
+}
+
+// Saving the final result in the CloudDB and broadcast message to other ExecutionInstances that their TestInstructionExecution can be picked up for processing
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerTestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB(
+	executionTrackNumber int,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) {
+
+	go func() {
+		_ = executionEngine.prepareTestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB(
+			executionTrackNumber,
+			finalTestInstructionExecutionResultMessage)
+	}()
 
 }

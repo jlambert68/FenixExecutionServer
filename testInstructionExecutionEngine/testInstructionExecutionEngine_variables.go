@@ -50,6 +50,7 @@ const (
 	ChannelCommandProcessTestInstructionExecutionsThatHaveTimedOut
 	ChannelCommandProcessFinalTestInstructionExecutionResultMessage
 	ChannelCommandReCreateTimeOutTimersAtApplicationStartUp
+	ChannelCommandTestInstructionIsNotHandledByThisExecutionInstance
 )
 
 // ChannelCommandStruct

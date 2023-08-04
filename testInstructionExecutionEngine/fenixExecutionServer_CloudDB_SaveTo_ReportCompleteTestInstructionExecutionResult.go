@@ -1,7 +1,7 @@
 package testInstructionExecutionEngine
 
 import (
-	"FenixExecutionServer/broadcastingEngine"
+	"FenixExecutionServer/broadcastingEngine_ExecutionStatusUpdate"
 	"FenixExecutionServer/common_config"
 	"context"
 	"errors"
@@ -21,7 +21,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
 	thereExistsOnGoingTestInstructionExecutionsReference *bool,
 	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference *bool,
-	testInstructionExecutionReference *broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct) {
+	testInstructionExecutionReference *broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
@@ -34,15 +34,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 		dbTransaction.Commit(context.Background())
 
 		// Create message to be sent to BroadcastEngine
-		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
-		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
+		var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
+		broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
 			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
 			TestCaseExecutions:               nil,
-			TestInstructionExecutions:        []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct{testInstructionExecution},
+			TestInstructionExecutions:        []broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct{testInstructionExecution},
 		}
 
 		// Send message to BroadcastEngine over channel
-		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+		broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
 		common_config.Logger.WithFields(logrus.Fields{
 			"id":                               "c71501df-2ddc-4874-953f-4cca70d9b698",
@@ -329,7 +329,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 
 	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecutionUuid-status
 	var triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions bool
-	var testInstructionExecutionMessageToBroadcastSystem broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+	var testInstructionExecutionMessageToBroadcastSystem broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 
 	defer executionEngine.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,
@@ -384,7 +384,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	}
 
 	// Create the BroadCastMessage for the TestInstructionExecution
-	var testInstructionExecutionBroadcastMessages []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+	var testInstructionExecutionBroadcastMessages []broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 	testInstructionExecutionBroadcastMessages, err = executionEngine.loadTestInstructionExecutionDetailsForBroadcastMessage(
 		txn,
 		finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
@@ -803,7 +803,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionDetailsForBroadcastMessage(
 	dbTransaction pgx.Tx,
 	testInstructionExecutionUuid string) (
-	[]broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct, error) {
+	[]broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct, error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -860,11 +860,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	)
 
 	// Variable to store Message to be broadcast
-	var testInstructionExecutionBroadcastMessages []broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+	var testInstructionExecutionBroadcastMessages []broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 
 	// Extract data from DB result set
 	for rows.Next() {
-		var tempTestInstructionExecutionBroadcastMessage broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct
+		var tempTestInstructionExecutionBroadcastMessage broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 
 		err = rows.Scan(
 			&tempTestCaseExecutionUuid,
@@ -908,7 +908,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		}
 
 		// Convert 'tempVariables' into a 'TestInstructionExecutionBroadcastMessage'
-		tempTestInstructionExecutionBroadcastMessage = broadcastingEngine.TestInstructionExecutionBroadcastMessageStruct{
+		tempTestInstructionExecutionBroadcastMessage = broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct{
 			TestCaseExecutionUuid:           tempTestCaseExecutionUuid,
 			TestCaseExecutionVersion:        strconv.Itoa(int(tempTestCaseExecutionVersion)),
 			TestInstructionExecutionUuid:    tempTestInstructionExecutionUuid,

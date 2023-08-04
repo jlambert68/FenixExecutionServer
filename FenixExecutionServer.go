@@ -1,7 +1,7 @@
 package main
 
 import (
-	"FenixExecutionServer/broadcastingEngine"
+	"FenixExecutionServer/broadcastingEngine_ExecutionStatusUpdate"
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/testInstructionExecutionEngine"
 	"FenixExecutionServer/testInstructionTimeOutEngine"
@@ -102,7 +102,7 @@ func fenixExecutionServerMain() {
 
 	// Start BroadcastingEngine, for sending info about when a TestCaseExecutionUuid or TestInstructionExecution has updated
 	//its status. Messages are sent to BroadcastEngine using channels
-	go broadcastingEngine.InitiateAndStartBroadcastNotifyEngine()
+	go broadcastingEngine_ExecutionStatusUpdate.InitiateAndStartBroadcastNotifyEngine()
 
 	// Start Receiver channel for TimeOutEngine
 	testInstructionTimeOutEngine.TestInstructionExecutionTimeOutEngineObject.InitiateTestInstructionExecutionTimeOutEngineChannelReader()

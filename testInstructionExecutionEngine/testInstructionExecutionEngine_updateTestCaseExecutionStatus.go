@@ -1,7 +1,7 @@
 package testInstructionExecutionEngine
 
 import (
-	"FenixExecutionServer/broadcastingEngine"
+	"FenixExecutionServer/broadcastingEngine_ExecutionStatusUpdate"
 	"FenixExecutionServer/common_config"
 	"context"
 	"errors"
@@ -21,7 +21,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	//testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
-	testCaseExecutionsReference *[]broadcastingEngine.TestCaseExecutionBroadcastMessageStruct) {
+	testCaseExecutionsReference *[]broadcastingEngine_ExecutionStatusUpdate.TestCaseExecutionBroadcastMessageStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
@@ -32,15 +32,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		dbTransaction.Commit(context.Background())
 
 		// Create message to be sent to BroadcastEngine
-		var broadcastingMessageForExecutions broadcastingEngine.BroadcastingMessageForExecutionsStruct
-		broadcastingMessageForExecutions = broadcastingEngine.BroadcastingMessageForExecutionsStruct{
+		var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
+		broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
 			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
 			TestCaseExecutions:               testCaseExecutions,
 			TestInstructionExecutions:        nil,
 		}
 
 		// Send message to BroadcastEngine over channel
-		broadcastingEngine.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+		broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
 		defer executionEngine.logger.WithFields(logrus.Fields{
 			"id":                               "6ad2a565-bd85-4e69-a677-9212beddd94f",
@@ -104,7 +104,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	doCommitNotRoleBack = false
 
 	// All TestCaseExecutions
-	var testCaseExecutions []broadcastingEngine.TestCaseExecutionBroadcastMessageStruct
+	var testCaseExecutions []broadcastingEngine_ExecutionStatusUpdate.TestCaseExecutionBroadcastMessageStruct
 
 	defer executionEngine.updateStatusOnTestCaseExecutionInCloudDBCommitOrRoleBack(
 		&txn,
@@ -153,8 +153,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	// Prepare message data to be sent over Broadcast system
 	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
 
-		var testCaseExecution broadcastingEngine.TestCaseExecutionBroadcastMessageStruct
-		testCaseExecution = broadcastingEngine.TestCaseExecutionBroadcastMessageStruct{
+		var testCaseExecution broadcastingEngine_ExecutionStatusUpdate.TestCaseExecutionBroadcastMessageStruct
+		testCaseExecution = broadcastingEngine_ExecutionStatusUpdate.TestCaseExecutionBroadcastMessageStruct{
 			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
 			TestCaseExecutionVersion: strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion),
 			TestCaseExecutionStatus: fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(
