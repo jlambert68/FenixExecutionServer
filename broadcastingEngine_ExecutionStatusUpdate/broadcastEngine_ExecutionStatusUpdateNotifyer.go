@@ -61,7 +61,7 @@ type TestInstructionExecutionBroadcastMessageStruct struct {
 
 var err error
 
-func InitiateAndStartBroadcastNotifyEngine() {
+func InitiateAndStartBroadcastNotifyEngine_ExecutionStatusUpdate() {
 
 	BroadcastEngineMessageChannel = make(chan BroadcastingMessageForExecutionsStruct, BroadcastEngineChannelSize)
 	var broadcastingMessageForExecutions BroadcastingMessageForExecutionsStruct

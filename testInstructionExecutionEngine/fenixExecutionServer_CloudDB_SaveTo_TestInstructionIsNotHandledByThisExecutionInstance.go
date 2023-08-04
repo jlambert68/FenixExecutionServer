@@ -16,7 +16,7 @@ import (
 func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackTestInstructionIsNotHandledByThisExecutionInstance(
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
-	broadcastingMessageForExecutionsReference *broadcastingEngine_TestInstructionNotHandledByThisInstance.BroadcastingMessageForExecutionsStruct) {
+	broadcastingMessageForExecutionsReference *broadcastingEngine_TestInstructionNotHandledByThisInstance.BroadcastingMessageForTestInstructionExecutionsStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
@@ -79,7 +79,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 
 	// Message to be sent over Broadcast-system that this ExecutionInstance is not responsible for this TestInstructionExecution
 	var broadcastingMessageForExecutions broadcastingEngine_TestInstructionNotHandledByThisInstance.
-		BroadcastingMessageForExecutionsStruct
+		BroadcastingMessageForTestInstructionExecutionsStruct
 
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
@@ -117,7 +117,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 		testInstructionExecutionBroadcastMessage)
 
 	broadcastingMessageForExecutions = broadcastingEngine_TestInstructionNotHandledByThisInstance.
-		BroadcastingMessageForExecutionsStruct{
+		BroadcastingMessageForTestInstructionExecutionsStruct{
 		OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
 		TestInstructionExecutions:        testInstructionExecutionBroadcastMessages,
 	}

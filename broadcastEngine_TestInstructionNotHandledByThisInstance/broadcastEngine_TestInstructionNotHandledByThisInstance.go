@@ -1,4 +1,4 @@
-package broadcastingEngine_TestInstructionNotHandledByThisInstance
+package broadcastEngine_TestInstructionNotHandledByThisInstance
 
 import (
 	"FenixExecutionServer/common_config"
@@ -19,9 +19,9 @@ const BroadcastEngineChannelWarningLevel = 400
 
 var BroadcastEngineMessageChannel BroadcastEngineMessageChannelType
 
-type BroadcastEngineMessageChannelType chan BroadcastingMessageForExecutionsStruct
+type BroadcastEngineMessageChannelType chan BroadcastingMessageForTestInstructionExecutionsStruct
 
-type BroadcastingMessageForExecutionsStruct struct {
+type BroadcastingMessageForTestInstructionExecutionsStruct struct {
 	OriginalMessageCreationTimeStamp string                                           `json:"originalmessagecreationtimestamp"`
 	TestInstructionExecutions        []TestInstructionExecutionBroadcastMessageStruct `json:"testinstructionsexecutions"`
 }
@@ -33,10 +33,10 @@ type TestInstructionExecutionBroadcastMessageStruct struct {
 
 var err error
 
-func InitiateAndStartBroadcastNotifyEngine() {
+func InitiateAndStartBroadcastNotifyEngine_TestInstructionNotHandledByThisInstance() {
 
-	BroadcastEngineMessageChannel = make(chan BroadcastingMessageForExecutionsStruct, BroadcastEngineChannelSize)
-	var broadcastingMessageForExecutions BroadcastingMessageForExecutionsStruct
+	BroadcastEngineMessageChannel = make(chan BroadcastingMessageForTestInstructionExecutionsStruct, BroadcastEngineChannelSize)
+	var broadcastingMessageForExecutions BroadcastingMessageForTestInstructionExecutionsStruct
 	var broadcastingMessageForExecutionsAsByteSlice []byte
 	var broadcastingMessageForExecutionsAsByteSliceAsString string
 	var err error
@@ -46,11 +46,11 @@ func InitiateAndStartBroadcastNotifyEngine() {
 
 		broadcastingMessageForExecutions = <-BroadcastEngineMessageChannel
 
-		// If size of Channel > 'TimeOutChannelWarningLevel' then log Warning message
+		// If size of Channel > 'BroadcastEngineChannelWarningLevel' then log Warning message
 		channelSize = len(BroadcastEngineMessageChannel)
 		if channelSize > BroadcastEngineChannelWarningLevel {
 			common_config.Logger.WithFields(logrus.Fields{
-				"Id":                                 "a3831fa9-570e-4b2c-a051-ca2339d27337",
+				"Id":                                 "92359ec0-8e17-4203-be07-ac97e2a95a42",
 				"channelSize":                        channelSize,
 				"BroadcastEngineChannelWarningLevel": BroadcastEngineChannelWarningLevel,
 				"BroadcastEngineChannelSize":         BroadcastEngineChannelSize,
@@ -66,7 +66,7 @@ func InitiateAndStartBroadcastNotifyEngine() {
 			"broadcastingMessageForExecutionsAsByteSliceAsString": broadcastingMessageForExecutionsAsByteSliceAsString,
 		}).Debug("Trying to send Message over Broadcast system (broadcastingEngine_ExecutionStatusUpdate)")
 
-		_, err = fenixSyncShared.DbPool.Exec(context.Background(), "SELECT pg_notify('TestInstructionNotHandledByThisInstance', $1)", broadcastingMessageForExecutionsAsByteSlice)
+		_, err = fenixSyncShared.DbPool.Exec(context.Background(), "SELECT pg_notify('testInstructionNotHandledByThisInstance', $1)", broadcastingMessageForExecutionsAsByteSlice)
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{
 				"Id":    "4f399c14-663e-4ece-8f2d-f3c68aa4ab2b",

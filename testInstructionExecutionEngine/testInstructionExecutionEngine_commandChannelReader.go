@@ -259,7 +259,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerTestInstruct
 	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) {
 
 	go func() {
-		_ = executionEngine.prepareTestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB(
+		executionEngine.prepareTestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB(
 			executionTrackNumber,
 			finalTestInstructionExecutionResultMessage)
 	}()
