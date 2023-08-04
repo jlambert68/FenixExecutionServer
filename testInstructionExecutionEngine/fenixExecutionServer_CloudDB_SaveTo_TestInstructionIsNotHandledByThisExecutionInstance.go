@@ -97,7 +97,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 			"id":    "ee92c4fa-999a-47a8-aa64-00a6e00212c9",
 			"error": err,
 			"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
-		}).Error("Problem to do 'DbPool.Begin'  in 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB', dropping 'finalTestInstructionExecutionResultMessage'")
+		}).Error("Problem when saving 'finalTestInstructionExecutionResultMessage' to database in 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB', will dropp 'finalTestInstructionExecutionResultMessage'")
 
 		return
 	}
@@ -126,8 +126,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 	doCommitNotRoleBack = true
 }
 
-
-
 // Insert row in table that tells that the TestInstructionExecution is not handled and needs to be picked up by correct ExecutionInstance
 func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB(
 	dbTransaction pgx.Tx,
@@ -135,7 +133,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructi
 	err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
-		"Id":                                    "e13a24b8-816a-47ef-8235-ab0faf547510",
+		"Id": "e13a24b8-816a-47ef-8235-ab0faf547510",
 		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
 	}).Debug("Entering: updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB()")
 
@@ -159,36 +157,33 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructi
 	// Data to be inserted in the DB-table
 	dataRowsToBeInsertedMultiType = nil
 
+	dataRowToBeInsertedMultiType = nil
 
-		dataRowToBeInsertedMultiType = nil
+	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, common_config.ApplicationRuntimeUuid)
+	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
+		finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
+	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, 1)
+	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
+		int(finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus))
+	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
+		finalTestInstructionExecutionResultMessage.TestInstructionExecutionEndTimeStamp.String())
+	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp)
 
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, "1")
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, int(finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus))
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.TestInstructionExecutionEndTimeStamp.String())
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage..testInstructionName)
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp) //SentTimeStamp
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_INITIATED))
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp) // ExecutionStatusUpdateTimeStamp
+	dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
-		dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
-
-
-	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
-	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
-		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"SentTimeStamp\", \"TestInstructionExecutionStatus\", \"ExecutionStatusUpdateTimeStamp\", " +
-		" \"TestDataSetUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"TestInstructionInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", " +
-		"\"TestInstructionOriginalUuid\", \"TestInstructionExecutionHasFinished\", \"QueueTimeStamp\"," +
-		" \"ExecutionPriority\") "
+	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionExecutionsReceivedByWrongExecutionInstance\" "
+	sqlToExecute = sqlToExecute + "(\"ApplicationExecutionRuntimeUuid\", \"TestInstructionExecutionUuid\", " +
+		"\"TestInstructionExecutionVersion\", \"TestInstructionExecutionStatus\", \"TestInstructionExecutionEndTimeStamp\", " +
+		" \"TimeStamp\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
 	// Log SQL to be executed if Environment variable is true
 	if common_config.LogAllSQLs == true {
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "09acc12b-f0f2-402c-bde9-206bde49e35e",
+			"Id":           "d6e90243-2194-4805-ba81-bbcd80498d3d",
 			"sqlToExecute": sqlToExecute,
-		}).Debug("SQL to be executed within 'saveTestInstructionsInOngoingExecutionsSaveToCloudDB'")
+		}).Debug("SQL to be executed within 'updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB'")
 	}
 
 	// Execute Query CloudDB
@@ -196,7 +191,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructi
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":           "d7cd6754-cf4c-43eb-8478-d6558e787dd0",
+			"Id":           "7cb0a424-dd00-4785-90b5-493cc4f38e5b",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
@@ -206,7 +201,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructi
 
 	// Log response from CloudDB
 	executionEngine.logger.WithFields(logrus.Fields{
-		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
+		"Id":                       "899baa48-9253-4e9e-997a-45ae5200e3b8",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
 		"comandTag.Select()":       comandTag.Select(),
