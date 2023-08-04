@@ -90,7 +90,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 		&broadcastingMessageForExecutions)
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
-	err = executionEngine.updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB2(txn, finalTestInstructionExecutionResultMessage)
+	err = executionEngine.updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB(txn, finalTestInstructionExecutionResultMessage)
 	if err != nil {
 
 		common_config.Logger.WithFields(logrus.Fields{
@@ -124,4 +124,98 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 
 	// Do the commit and send over Broadcast-system
 	doCommitNotRoleBack = true
+}
+
+
+
+// Insert row in table that tells that the TestInstructionExecution is not handled and needs to be picked up by correct ExecutionInstance
+func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB(
+	dbTransaction pgx.Tx,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (
+	err error) {
+
+	executionEngine.logger.WithFields(logrus.Fields{
+		"Id":                                    "e13a24b8-816a-47ef-8235-ab0faf547510",
+		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+	}).Debug("Entering: updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB()")
+
+	defer func() {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id": "be4fe03a-7c09-4041-95b1-46a1c823fda1",
+		}).Debug("Exiting: updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB()")
+	}()
+
+	// Get a common dateTimeStamp to use
+	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	var dataRowToBeInsertedMultiType []interface{}
+	var dataRowsToBeInsertedMultiType [][]interface{}
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+
+	// Create Insert Statement for Ongoing TestInstructionExecution
+	// Data to be inserted in the DB-table
+	dataRowsToBeInsertedMultiType = nil
+
+
+		dataRowToBeInsertedMultiType = nil
+
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, "1")
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, int(finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus))
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.TestInstructionExecutionEndTimeStamp.String())
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage..testInstructionName)
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp) //SentTimeStamp
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_INITIATED))
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp) // ExecutionStatusUpdateTimeStamp
+
+		dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
+
+
+	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
+	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
+		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"SentTimeStamp\", \"TestInstructionExecutionStatus\", \"ExecutionStatusUpdateTimeStamp\", " +
+		" \"TestDataSetUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"TestInstructionInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", " +
+		"\"TestInstructionOriginalUuid\", \"TestInstructionExecutionHasFinished\", \"QueueTimeStamp\"," +
+		" \"ExecutionPriority\") "
+	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
+	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "09acc12b-f0f2-402c-bde9-206bde49e35e",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'saveTestInstructionsInOngoingExecutionsSaveToCloudDB'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "d7cd6754-cf4c-43eb-8478-d6558e787dd0",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	executionEngine.logger.WithFields(logrus.Fields{
+		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return nil
+
 }
