@@ -299,7 +299,7 @@ func prepareLoadTestInstructionExecutionResultMessage(
 		&doCommitNotRoleBack)
 
 	// Extract TestInstructionExecution-messages  and then remove row from database
-	finalTestInstructionExecutionResultMessage, err = loadTestInstructionExecutionResultMessageCloudDBInCloudDB(
+	finalTestInstructionExecutionResultMessage, err = loadTestInstructionExecutionResultMessageAndThenDeleteFromDatabaseInCloudDB(
 		txn, testInstructionExecutionUuid, testInstructionVersion)
 	if err != nil {
 
@@ -318,8 +318,8 @@ func prepareLoadTestInstructionExecutionResultMessage(
 	return finalTestInstructionExecutionResultMessage, err
 }
 
-// Insert row in table that tells that the TestInstructionExecution is not handled and needs to be picked up by correct ExecutionInstance
-func loadTestInstructionExecutionResultMessageCloudDBInCloudDB(
+// Prepare to Load TestInstructionExecution from database and then remove data in database
+func loadTestInstructionExecutionResultMessageAndThenDeleteFromDatabaseInCloudDB(
 	dbTransaction pgx.Tx,
 	testInstructionExecutionUuid string,
 	testInstructionVersion int32) (
@@ -338,11 +338,223 @@ func loadTestInstructionExecutionResultMessageCloudDBInCloudDB(
 		}).Debug("Exiting: loadTestInstructionExecutionResultMessageCloudDBInCloudDB()")
 	}()
 
+	// Load the TestInstructionExecution
+	finalTestInstructionExecutionResultMessage, err = loadTestInstructionExecutionResultMessageFromDatabaseInCloudDB(
+		dbTransaction,
+		testInstructionExecutionUuid,
+		testInstructionVersion)
+
+	if err != nil || finalTestInstructionExecutionResultMessage == nil {
+		// There was an Error or the TestInstructionExecution didn't exist in the database for this ExecutionInstance
+		return nil, err
+	}
+
+	// Remove the row from the database
+	err = deleteTestInstructionExecutionResultMessageFromDatabaseInCloudDB(
+		dbTransaction,
+		testInstructionExecutionUuid,
+		testInstructionVersion)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// No errors occurred
+	return finalTestInstructionExecutionResultMessage, nil
+
+}
+
+// Load TestInstructionExecution from database that didn't belong to ExecutionInstance that received it
+func loadTestInstructionExecutionResultMessageFromDatabaseInCloudDB(
+	dbTransaction pgx.Tx,
+	testInstructionExecutionUuid string,
+	testInstructionExecutionVersion int32) (
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage,
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id": "7ed9cb4c-a88a-45c1-a77e-2809b4520040",
+	}).Debug("Entering: loadTestInstructionExecutionResultMessageFromDatabaseInCloudDB()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "74fd1c4f-435b-4e1a-b2f0-33f743fd8ec3",
+		}).Debug("Exiting: loadTestInstructionExecutionResultMessageFromDatabaseInCloudDB()")
+	}()
+
+	var testInstructionExecutionVersionAsString string
+	testInstructionExecutionVersionAsString = strconv.Itoa(int(testInstructionExecutionVersion))
+
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	sqlToExecute := ""
 
+	sqlToExecute = sqlToExecute + "" +
+		"SELECT TIERWEI.\"ApplicationExecutionRuntimeUuid\", TIERWEI.\"TestInstructionExecutionUuid\", " +
+		"TIERWEI.\"TestInstructionExecutionVersion\", TIERWEI.\"TestInstructionExecutionStatus\", " +
+		"TIERWEI.\"TestInstructionExecutionEndTimeStamp\", TIERWEI.\"TimeStamp\") "
+	sqlToExecute = sqlToExecute + "" +
+		"FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionsReceivedByWrongExecutionInstance\" TIERWEI "
+	sqlToExecute = sqlToExecute + "" +
+		"WHERE TIERWEI.\"ApplicationExecutionRuntimeUuid\" = '" + common_config.ApplicationRuntimeUuid + "' AND "
+	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "' AND "
+	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionVersion\" = " + testInstructionExecutionVersionAsString + " "
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "01bd8056-6967-4084-980e-1b37b325e54d",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadTestInstructionExecutionResultMessageFromDatabaseInCloudDB'")
+	}
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "d7202c65-e22a-419e-93c0-c0bbcbeb2c52",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	// Temp variables
+	var (
+		tempFinalTestInstructionExecutionResultMessages  []*fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
+		tempApplicationExecutionRuntimeUuid              string
+		tempTestInstructionExecutionVersion              int
+		tempTestInstructionExecutionStatus               int
+		tempTestInstructionExecutionEndTimeStampAsString string
+		tempTimeStampAsString                            string
+	)
+
+	// Extract data from DB result set
+	for rows.Next() {
+
+		var tempFinalTestInstructionExecutionResultMessage fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
+
+		err := rows.Scan(
+
+			&tempApplicationExecutionRuntimeUuid,
+			&tempFinalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
+			&tempTestInstructionExecutionVersion,
+			&tempTestInstructionExecutionStatus,
+			&tempTestInstructionExecutionEndTimeStampAsString,
+			&tempTimeStampAsString,
+		)
+
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "a89b3c1e-b648-4e7c-9316-98f260daedf3",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+
+		// If there are more than one message(shouldn't be so) then add it to slice of messages
+		tempFinalTestInstructionExecutionResultMessages = append(tempFinalTestInstructionExecutionResultMessages,
+			&tempFinalTestInstructionExecutionResultMessage)
+	}
+
+	// If there were more then one message the there is something wrong
+	if len(tempFinalTestInstructionExecutionResultMessages) > 1 {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":                                   "99fb1e0d-15aa-478b-b32d-51b8a6928315",
+			"Error":                                err,
+			"common_config.ApplicationRuntimeUuid": common_config.ApplicationRuntimeUuid,
+			"testInstructionExecutionUuid":         testInstructionExecutionUuid,
+			"testInstructionExecutionVersion":      testInstructionExecutionVersion,
+		}).Error("More then one message were found in database. This is completely wrong")
+
+		return nil, err
+	}
+
+	// Not hit in database
+	if len(tempFinalTestInstructionExecutionResultMessages) == 0 {
+		return nil, err
+	}
+
+	// Return result from database
+	return tempFinalTestInstructionExecutionResultMessages[0], err
+
+}
+
+// Delete TestInstructionExecution from database if it belongs to this ExecutionInstance,
+// but was first revived by another ExecutionInstance
+func deleteTestInstructionExecutionResultMessageFromDatabaseInCloudDB(
+	dbTransaction pgx.Tx,
+	testInstructionExecutionUuid string,
+	testInstructionExecutionVersion int32) (
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id": "772414f3-f07d-4725-a0ae-5fce5209faa0",
+	}).Debug("Entering: deleteTestInstructionExecutionResultMessageFromDatabaseInCloudDB()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "8ac7a62c-d260-44fa-be7b-d6db824b05c0",
+		}).Debug("Exiting: deleteTestInstructionExecutionResultMessageFromDatabaseInCloudDB()")
+	}()
+
+	var testInstructionExecutionVersionAsString string
+	testInstructionExecutionVersionAsString = strconv.Itoa(int(testInstructionExecutionVersion))
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "" +
+		"DELETE FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionsReceivedByWrongExecutionInstance\" TIERWEI "
+	sqlToExecute = sqlToExecute + "" +
+		"WHERE TIERWEI.\"ApplicationExecutionRuntimeUuid\" = '" + common_config.ApplicationRuntimeUuid + "' AND "
+	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "' AND "
+	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionVersion\" = " + testInstructionExecutionVersionAsString + " "
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "dc1801a8-df60-463d-b2be-40ed1c05f018",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'deleteTestInstructionExecutionResultMessageFromDatabaseInCloudDB'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "7cb0a424-dd00-4785-90b5-493cc4f38e5b",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":                       "899baa48-9253-4e9e-997a-45ae5200e3b8",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
 	// No errors occurred
-	return finalTestInstructionExecutionResultMessage, nil
+	return nil
 
 }
