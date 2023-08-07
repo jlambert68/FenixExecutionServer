@@ -95,34 +95,35 @@ func BroadcastListener() error {
 
 // Break down 'broadcastingMessageForExecutions' and send correct content to correct sSubscribers.
 func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions BroadcastingMessageForTestInstructionExecutionsStruct) {
+	/*
+		//var originalMessageCreationTimeStamp time.Time
+		var err error
 
-	//var originalMessageCreationTimeStamp time.Time
-	var err error
-	var timeStampLayoutForParser string //:= "2006-01-02 15:04:05.999999999 -0700 MST"
+		var timeStampLayoutForParser string //:= "2006-01-02 15:04:05.999999999 -0700 MST"
 
-	// Convert Original Message creation Timestamp into time-variable
-	timeStampLayoutForParser, err = common_config.GenerateTimeStampParserLayout(broadcastingMessageForExecutions.OriginalMessageCreationTimeStamp)
-	if err != nil {
-		common_config.Logger.WithFields(logrus.Fields{
-			"Id":  "d2cb561b-9976-407a-a263-a588529019f1",
-			"err": err,
-			"broadcastingMessageForExecutions.OriginalMessageCreationTimeStamp": broadcastingMessageForExecutions.OriginalMessageCreationTimeStamp,
-		}).Error("Couldn't generate parser layout from TimeStamp")
+		// Convert Original Message creation Timestamp into time-variable
+		timeStampLayoutForParser, err = common_config.GenerateTimeStampParserLayout(broadcastingMessageForExecutions.OriginalMessageCreationTimeStamp)
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":  "d2cb561b-9976-407a-a263-a588529019f1",
+				"err": err,
+				"broadcastingMessageForExecutions.OriginalMessageCreationTimeStamp": broadcastingMessageForExecutions.OriginalMessageCreationTimeStamp,
+			}).Error("Couldn't generate parser layout from TimeStamp")
 
-		return
-	}
+			return
+		}
 
-	originalMessageCreationTimeStamp, err = time.Parse(timeStampLayoutForParser, broadcastingMessageForExecutions.OriginalMessageCreationTimeStamp)
-	if err != nil {
-		common_config.Logger.WithFields(logrus.Fields{
-			"Id":                               "422159b0-de42-4b5d-a707-34dfabbf5082",
-			"err":                              err,
-			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
-		}).Error("Couldn't parse TimeStamp in Broadcast-message")
+		originalMessageCreationTimeStamp, err = time.Parse(timeStampLayoutForParser, broadcastingMessageForExecutions.OriginalMessageCreationTimeStamp)
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                               "422159b0-de42-4b5d-a707-34dfabbf5082",
+				"err":                              err,
+				"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
+			}).Error("Couldn't parse TimeStamp in Broadcast-message")
 
-		return
-	}
-
+			return
+		}
+	*/
 	// Convert Original message creation Timestamp into gRPC-version
 	//var originalMessageCreationTimeStampForGrpc *timestamppb.Timestamp
 	//originalMessageCreationTimeStampForGrpc = timestamppb.New(originalMessageCreationTimeStamp)
