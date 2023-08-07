@@ -96,7 +96,7 @@ func BroadcastListener() error {
 // Break down 'broadcastingMessageForExecutions' and send correct content to correct sSubscribers.
 func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions BroadcastingMessageForTestInstructionExecutionsStruct) {
 
-	var originalMessageCreationTimeStamp time.Time
+	//var originalMessageCreationTimeStamp time.Time
 	var err error
 	var timeStampLayoutForParser string //:= "2006-01-02 15:04:05.999999999 -0700 MST"
 
@@ -124,8 +124,8 @@ func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions Br
 	}
 
 	// Convert Original message creation Timestamp into gRPC-version
-	var originalMessageCreationTimeStampForGrpc *timestamppb.Timestamp
-	originalMessageCreationTimeStampForGrpc = timestamppb.New(originalMessageCreationTimeStamp)
+	//var originalMessageCreationTimeStampForGrpc *timestamppb.Timestamp
+	//originalMessageCreationTimeStampForGrpc = timestamppb.New(originalMessageCreationTimeStamp)
 
 	// Loop all TestInstructionExecutions (should only be one in normal case)
 	for _, tempTestInstructionExecution := range broadcastingMessageForExecutions.TestInstructionExecutions {
@@ -208,28 +208,27 @@ func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions Br
 				continue
 			}
 
-			// Create Message to be sent to TestInstructionExecutionEngine
-			channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-				ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessFinalTestInstructionExecutionResultMessage,
-				FinalTestInstructionExecutionResultMessage: finalTestInstructionExecutionResultMessage,
-			}
+			// When there exist a 'finalTestInstructionExecutionResultMessage' then "Simulate" that a gRPC-call was made from Worker, regarding 'ReportCompleteTestInstructionExecutionResult'
+			if finalTestInstructionExecutionResultMessage != nil {
+				common_config.Logger.WithFields(logrus.Fields{
+					"Id":                                   "ff0d86e2-63d2-4118-ac9b-5b18a5d70cde",
+					"common_config.ApplicationRuntimeUuid": common_config.ApplicationRuntimeUuid,
+					"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+				}).Debug("Found TeTestInstructionExecution in database that belongs to this 'ApplicationRuntimeUuid'")
 
-			// Send Message to TestInstructionExecutionEngine via channel
-			*testInstructionExecutionEngine.TestInstructionExecutionEngineObject.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
+				// Create Message to be sent to TestInstructionExecutionEngine
+				channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
+					ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessFinalTestInstructionExecutionResultMessage,
+					FinalTestInstructionExecutionResultMessage: finalTestInstructionExecutionResultMessage,
+				}
+
+				// Send Message to TestInstructionExecutionEngine via channel
+				*testInstructionExecutionEngine.TestInstructionExecutionEngineObject.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
+
+			}
 
 		}
 	}
-}
-
-// Load TestInstructionExecution from database and then remove data in database
-func loadTestInstructionExecutionResultMessage(
-	testInstructionExecutionUuid string,
-	testInstructionVersion int32) (
-	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage,
-	err error) {
-
-	return finalTestInstructionExecutionResultMessage, err
-
 }
 
 // Commit or Rollback changes 'TestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB' and send over Broadcast-channel
@@ -318,7 +317,7 @@ func prepareLoadTestInstructionExecutionResultMessage(
 	return finalTestInstructionExecutionResultMessage, err
 }
 
-// Prepare to Load TestInstructionExecution from database and then remove data in database
+// Load TestInstructionExecution from database and then remove data in database
 func loadTestInstructionExecutionResultMessageAndThenDeleteFromDatabaseInCloudDB(
 	dbTransaction pgx.Tx,
 	testInstructionExecutionUuid string,
@@ -429,12 +428,12 @@ func loadTestInstructionExecutionResultMessageFromDatabaseInCloudDB(
 
 	// Temp variables
 	var (
-		tempFinalTestInstructionExecutionResultMessages  []*fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
-		tempApplicationExecutionRuntimeUuid              string
-		tempTestInstructionExecutionVersion              int
-		tempTestInstructionExecutionStatus               int
-		tempTestInstructionExecutionEndTimeStampAsString string
-		tempTimeStampAsString                            string
+		tempFinalTestInstructionExecutionResultMessages []*fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
+		tempApplicationExecutionRuntimeUuid             string
+		tempTestInstructionExecutionVersion             int
+		tempTestInstructionExecutionStatus              int
+		tempTestInstructionExecutionEndTimeStamp        time.Time
+		tempTimeStamp                                   time.Time
 	)
 
 	// Extract data from DB result set
@@ -448,8 +447,8 @@ func loadTestInstructionExecutionResultMessageFromDatabaseInCloudDB(
 			&tempFinalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
 			&tempTestInstructionExecutionVersion,
 			&tempTestInstructionExecutionStatus,
-			&tempTestInstructionExecutionEndTimeStampAsString,
-			&tempTimeStampAsString,
+			&tempTestInstructionExecutionEndTimeStamp,
+			&tempTimeStamp,
 		)
 
 		if err != nil {
@@ -461,6 +460,14 @@ func loadTestInstructionExecutionResultMessageFromDatabaseInCloudDB(
 
 			return nil, err
 		}
+
+		// Convert 'tempTestInstructionExecutionEndTimeStamp' into gRPC-version
+		tempFinalTestInstructionExecutionResultMessage.TestInstructionExecutionEndTimeStamp =
+			timestamppb.New(tempTestInstructionExecutionEndTimeStamp)
+
+		// Convert 'tempTestInstructionExecutionStatus' into gRPC-version
+		tempFinalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus =
+			fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum(tempTestInstructionExecutionStatus)
 
 		// If there are more than one message(shouldn't be so) then add it to slice of messages
 		tempFinalTestInstructionExecutionResultMessages = append(tempFinalTestInstructionExecutionResultMessages,
