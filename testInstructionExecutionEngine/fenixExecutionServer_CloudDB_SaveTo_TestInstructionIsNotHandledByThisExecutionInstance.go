@@ -1,7 +1,6 @@
 package testInstructionExecutionEngine
 
 import (
-	broadcastingEngine_TestInstructionNotHandledByThisInstance "FenixExecutionServer/broadcastEngine_TestInstructionNotHandledByThisInstance"
 	"FenixExecutionServer/common_config"
 	"context"
 	"github.com/jackc/pgx/v4"
@@ -16,7 +15,7 @@ import (
 func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackTestInstructionIsNotHandledByThisExecutionInstance(
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
-	broadcastingMessageForExecutionsReference *broadcastingEngine_TestInstructionNotHandledByThisInstance.BroadcastingMessageForTestInstructionExecutionsStruct) {
+	broadcastingMessageForExecutionsReference *common_config.BroadcastingMessageForTestInstructionExecutionsStruct) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
@@ -27,7 +26,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackTes
 		dbTransaction.Commit(context.Background())
 
 		// Send message to BroadcastEngine over channel
-		broadcastingEngine_TestInstructionNotHandledByThisInstance.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+		common_config.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
 
 		common_config.Logger.WithFields(logrus.Fields{
 			"id":                               "f88f7282-be22-43eb-bed0-a6e600d3db99",
@@ -78,7 +77,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 	var doCommitNotRoleBack bool
 
 	// Message to be sent over Broadcast-system that this ExecutionInstance is not responsible for this TestInstructionExecution
-	var broadcastingMessageForExecutions broadcastingEngine_TestInstructionNotHandledByThisInstance.
+	var broadcastingMessageForExecutions common_config.
 		BroadcastingMessageForTestInstructionExecutionsStruct
 
 	// Standard is to do a Rollback
@@ -103,12 +102,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 	}
 
 	// Create the BroadCastMessage for the TestInstructionExecution
-	var testInstructionExecutionBroadcastMessages []broadcastingEngine_TestInstructionNotHandledByThisInstance.
+	var testInstructionExecutionBroadcastMessages []common_config.
 		TestInstructionExecutionBroadcastMessageStruct
-	var testInstructionExecutionBroadcastMessage broadcastingEngine_TestInstructionNotHandledByThisInstance.
+	var testInstructionExecutionBroadcastMessage common_config.
 		TestInstructionExecutionBroadcastMessageStruct
 
-	testInstructionExecutionBroadcastMessage = broadcastingEngine_TestInstructionNotHandledByThisInstance.
+	testInstructionExecutionBroadcastMessage = common_config.
 		TestInstructionExecutionBroadcastMessageStruct{
 		TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
 		TestInstructionExecutionVersion: "1",
@@ -116,7 +115,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 	testInstructionExecutionBroadcastMessages = append(testInstructionExecutionBroadcastMessages,
 		testInstructionExecutionBroadcastMessage)
 
-	broadcastingMessageForExecutions = broadcastingEngine_TestInstructionNotHandledByThisInstance.
+	broadcastingMessageForExecutions = common_config.
 		BroadcastingMessageForTestInstructionExecutionsStruct{
 		OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
 		TestInstructionExecutions:        testInstructionExecutionBroadcastMessages,

@@ -17,26 +17,12 @@ const BroadcastEngineChannelSize = 500
 // The size of warning level for the channel
 const BroadcastEngineChannelWarningLevel = 400
 
-var BroadcastEngineMessageChannel BroadcastEngineMessageChannelType
-
-type BroadcastEngineMessageChannelType chan BroadcastingMessageForTestInstructionExecutionsStruct
-
-type BroadcastingMessageForTestInstructionExecutionsStruct struct {
-	OriginalMessageCreationTimeStamp string                                           `json:"originalmessagecreationtimestamp"`
-	TestInstructionExecutions        []TestInstructionExecutionBroadcastMessageStruct `json:"testinstructionsexecutions"`
-}
-
-type TestInstructionExecutionBroadcastMessageStruct struct {
-	TestInstructionExecutionUuid    string `json:"testinstructionexecutionuuid"`
-	TestInstructionExecutionVersion string `json:"testinstructionexecutionversion"`
-}
-
 var err error
 
 func InitiateAndStartBroadcastNotifyEngine_TestInstructionNotHandledByThisInstance() {
 
-	BroadcastEngineMessageChannel = make(chan BroadcastingMessageForTestInstructionExecutionsStruct, BroadcastEngineChannelSize)
-	var broadcastingMessageForExecutions BroadcastingMessageForTestInstructionExecutionsStruct
+	common_config.BroadcastEngineMessageChannel = make(chan common_config.BroadcastingMessageForTestInstructionExecutionsStruct, BroadcastEngineChannelSize)
+	var broadcastingMessageForExecutions common_config.BroadcastingMessageForTestInstructionExecutionsStruct
 	var broadcastingMessageForExecutionsAsByteSlice []byte
 	var broadcastingMessageForExecutionsAsByteSliceAsString string
 	var err error
@@ -44,10 +30,10 @@ func InitiateAndStartBroadcastNotifyEngine_TestInstructionNotHandledByThisInstan
 
 	for {
 
-		broadcastingMessageForExecutions = <-BroadcastEngineMessageChannel
+		broadcastingMessageForExecutions = <-common_config.BroadcastEngineMessageChannel
 
 		// If size of Channel > 'BroadcastEngineChannelWarningLevel' then log Warning message
-		channelSize = len(BroadcastEngineMessageChannel)
+		channelSize = len(common_config.BroadcastEngineMessageChannel)
 		if channelSize > BroadcastEngineChannelWarningLevel {
 			common_config.Logger.WithFields(logrus.Fields{
 				"Id":                                 "92359ec0-8e17-4203-be07-ac97e2a95a42",

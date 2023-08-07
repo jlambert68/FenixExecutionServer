@@ -39,7 +39,7 @@ func InitiateAndStartBroadcastNotifyEngine() {
 func BroadcastListener() error {
 
 	var err error
-	var broadcastingMessageForExecutions BroadcastingMessageForTestInstructionExecutionsStruct
+	var broadcastingMessageForExecutions common_config.BroadcastingMessageForTestInstructionExecutionsStruct
 
 	if fenixSyncShared.DbPool == nil {
 		return errors.New("empty pool reference")
@@ -65,9 +65,9 @@ func BroadcastListener() error {
 			}).Error("Error waiting for notification")
 
 			// Restart broadcast engine when error occurs. Most probably because nothing is coming
-			defer func() {
-				_ = BroadcastListener()
-			}()
+			//defer func() {
+			//	_ = BroadcastListener()
+			//}()
 			return err
 		}
 
@@ -94,7 +94,7 @@ func BroadcastListener() error {
 }
 
 // Break down 'broadcastingMessageForExecutions' and send correct content to correct sSubscribers.
-func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions BroadcastingMessageForTestInstructionExecutionsStruct) {
+func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions common_config.BroadcastingMessageForTestInstructionExecutionsStruct) {
 	/*
 		//var originalMessageCreationTimeStamp time.Time
 		var err error

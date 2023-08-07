@@ -105,6 +105,9 @@ func fenixExecutionServerMain() {
 	//its status. Messages are sent to BroadcastEngine using channels
 	go broadcastingEngine_ExecutionStatusUpdate.InitiateAndStartBroadcastNotifyEngine_ExecutionStatusUpdate()
 
+	// Start listen for Broadcasts regarding change when a TestInstructionExecution is handled by other ExecutionInstance
+	broadcastEngine_TestInstructionNotHandledByThisInstance.InitiateAndStartBroadcastNotifyEngine()
+
 	// Start BroadcastingEngine, for sending info about when a TestInstructionExecution is handled by other ExecutionInstance
 	//its status. Messages are sent to BroadcastEngine using channels
 	go broadcastEngine_TestInstructionNotHandledByThisInstance.InitiateAndStartBroadcastNotifyEngine_TestInstructionNotHandledByThisInstance()
