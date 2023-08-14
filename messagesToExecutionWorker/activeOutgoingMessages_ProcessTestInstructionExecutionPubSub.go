@@ -6,24 +6,27 @@ import (
 	"fmt"
 	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
-// SendProcessTestInstructionExecutionToExecutionWorkerServer - Fenix Execution Server send a task to execute to correct Worker
-func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SendProcessTestInstructionExecutionToExecutionWorkerServer(
+// SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub
+// Fenix Execution Server send a task to execute to correct Worker
+// Is used when worker use PubSub to forward TestInstructionExecution to Connector
+func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub(
 	domainUuid string,
-	processTestInstructionExecutionRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest) (
+	processTestInstructionExecutionRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest) (
 	processTestInstructionExecutionResponse *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse) {
 
 	common_config.Logger.WithFields(logrus.Fields{
-		"id":                                     "3d3de917-77fe-4768-a5a5-7e107173d74f",
+		"id":                                     "9e00dd90-e39f-4f86-85b3-7d98d0023ecc",
 		"domainUuid":                             domainUuid,
 		"processTestInstructionExecutionRequest": processTestInstructionExecutionRequest,
-	}).Debug("Incoming 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
+	}).Debug("Incoming 'SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub'")
 
 	common_config.Logger.WithFields(logrus.Fields{
-		"id": "787a2437-7a81-4629-a8ef-ca676a9e18d3",
-	}).Debug("Outgoing 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
+		"id": "c8af323f-e3a0-4870-b83c-b55fc60c89b0",
+	}).Debug("Outgoing 'SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub'")
 
 	var ctx context.Context
 	var returnMessageAckNack bool
@@ -72,7 +75,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	//ctx, cancel := context.WithDeadline(ctx, clientDeadline)
 	defer func() {
 		common_config.Logger.WithFields(logrus.Fields{
-			"ID": "e4992093-6d22-40d6-a30c-f1e14e05253d",
+			"ID": "fb31e91a-0ace-4713-8b22-5f2bb0f7f169",
 		}).Debug("Running Defer Cancel function")
 		cancel()
 	}()
@@ -111,7 +114,10 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	}
 
 	// Finalize message to be sent to Worker
-	processTestInstructionExecutionRequest.ProtoFileVersionUsedByClient = fenixExecutionWorkerGrpcApi.CurrentFenixExecutionWorkerProtoFileVersionEnum(common_config.GetHighestExecutionWorkerProtoFileVersion(domainUuid))
+	processTestInstructionExecutionRequest.ProtoFileVersionUsedByClient = fenixExecutionWorkerGrpcApi.
+		ProcessTestInstructionExecutionPubSubRequest_CurrentFenixExecutionWorkerProtoFileVersionEnum(
+			fenixExecutionWorkerGrpcApi.CurrentFenixExecutionWorkerProtoFileVersionEnum(
+				common_config.GetHighestExecutionWorkerProtoFileVersion(domainUuid)))
 
 	// slice with sleep time, in milliseconds, between each attempt to do gRPC-call to Worker
 	var sleepTimeBetweenGrpcCallAttempts []int
@@ -126,10 +132,30 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	for {
 
 		// Do gRPC-call to Worker
-		processTestInstructionExecutionResponse, err = workerVariables.FenixExecutionWorkerServerGrpcClient.ProcessTestInstructionExecution(ctx, processTestInstructionExecutionRequest)
+		var ackNackResponse *fenixExecutionWorkerGrpcApi.AckNackResponse
+		ackNackResponse, err = workerVariables.FenixExecutionWorkerServerGrpcClient.
+			ProcessTestInstructionExecutionPubSub(ctx, processTestInstructionExecutionRequest)
 
-		// Exit when there was a success call
-		if err == nil && processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
+		// Convert to "temporary" response and Exit when there was a success call
+		if err == nil && ackNackResponse.AckNack == true {
+			processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse{
+				AckNackResponse: &fenixExecutionWorkerGrpcApi.AckNackResponse{
+					AckNack:                      true,
+					Comments:                     "",
+					ErrorCodes:                   nil,
+					ProtoFileVersionUsedByClient: ackNackResponse.GetProtoFileVersionUsedByClient(),
+				},
+				TestInstructionExecutionUuid:   processTestInstructionExecutionRequest.TestInstruction.GetTestInstructionExecutionUuid(),
+				ExpectedExecutionDuration:      nil, // Fixed below
+				TestInstructionCanBeReExecuted: false,
+			}
+
+			// Set 'ExpectedExecutionDuration' to be 5 minutes, the time the Connector has to do response back to Worker(and Server)
+			var temporaryTimeOutTime *timestamppb.Timestamp
+			temporaryTimeOutTime = timestamppb.New(time.Now().Add(5 * time.Minute))
+
+			processTestInstructionExecutionResponse.ExpectedExecutionDuration = temporaryTimeOutTime
+
 			return processTestInstructionExecutionResponse
 		}
 

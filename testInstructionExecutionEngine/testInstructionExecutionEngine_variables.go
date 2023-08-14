@@ -51,16 +51,18 @@ const (
 	ChannelCommandProcessFinalTestInstructionExecutionResultMessage
 	ChannelCommandReCreateTimeOutTimersAtApplicationStartUp
 	ChannelCommandTestInstructionIsNotHandledByThisExecutionInstance
+	ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse
 )
 
 // ChannelCommandStruct
 // The struct for the message that are sent over the channel to the executionEngine
 type ChannelCommandStruct struct {
-	ChannelCommand                             ChannelCommandType
-	ChannelCommandTestCaseExecutions           []ChannelCommandTestCaseExecutionStruct
-	ChannelCommandTestInstructionExecutions    []ChannelCommandTestInstructionExecutionStruct
-	ReturnChannelWithDBErrorReference          *ReturnChannelWithDBErrorType
-	FinalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
+	ChannelCommand                                ChannelCommandType
+	ChannelCommandTestCaseExecutions              []ChannelCommandTestCaseExecutionStruct
+	ChannelCommandTestInstructionExecutions       []ChannelCommandTestInstructionExecutionStruct
+	ReturnChannelWithDBErrorReference             *ReturnChannelWithDBErrorType
+	FinalTestInstructionExecutionResultMessage    *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
+	ProcessTestInstructionExecutionResponseStatus *fenixExecutionServerGrpcApi.ProcessTestInstructionExecutionResponseStatus
 }
 
 // ChannelCommandTestCaseExecutionStruct

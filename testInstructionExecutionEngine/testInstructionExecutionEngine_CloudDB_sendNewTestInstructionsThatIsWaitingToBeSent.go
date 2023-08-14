@@ -660,7 +660,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 		// Create a message with TestInstructionExecution to be sent to TimeOutEngine ta be able to allocate a TimeOutTimer
 		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
 		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
-			TestInstructionExecutionUuid:    testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+			TestInstructionExecutionUuid: testInstructionToBeSentToExecutionWorkers.
+				processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
 			TestInstructionExecutionVersion: 1,
 		}
 
@@ -679,9 +680,79 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
 		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
 
-		responseFromWorker := fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(
-			testInstructionToBeSentToExecutionWorkers.domainUuid,
-			testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
+		var responseFromWorker *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse
+
+		// Depending on if Worker use PubSub to forward message to Connector or not
+		if common_config.WorkerIsUsingPubSubWhenSendingTestInstructionExecutions == true {
+			// Worker is using PubSub to forward message to Connector
+
+			//Convert outgoing message to Worker to fit PubSub-process
+			var processTestInstructionExecutionPubSubRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest
+			processTestInstructionExecutionPubSubRequest = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest{
+				ProtoFileVersionUsedByClient: fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_CurrentFenixExecutionWorkerProtoFileVersionEnum(testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.ProtoFileVersionUsedByClient),
+				TestInstruction: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionExecutionMessage{
+					TestInstructionExecutionUuid: testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+					TestInstructionUuid:          testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionUuid,
+					TestInstructionName:          testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionName,
+					MajorVersionNumber:           testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.MajorVersionNumber,
+					MinorVersionNumber:           testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.MinorVersionNumber,
+					TestInstructionAttributes:    nil, // Is set below
+				},
+				TestData: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestDataMessage{
+					TestDataSetUuid:           testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestData.TestDataSetUuid,
+					ManualOverrideForTestData: nil, // Is set below
+				},
+			}
+
+			// Process 'TestInstructionAttributes'
+			var tempTestInstructionAttributes []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage
+			for _, testInstructionAttributesForReversed := range testInstructionToBeSentToExecutionWorkers.
+				processTestInstructionExecutionRequest.TestInstruction.TestInstructionAttributes {
+
+				var tempTestInstructionAttribute *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage
+				tempTestInstructionAttribute = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage{
+					TestInstructionAttributeType:     fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(testInstructionAttributesForReversed.TestInstructionAttributeType),
+					TestInstructionAttributeUuid:     testInstructionAttributesForReversed.TestInstructionAttributeUuid,
+					TestInstructionAttributeName:     testInstructionAttributesForReversed.TestInstructionAttributeName,
+					AttributeValueAsString:           testInstructionAttributesForReversed.AttributeValueAsString,
+					AttributeValueUuid:               testInstructionAttributesForReversed.AttributeValueUuid,
+					TestInstructionAttributeTypeUuid: testInstructionAttributesForReversed.TestInstructionAttributeTypeUuid,
+					TestInstructionAttributeTypeName: testInstructionAttributesForReversed.TestInstructionAttributeTypeName,
+				}
+
+				// Append to slice of attributes
+				tempTestInstructionAttributes = append(tempTestInstructionAttributes, tempTestInstructionAttribute)
+			}
+
+			processTestInstructionExecutionPubSubRequest.TestInstruction.TestInstructionAttributes = tempTestInstructionAttributes
+
+			// Process 'ManualOverrideForTestData'
+			var tempManualOverrideForTestDataMessage []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestDataMessage_ManualOverrideForTestDataMessage
+			for _, testInstructionAttributesForReversed := range testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionAttributes {
+
+				var tempManualOverrideForTestData *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestDataMessage_ManualOverrideForTestDataMessage
+				tempManualOverrideForTestData = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestDataMessage_ManualOverrideForTestDataMessage{
+					TestDataSetAttributeUuid:  testInstructionAttributesForReversed.TestInstructionAttributeUuid,
+					TestDataSetAttributeName:  testInstructionAttributesForReversed.TestInstructionAttributeName,
+					TestDataSetAttributeValue: testInstructionAttributesForReversed.AttributeValueUuid,
+				}
+
+				// Append to slice of attributes
+				tempManualOverrideForTestDataMessage = append(tempManualOverrideForTestDataMessage, tempManualOverrideForTestData)
+			}
+
+			processTestInstructionExecutionPubSubRequest.TestData.ManualOverrideForTestData = tempManualOverrideForTestDataMessage
+
+			responseFromWorker = fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub(
+				testInstructionToBeSentToExecutionWorkers.domainUuid,
+				processTestInstructionExecutionPubSubRequest)
+
+		} else {
+			// Worker is not using PubSub to forward message to Connector
+			responseFromWorker = fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(
+				testInstructionToBeSentToExecutionWorkers.domainUuid,
+				testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
+		}
 
 		executionEngine.logger.WithFields(logrus.Fields{
 			"id":                 "7a725e82-d3f4-4cb6-9910-099d8d6dc14e",

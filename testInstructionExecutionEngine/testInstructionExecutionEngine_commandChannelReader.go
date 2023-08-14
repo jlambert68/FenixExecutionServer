@@ -93,6 +93,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 				executionTrackNumber,
 				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
+		case ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse:
+			executionEngine.triggerTUpdateTimeOutTimerBasedOnConnectorResponse(
+				executionTrackNumber,
+				incomingChannelCommand.)
+
 		// No other command is supported
 		default:
 			executionEngine.logger.WithFields(logrus.Fields{

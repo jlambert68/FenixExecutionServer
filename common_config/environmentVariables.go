@@ -52,4 +52,7 @@ var NumberOfMinutesBeforeNextTimeOutTimerToStart = -2 * time.Minute
 // GCPProjectId is the GCP project where the application will be deployed into
 var GCPProjectId string
 
+// WorkerIsUsingPubSubWhenSendingTestInstructionExecutions decides which gRPC-call to worker that will be used
+var WorkerIsUsingPubSubWhenSendingTestInstructionExecutions bool
+
 var LogAllSQLs bool

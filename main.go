@@ -152,5 +152,11 @@ func init() {
 
 	}
 
+	// Extract environment variable 'WorkerIsUsingPubSubWhenSendingTestInstructionExecutions'
+	common_config.WorkerIsUsingPubSubWhenSendingTestInstructionExecutions, err = strconv.ParseBool(mustGetenv("WorkerIsUsingPubSubWhenSendingTestInstructionExecutions"))
+	if err != nil {
+		fmt.Println("Couldn't convert environment variable 'WorkerIsUsingPubSubWhenSendingTestInstructionExecutions' to an boolean, error: ", err)
+		os.Exit(0)
+	}
 
 }
