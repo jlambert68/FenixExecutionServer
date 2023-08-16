@@ -9,7 +9,7 @@ import (
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"log"
 	"strconv"
 	"time"
@@ -154,6 +154,7 @@ func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions co
 				"tempTestInstructionExecution.TestInstructionExecutionMessageReceivedByWrongExecutionType": tempTestInstructionExecution.TestInstructionExecutionMessageReceivedByWrongExecutionType,
 			}).Error("Couldn't convert 'TestInstructionExecutionVersion' into an integer. Dropping TestInstructionExecution")
 
+			// Drop this message and continue with next message
 			continue
 		}
 
@@ -193,7 +194,6 @@ func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions co
 			// *** TestInstructionExecution is handled by this Execution-instance ***
 
 			// Load TestInstructionExecution from database and then remove data in database
-			var finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
 			var messagesReceivedByWrongExecutionInstance []*common_config.TestInstructionExecutionMessageReceivedByWrongExecutionStruct
 			messagesReceivedByWrongExecutionInstance, err = prepareLoadTestInstructionExecutionMessagesReceivedByWrongInstance(
 				tempTestInstructionExecution.TestInstructionExecutionUuid,
@@ -201,46 +201,118 @@ func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions co
 
 			if err != nil {
 				common_config.Logger.WithFields(logrus.Fields{
-					"Id":  "26fa6d54-d825-4b1b-89a3-012fc2bbd1c9",
+					"Id":  "4437dfb5-a568-4e1b-b1fb-cbc8cf4913ee",
 					"err": err,
 					"tempTestInstructionExecution.TestInstructionExecutionUuid":    tempTestInstructionExecution.TestInstructionExecutionUuid,
 					"tempTestInstructionExecution.TestInstructionExecutionVersion": tempTestInstructionExecution.TestInstructionExecutionVersion,
-				}).Error("Problems when reading TestInstructionExecution from database. Dropping TestInstructionExecution")
+				}).Error("Problems when reading messages, regarding TestInstructionExecution, received by the wrong Execution-instance")
 
+				// Drop this message and continue with next message
 				continue
 			}
 
-			// Convert 'tempTestInstructionExecutionEndTimeStamp' into gRPC-version
-			tempFinalTestInstructionExecutionResultMessage.TestInstructionExecutionEndTimeStamp =
-				timestamppb.New(tempTestInstructionExecutionEndTimeStamp)
+			// Loop through the messaged and process them
+			for _, tempMessageReceivedByWrongExecutionInstance := range messagesReceivedByWrongExecutionInstance {
 
-			// Convert 'tempTestInstructionExecutionStatus' into gRPC-version
-			tempFinalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus =
-				fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum(tempTestInstructionExecutionStatus)
+				// What kind of message is it?
+				switch tempMessageReceivedByWrongExecutionInstance.MessageType {
 
-			// If there are more than one message(shouldn't be so) then add it to slice of messages
-			tempFinalTestInstructionExecutionResultMessages = append(tempFinalTestInstructionExecutionResultMessages,
-				&tempFinalTestInstructionExecutionResultMessage)
+				case common_config.FinalTestInstructionExecutionResultMessageType:
+					// Final Execution result for TestInstructionExecution
 
-			// When there exist a 'finalTestInstructionExecutionResultMessage' then "Simulate" that a gRPC-call was made from Worker, regarding 'ReportCompleteTestInstructionExecutionResult'
-			if finalTestInstructionExecutionResultMessage != nil {
-				common_config.Logger.WithFields(logrus.Fields{
-					"Id":                                   "ff0d86e2-63d2-4118-ac9b-5b18a5d70cde",
-					"common_config.ApplicationRuntimeUuid": common_config.ApplicationRuntimeUuid,
-					"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
-				}).Debug("Found TeTestInstructionExecution in database that belongs to this 'ApplicationRuntimeUuid'")
+					// Convert json-strings into byte-arrays
+					var tempFinalTestInstructionExecutionResultMessageAsByteArray []byte
+					tempFinalTestInstructionExecutionResultMessageAsByteArray = []byte(tempMessageReceivedByWrongExecutionInstance.MessageAsJsonString)
 
-				// Create Message to be sent to TestInstructionExecutionEngine
-				channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-					ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessFinalTestInstructionExecutionResultMessage,
-					FinalTestInstructionExecutionResultMessage: finalTestInstructionExecutionResultMessage,
+					// Convert json-byte-arrays into proto-messages
+					var tempFinalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
+					err = protojson.Unmarshal(tempFinalTestInstructionExecutionResultMessageAsByteArray, tempFinalTestInstructionExecutionResultMessage)
+					if err != nil {
+						common_config.Logger.WithFields(logrus.Fields{
+							"Id":    "e3081dc2-c5f8-4167-8234-dec87d86b461",
+							"Error": err,
+							"tempMessageReceivedByWrongExecutionInstance.MessageAsJsonString": tempMessageReceivedByWrongExecutionInstance.MessageAsJsonString,
+						}).Error("Something went wrong when converting 'tempProcessTestInstructionExecutionResponseStatusMessageAsByteArray' into proto-message")
+
+						// Drop this message and continue with next message
+						continue
+					}
+
+					// When there exist a 'finalTestInstructionExecutionResultMessage' then "Simulate" that
+					// a gRPC-call was made from Worker, regarding 'ReportCompleteTestInstructionExecutionResult'
+					if tempFinalTestInstructionExecutionResultMessage != nil {
+						common_config.Logger.WithFields(logrus.Fields{
+							"Id":                                   "bdd0d791-dbc1-4ebe-b423-0a8cb3c41c73",
+							"common_config.ApplicationRuntimeUuid": common_config.ApplicationRuntimeUuid,
+							"tempFinalTestInstructionExecutionResultMessage": tempFinalTestInstructionExecutionResultMessage,
+						}).Debug("Found 'FinalTestInstructionExecutionResultMessage' in database that belongs to this 'ApplicationRuntimeUuid'")
+
+						// Create Message to be sent to TestInstructionExecutionEngine
+						var channelCommandMessage testInstructionExecutionEngine.ChannelCommandStruct
+						channelCommandMessage = testInstructionExecutionEngine.ChannelCommandStruct{
+							ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessFinalTestInstructionExecutionResultMessage,
+							FinalTestInstructionExecutionResultMessage: tempFinalTestInstructionExecutionResultMessage,
+						}
+
+						// Send Message to TestInstructionExecutionEngine via channel
+						*testInstructionExecutionEngine.TestInstructionExecutionEngineObject.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
+					}
+
+				case common_config.ProcessTestInstructionExecutionResponseStatus:
+					// The response that a Connector har received a TestInstructionExecution, to be execution
+
+					// Convert json-strings into byte-arrays
+					var tempProcessTestInstructionExecutionResponseStatusMessageAsByteArray []byte
+					tempProcessTestInstructionExecutionResponseStatusMessageAsByteArray = []byte(tempMessageReceivedByWrongExecutionInstance.MessageAsJsonString)
+
+					// Convert json-byte-arrays into proto-messages
+					var tempProcessTestInstructionExecutionResponseStatusMessage *fenixExecutionServerGrpcApi.ProcessTestInstructionExecutionResponseStatus
+					err = protojson.Unmarshal(tempProcessTestInstructionExecutionResponseStatusMessageAsByteArray, tempProcessTestInstructionExecutionResponseStatusMessage)
+					if err != nil {
+						common_config.Logger.WithFields(logrus.Fields{
+							"Id":    "78482133-a267-45d6-a43a-2c3f2ad6d540",
+							"Error": err,
+							"tempMessageReceivedByWrongExecutionInstance.MessageAsJsonString": tempMessageReceivedByWrongExecutionInstance.MessageAsJsonString,
+						}).Error("Something went wrong when converting 'tempProcessTestInstructionExecutionResponseStatusMessageAsByteArray' into proto-message")
+
+						// Drop this message and continue with next message
+						continue
+					}
+
+					// When there exist a 'tempProcessTestInstructionExecutionResponseStatusMessage' then "Simulate"
+					// that a gRPC-call was made from Worker, regarding 'ProcessResponseTestInstructionExecution'
+					if tempProcessTestInstructionExecutionResponseStatusMessage != nil {
+						common_config.Logger.WithFields(logrus.Fields{
+							"Id":                                   "788dea5f-31e1-4145-ad76-fd5e420ad230",
+							"common_config.ApplicationRuntimeUuid": common_config.ApplicationRuntimeUuid,
+							"finalTestInstructionExecutionResultMessage": tempProcessTestInstructionExecutionResponseStatusMessage,
+						}).Debug("Found 'ProcessTestInstructionExecutionResponseStatusMessage' in database that belongs to this 'ApplicationRuntimeUuid'")
+
+						// Create Message to be sent to TestInstructionExecutionEngine
+						var channelCommandMessage testInstructionExecutionEngine.ChannelCommandStruct
+						channelCommandMessage = testInstructionExecutionEngine.ChannelCommandStruct{
+							ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionResponseStatusIsNotHandledByThisExecutionInstance,
+							ProcessTestInstructionExecutionResponseStatus: tempProcessTestInstructionExecutionResponseStatusMessage,
+						}
+
+						// Send Message to TestInstructionExecutionEngine via channel
+						*testInstructionExecutionEngine.TestInstructionExecutionEngineObject.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
+					}
+
+				default:
+					// Unknown MessageTyp, can happen when new message type appears but is missing in this 'switch'
+					common_config.Logger.WithFields(logrus.Fields{
+						"Id": "42411d3a-e957-431c-ad34-89eb6079ef9c",
+						"tempMessageReceivedByWrongExecutionInstance": tempMessageReceivedByWrongExecutionInstance,
+					}).Error("Unknown MessageType from message stored in Database")
+
+					// Drop this message and continue with next message
+					continue
+
 				}
-
-				// Send Message to TestInstructionExecutionEngine via channel
-				*testInstructionExecutionEngine.TestInstructionExecutionEngineObject.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
-
 			}
 
 		}
+
 	}
 }

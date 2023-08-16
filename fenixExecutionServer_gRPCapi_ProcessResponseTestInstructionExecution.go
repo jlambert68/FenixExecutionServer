@@ -54,8 +54,6 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 	executionTrackNumber = common_config.CalculateExecutionTrackNumber(
 		processTestInstructionExecutionResponseStatus.TestInstructionExecutionUuid)
 
-	xxx
-
 	// *** Check if the TestInstruction is kept in this ExecutionServer-instance ***
 
 	// Create Response channel from TimeOutEngine to get answer if TestInstructionExecution is handled by this instance
@@ -73,7 +71,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 		TestInstructionExecutionCanBeReExecuted: false,
 		TimeOutTime:                             time.Time{},
 	}
-	//fortsätt här
+
 	var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
 	tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
 		TimeOutChannelCommand: common_config.
@@ -101,7 +99,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 		// Create Message to be sent to TestInstructionExecutionEngine
 		channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
 			ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessFinalTestInstructionExecutionResultMessage,
-			FinalTestInstructionExecutionResultMessage: processTestInstructionExecutionResponseStatus,
+			ProcessTestInstructionExecutionResponseStatus: processTestInstructionExecutionResponseStatus,
 		}
 
 		// Send Message to TestInstructionExecutionEngine via channel
@@ -110,14 +108,14 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 	} else {
 		// TestInstructionExecution is NOT handled by this Execution-instance
 		common_config.Logger.WithFields(logrus.Fields{
-			"id": "dfe9b1f8-05c3-4553-b6d3-134d782c8a96",
+			"id": "24873427-747c-49b9-8c42-0bc745651abb",
 			"processTestInstructionExecutionResponseStatus.TestInstructionExecutionUuid": processTestInstructionExecutionResponseStatus.TestInstructionExecutionUuid,
 		}).Info("TestInstructionExecutionUuid is not handled by this Execution-instance")
 
 		// Create Message to be sent to TestInstructionExecutionEngine
 		channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
 			ChannelCommand: testInstructionExecutionEngine.ChannelCommandFinalTestInstructionExecutionResultIsNotHandledByThisExecutionInstance,
-			FinalTestInstructionExecutionResultMessage: processTestInstructionExecutionResponseStatus,
+			ProcessTestInstructionExecutionResponseStatus: processTestInstructionExecutionResponseStatus,
 		}
 
 		// Send Message to TestInstructionExecutionEngine via channel

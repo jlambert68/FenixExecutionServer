@@ -85,7 +85,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareTestInstruct
 			"id":    "c34396c6-ed28-46de-97a2-d92a62350c2b",
 			"error": err,
 			"processTestInstructionExecutionResponseStatus": processTestInstructionExecutionResponseStatus,
-		}).Error("Problem when saving 'processTestInstructionExecutionResponseStatus' to database in 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB', will dropp 'finalTestInstructionExecutionResultMessage'")
+		}).Error("Problem when saving 'processTestInstructionExecutionResponseStatus' to database in " +
+			"'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB', will drop 'processTestInstructionExecutionResponseStatus'-message")
 
 		return
 	}
