@@ -538,7 +538,11 @@ type processTestInstructionExecutionRequestAndResponseMessageContainer struct {
 }
 
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
-func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct, rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct) (testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestInstructionsAndAttributeIntoGrpcMessages(
+	rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct,
+	rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct) (
+	testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer,
+	err error) {
 
 	attributesMap := make(map[string]*[]newTestInstructionAttributeToBeSentToExecutionWorkersStruct)
 
@@ -1005,7 +1009,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 }
 
 // Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as respons
-func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersForTestInstructionExecutions(
+	testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (
+	err error) {
 
 	// If there are nothing to update then just exit
 	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {

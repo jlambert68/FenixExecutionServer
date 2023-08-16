@@ -54,6 +54,8 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 	executionTrackNumber = common_config.CalculateExecutionTrackNumber(
 		processTestInstructionExecutionResponseStatus.TestInstructionExecutionUuid)
 
+	xxx
+
 	// *** Check if the TestInstruction is kept in this ExecutionServer-instance ***
 
 	// Create Response channel from TimeOutEngine to get answer if TestInstructionExecution is handled by this instance
@@ -71,7 +73,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 		TestInstructionExecutionCanBeReExecuted: false,
 		TimeOutTime:                             time.Time{},
 	}
-fortsätt här
+	//fortsätt här
 	var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
 	tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
 		TimeOutChannelCommand: common_config.
@@ -80,7 +82,7 @@ fortsätt här
 		TimeOutReturnChannelForTimeOutHasOccurred:                               nil,
 		TimeOutResponseChannelForDurationUntilTimeOutOccurs:                     nil,
 		TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstance: &timeOutResponseChannelForIsThisHandledByThisExecutionInstance,
-		SendID: "4a49cb94-3afc-42aa-9b72-b57010559c2c",
+		SendID: "30303c99-11ca-494d-a082-9f0e46bc3364",
 	}
 
 	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
@@ -114,7 +116,7 @@ fortsätt här
 
 		// Create Message to be sent to TestInstructionExecutionEngine
 		channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-			ChannelCommand: testInstructionExecutionEngine.ChannelCommandTestInstructionIsNotHandledByThisExecutionInstance,
+			ChannelCommand: testInstructionExecutionEngine.ChannelCommandFinalTestInstructionExecutionResultIsNotHandledByThisExecutionInstance,
 			FinalTestInstructionExecutionResultMessage: processTestInstructionExecutionResponseStatus,
 		}
 

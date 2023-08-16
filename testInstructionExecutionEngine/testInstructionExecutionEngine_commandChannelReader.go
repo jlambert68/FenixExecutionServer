@@ -88,15 +88,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		case ChannelCommandReCreateTimeOutTimersAtApplicationStartUp:
 			executionEngine.triggerReCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
 
-		case ChannelCommandTestInstructionIsNotHandledByThisExecutionInstance:
-			executionEngine.triggerTestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB(
+		case ChannelCommandFinalTestInstructionExecutionResultIsNotHandledByThisExecutionInstance:
+			executionEngine.triggerTestInstructionIsNotHandledByThisExecutionInstanceSaveFinalTestInstructionExecutionResultToCloudDB(
 				executionTrackNumber,
 				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
-		case ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse:
-			executionEngine.triggerTUpdateTimeOutTimerBasedOnConnectorResponse(
+		case ChannelCommandProcessTestInstructionExecutionResponseStatusIsNotHandledByThisExecutionInstance:
+			executionEngine.triggerTestInstructionIsNotHandledByThisExecutionInstanceSaveTestInstructionExecutionResponseStatusToCloudDB(
 				executionTrackNumber,
-				incomingChannelCommand.)
+				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
+
+		case ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse:
+			executionEngine.triggerUpdateTimeOutTimerBasedOnConnectorResponse(
+				executionTrackNumber,
+				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
 
 		// No other command is supported
 		default:
@@ -258,15 +263,40 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerReCreateTime
 
 }
 
-// Saving the final result in the CloudDB and broadcast message to other ExecutionInstances that their TestInstructionExecution can be picked up for processing
-func (executionEngine *TestInstructionExecutionEngineStruct) triggerTestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB(
+// Saving the final result in the CloudDB and broadcast message to other ExecutionInstances that their
+// 'FinalTestInstructionExecutionResultMessage' can be picked up for processing
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerTestInstructionIsNotHandledByThisExecutionInstanceSaveFinalTestInstructionExecutionResultToCloudDB(
 	executionTrackNumber int,
 	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) {
 
 	go func() {
-		executionEngine.prepareTestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB(
+		executionEngine.prepareTestInstructionIsNotHandledByThisExecutionInstanceSaveFinalTestInstructionExecutionResultToCloudDB(
 			executionTrackNumber,
 			finalTestInstructionExecutionResultMessage)
 	}()
 
+}
+
+// Saving the active response, from Connector, in the CloudDB and broadcast message to other ExecutionInstances that their
+// 'ProcessTestInstructionExecutionResponseStatus'-message can be picked up for processing
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerTestInstructionIsNotHandledByThisExecutionInstanceSaveTestInstructionExecutionResponseStatusToCloudDB(
+	executionTrackNumber int,
+	processTestInstructionExecutionResponseStatus *fenixExecutionServerGrpcApi.ProcessTestInstructionExecutionResponseStatus) {
+
+	go func() {
+		executionEngine.prepareTestInstructionIsNotHandledByThisExecutionInstanceSaveTestInstructionExecutionResponseStatusToCloudDB(
+			executionTrackNumber,
+			processTestInstructionExecutionResponseStatus)
+	}()
+
+}
+
+// The Connector has done active response, so update TimeOutTimer based on response
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerUpdateTimeOutTimerBasedOnConnectorResponse(
+	executionTrackNumber int,
+	processTestInstructionExecutionResponseStatus *fenixExecutionServerGrpcApi.ProcessTestInstructionExecutionResponseStatus) {
+
+	executionEngine.updateTimeOutTimerBasedOnConnectorResponse(
+		executionTrackNumber,
+		processTestInstructionExecutionResponseStatus)
 }

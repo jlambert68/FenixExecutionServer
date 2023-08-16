@@ -107,7 +107,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 
 		// Create Message to be sent to TestInstructionExecutionEngine
 		channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-			ChannelCommand: testInstructionExecutionEngine.ChannelCommandTestInstructionIsNotHandledByThisExecutionInstance,
+			ChannelCommand: testInstructionExecutionEngine.ChannelCommandFinalTestInstructionExecutionResultIsNotHandledByThisExecutionInstance,
 			FinalTestInstructionExecutionResultMessage: finalTestInstructionExecutionResultMessage,
 		}
 
