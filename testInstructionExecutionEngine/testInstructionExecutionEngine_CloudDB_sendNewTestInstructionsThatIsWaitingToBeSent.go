@@ -763,6 +763,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 			processTestInstructionExecutionPubSubRequest.TestData.ManualOverrideForTestData = tempManualOverrideForTestDataMessage
 
+			common_config.Logger.WithFields(logrus.Fields{
+				"id": "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
+				"processTestInstructionExecutionPubSubRequest":                                     processTestInstructionExecutionPubSubRequest,
+				"testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest,
+			}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
+
 			responseFromWorker = fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub(
 				testInstructionToBeSentToExecutionWorkers.domainUuid,
 				processTestInstructionExecutionPubSubRequest)
