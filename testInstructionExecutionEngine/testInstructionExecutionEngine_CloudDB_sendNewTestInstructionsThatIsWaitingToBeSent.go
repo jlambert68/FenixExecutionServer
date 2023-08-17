@@ -595,7 +595,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 
 				newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage =
 					&fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage{
-						TestInstructionAttributeType:     fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType),
+						TestInstructionAttributeType:     fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(0), //(attributeInSlice.testInstructionAttributeType),
 						TestInstructionAttributeUuid:     attributeInSlice.testInstructionAttributeUuid,
 						TestInstructionAttributeName:     attributeInSlice.testInstructionAttributeName,
 						AttributeValueAsString:           attributeInSlice.attributeValueAsString,
