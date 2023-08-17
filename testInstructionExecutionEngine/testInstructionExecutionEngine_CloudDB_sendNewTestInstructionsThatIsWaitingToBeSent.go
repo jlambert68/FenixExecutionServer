@@ -544,6 +544,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 	testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer,
 	err error) {
 
+	common_config.Logger.WithFields(logrus.Fields{
+		"id": "c3a06561-7fe7-48e4-ae88-b5afbc3d286b",
+		"rawTestInstructionsToBeSentToExecutionWorkers":          rawTestInstructionsToBeSentToExecutionWorkers,
+		"rawTestInstructionAttributesToBeSentToExecutionWorkers": rawTestInstructionAttributesToBeSentToExecutionWorkers,
+	}).Debug("Incoming 'transformRawTestInstructionsAndAttributeIntoGrpcMessages'")
+
+	defer common_config.Logger.WithFields(logrus.Fields{
+		"id": "13dec767-9731-4299-a195-dfbcb59ad1e5",
+	}).Debug("Outgoing 'prepareTestInstructionIsNotHandledByThisExecutionInstanceSaveFinalTestInstructionExecutionResultToCloudDB'")
+
 	attributesMap := make(map[string]*[]newTestInstructionAttributeToBeSentToExecutionWorkersStruct)
 
 	// Create map for attributes to be able to find attributes in an easier way
