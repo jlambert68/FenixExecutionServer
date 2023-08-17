@@ -584,14 +584,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 		} else {
 			// Create Attributes-message to be added to TestInstructionExecution-message
 
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":              "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
+				"attributesSlice": attributesSlice,
+			}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
+
 			var newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage
 
 			for _, attributeInSlice := range *attributesSlice {
 
 				newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage =
 					&fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage{
-						TestInstructionAttributeType: fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(
-							attributeInSlice.testInstructionAttributeType),
+						TestInstructionAttributeType:     fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType),
 						TestInstructionAttributeUuid:     attributeInSlice.testInstructionAttributeUuid,
 						TestInstructionAttributeName:     attributeInSlice.testInstructionAttributeName,
 						AttributeValueAsString:           attributeInSlice.attributeValueAsString,
@@ -602,7 +606,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 
 				common_config.Logger.WithFields(logrus.Fields{
 					"id": "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
-					"newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage": newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage,
+					"attributeInSlice.testInstructionAttributeType":                                                               attributeInSlice.testInstructionAttributeType,
+					"fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType)": fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType),
+					"newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage":                                   newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage,
 				}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
 
 				// Append to TestInstructionsAttributes-message
