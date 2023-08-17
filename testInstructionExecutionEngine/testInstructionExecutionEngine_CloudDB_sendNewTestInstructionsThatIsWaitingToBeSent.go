@@ -752,7 +752,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage{
 					TestInstructionAttributeType: fenixExecutionWorkerGrpcApi.
 						ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
-							int32(testInstructionAttributesForReversed.TestInstructionAttributeType)),
+							testInstructionAttributesForReversed.TestInstructionAttributeType),
 					TestInstructionAttributeUuid:     testInstructionAttributesForReversed.TestInstructionAttributeUuid,
 					TestInstructionAttributeName:     testInstructionAttributesForReversed.TestInstructionAttributeName,
 					AttributeValueAsString:           testInstructionAttributesForReversed.AttributeValueAsString,
@@ -763,6 +763,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 				// Append to slice of attributes
 				tempTestInstructionAttributes = append(tempTestInstructionAttributes, tempTestInstructionAttribute)
+
+				common_config.Logger.WithFields(logrus.Fields{
+					"id":                           "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
+					"tempTestInstructionAttribute": tempTestInstructionAttribute,
+				}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
 			}
 
 			processTestInstructionExecutionPubSubRequest.TestInstruction.TestInstructionAttributes = tempTestInstructionAttributes
