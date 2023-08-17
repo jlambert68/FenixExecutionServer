@@ -752,7 +752,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage{
 					TestInstructionAttributeType: fenixExecutionWorkerGrpcApi.
 						ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
-							testInstructionAttributesForReversed.TestInstructionAttributeType),
+							int32(testInstructionAttributesForReversed.TestInstructionAttributeType)),
 					TestInstructionAttributeUuid:     testInstructionAttributesForReversed.TestInstructionAttributeUuid,
 					TestInstructionAttributeName:     testInstructionAttributesForReversed.TestInstructionAttributeName,
 					AttributeValueAsString:           testInstructionAttributesForReversed.AttributeValueAsString,
