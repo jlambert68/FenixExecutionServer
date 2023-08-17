@@ -597,8 +597,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 		}
 
 		// Create The TestInstruction and its attributes object, to be sent late
-		var newTestInstructionToBeSentToExecutionWorkers *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage
-		newTestInstructionToBeSentToExecutionWorkers = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage{
+		var newTestInstructionToBeSentToExecutionWorkers *fenixExecutionWorkerGrpcApi.
+			ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage
+		newTestInstructionToBeSentToExecutionWorkers = &fenixExecutionWorkerGrpcApi.
+			ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage{
 			TestInstructionExecutionUuid: rawTestInstructionData.testInstructionExecutionUuid,
 			TestInstructionUuid:          rawTestInstructionData.testInstructionOriginalUuid,
 			TestInstructionName:          rawTestInstructionData.testInstructionName,
@@ -622,7 +624,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 			TestData:                     newTestDataToBeSentToExecutionWorker,
 		}
 
-		// Create one full TestInstruction-coontainer, including address to Worker, so TestInstruction can be sent to Execution Worker over gPRC
+		common_config.Logger.WithFields(logrus.Fields{
+			"id": "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
+			"newProcessTestInstructionExecutionReveredRequest": newProcessTestInstructionExecutionReveredRequest,
+		}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
+
+		// Create one full TestInstruction-container, including address to Worker, so TestInstruction can be sent to Execution Worker over gPRC
 		var newProcessTestInstructionExecutionRequestMessageContainer processTestInstructionExecutionRequestAndResponseMessageContainer
 		newProcessTestInstructionExecutionRequestMessageContainer = processTestInstructionExecutionRequestAndResponseMessageContainer{
 			addressToExecutionWorker:               rawTestInstructionData.executionWorkerAddress,
