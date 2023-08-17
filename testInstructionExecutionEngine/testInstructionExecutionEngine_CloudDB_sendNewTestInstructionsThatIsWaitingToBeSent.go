@@ -578,16 +578,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 
 			for _, attributeInSlice := range *attributesSlice {
 
-				newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage{
-					TestInstructionAttributeType: fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType),
-					TestInstructionAttributeUuid: attributeInSlice.testInstructionAttributeUuid,
-					TestInstructionAttributeName: attributeInSlice.testInstructionAttributeName,
-					AttributeValueAsString:       attributeInSlice.attributeValueAsString,
-					AttributeValueUuid:           attributeInSlice.attributeValueUuid,
-				}
+				newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage =
+					&fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage{
+						TestInstructionAttributeType: fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(
+							attributeInSlice.testInstructionAttributeType),
+						TestInstructionAttributeUuid:     attributeInSlice.testInstructionAttributeUuid,
+						TestInstructionAttributeName:     attributeInSlice.testInstructionAttributeName,
+						AttributeValueAsString:           attributeInSlice.attributeValueAsString,
+						AttributeValueUuid:               attributeInSlice.attributeValueUuid,
+						TestInstructionAttributeTypeUuid: attributeInSlice.testInstructionExecutionTypeUuid,
+						TestInstructionAttributeTypeName: attributeInSlice.testInstructionExecutionTypeName,
+					}
 
 				// Append to TestInstructionsAttributes-message
-				attributesForTestInstruction = append(attributesForTestInstruction, newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage)
+				attributesForTestInstruction = append(attributesForTestInstruction,
+					newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage)
 			}
 		}
 
@@ -713,9 +718,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 			for _, testInstructionAttributesForReversed := range testInstructionToBeSentToExecutionWorkers.
 				processTestInstructionExecutionRequest.TestInstruction.TestInstructionAttributes {
 
-				var tempTestInstructionAttribute *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage
-				tempTestInstructionAttribute = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage{
-					TestInstructionAttributeType:     fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(testInstructionAttributesForReversed.TestInstructionAttributeType),
+				var tempTestInstructionAttribute *fenixExecutionWorkerGrpcApi.
+					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage
+				tempTestInstructionAttribute = &fenixExecutionWorkerGrpcApi.
+					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeMessage{
+					TestInstructionAttributeType: fenixExecutionWorkerGrpcApi.
+						ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
+							testInstructionAttributesForReversed.TestInstructionAttributeType),
 					TestInstructionAttributeUuid:     testInstructionAttributesForReversed.TestInstructionAttributeUuid,
 					TestInstructionAttributeName:     testInstructionAttributesForReversed.TestInstructionAttributeName,
 					AttributeValueAsString:           testInstructionAttributesForReversed.AttributeValueAsString,
