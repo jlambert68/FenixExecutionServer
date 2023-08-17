@@ -590,6 +590,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 						TestInstructionAttributeTypeName: attributeInSlice.testInstructionExecutionTypeName,
 					}
 
+				common_config.Logger.WithFields(logrus.Fields{
+					"id": "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
+					"newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage": newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage,
+				}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
+
 				// Append to TestInstructionsAttributes-message
 				attributesForTestInstruction = append(attributesForTestInstruction,
 					newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage)
