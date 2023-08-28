@@ -765,8 +765,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 				tempTestInstructionAttributes = append(tempTestInstructionAttributes, tempTestInstructionAttribute)
 
 				common_config.Logger.WithFields(logrus.Fields{
-					"id":                           "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
-					"tempTestInstructionAttribute": tempTestInstructionAttribute,
+					"id":                                   "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
+					"tempTestInstructionAttribute":         tempTestInstructionAttribute,
+					"testInstructionAttributesForReversed": testInstructionAttributesForReversed,
 				}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
 			}
 
