@@ -264,12 +264,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 		return ackNackResponse
 	}
 
-	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < 2 {
+	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < fenixExecutionServerGrpcApi.
+		TestInstructionExecutionStatusEnum_TIE_CONTROLLED_INTERRUPTION {
 
 		common_config.Logger.WithFields(logrus.Fields{
 			"id": "d9ef51cf-1d36-4df2-a719-c1390823e252",
 			"finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus": finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus,
-		}).Error("'TestInstructionExecutionStatus' is not a final status for a TestInstructionExecution. Must be '> 1'")
+		}).Error("'TestInstructionExecutionStatus' is not a final status for a TestInstructionExecution. Must be '> %s'", fenixExecutionServerGrpcApi.
+			TestInstructionExecutionStatusEnum_TIE_EXECUTING)
 
 		// Set Error codes to return message
 		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
@@ -281,7 +283,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 		// Create Return message
 		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
 			AckNack:                      false,
-			Comments:                     fmt.Sprintf("'TestInstructionExecutionStatus' is not a final status for a TestInstructionExecution. Got '%s' but expected value '> 1'", finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus),
+			Comments:                     fmt.Sprintf("'TestInstructionExecutionStatus' is not a final status for a TestInstructionExecution. Got '%s' but expected value '> %s'", finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus, fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_INITIATED),
 			ErrorCodes:                   errorCodes,
 			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
 		}
@@ -442,7 +444,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 
 		for _, testInstructionExecution := range testInstructionExecutionSiblingsStatus {
 			// Is this any ongoing TestInstructionExecutions?
-			if testInstructionExecution.testInstructionExecutionStatus < 2 {
+			if testInstructionExecution.testInstructionExecutionStatus < int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_CONTROLLED_INTERRUPTION) {
 				thereExistsOnGoingTestInstructionExecutionsOnQueue = true
 				break
 			}
@@ -748,8 +750,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 	sqlToExecute_part2 = sqlToExecute_part2 + "WHERE TIUE.\"TestCaseExecutionUuid\" = '" +
 		currentTestCaseExecution.testCaseExecutionUuid + "' AND "
 	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestCaseExecutionVersion\" = " + testCaseExecutionVersionAsString + " AND "
-	sqlToExecute_part2 = sqlToExecute_part2 + "(TIUE.\"TestInstructionExecutionStatus\" < 4 OR "
-	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestInstructionExecutionStatus\" > 5);"
+	sqlToExecute_part2 = sqlToExecute_part2 + "(TIUE.\"TestInstructionExecutionStatus\" < " + fenixExecutionServerGrpcApi.
+		TestInstructionExecutionStatusEnum_TIE_FINISHED_OK.String() + " OR "
+	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestInstructionExecutionStatus\" > " + fenixExecutionServerGrpcApi.
+		TestInstructionExecutionStatusEnum_TIE_FINISHED_OK_CAN_BE_RERUN.String() + ");"
 
 	// Query DB
 	// Execute Query CloudDB

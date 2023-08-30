@@ -321,34 +321,34 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus(testInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct) (testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct, err error) {
 	// For each combination 'TestCaseExecutionUuid && TestCaseExecutionVersion' create correct TestCaseExecutionStatus
 	// Generate Map that decides what Status that 'overwrite' other status
-	// (0,  'TIE_INITIATED') -> NOT OK
-	// (1,  'TIE_EXECUTING') -> NOT OK
-	// (4,  'TIE_FINISHED_OK' -> OK
-	// (5,  'TIE_FINISHED_OK_CAN_BE_RERUN' -> OK
-	// (7,  'TIE_FINISHED_NOT_OK_CAN_BE_RERUN' -> OK
-	// (10, 'TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN' -> OK
-	// (3,  'TIE_CONTROLLED_INTERRUPTION_CAN_BE_RERUN' -> OK
-	// (9,  'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' -> OK
-	// (6,  'TIE_FINISHED_NOT_OK' -> OK
-	// (11, 'TIE_TIMEOUT_INTERRUPTION' -> OK
-	// (2,  'TIE_CONTROLLED_INTERRUPTION' -> OK
-	// (8,  'TIE_UNEXPECTED_INTERRUPTION' -> OK
+	// (1,  'TIE_INITIATED') -> NOT OK
+	// (2,  'TIE_EXECUTING') -> NOT OK
+	// (5,  'TIE_FINISHED_OK' -> OK
+	// (6,  'TIE_FINISHED_OK_CAN_BE_RERUN' -> OK
+	// (8,  'TIE_FINISHED_NOT_OK_CAN_BE_RERUN' -> OK
+	// (11, 'TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (4,  'TIE_CONTROLLED_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (10,  'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (7,  'TIE_FINISHED_NOT_OK' -> OK
+	// (12, 'TIE_TIMEOUT_INTERRUPTION' -> OK
+	// (3,  'TIE_CONTROLLED_INTERRUPTION' -> OK
+	// (9,  'TIE_UNEXPECTED_INTERRUPTION' -> OK
 
 	// Inparameter for Map is 'Current Status' and the value for the Map prioritized Order for that Status
 	// map[TestInstructionExecutionStatus]=PrioritizationOrder
 	var statusOrderDecisionMap = map[int]int{
-		0:  0,
-		4:  1,
-		1:  2,
-		5:  3,
-		7:  4,
-		10: 5,
-		3:  6,
-		9:  7,
-		6:  8,
-		11: 9,
-		2:  10,
-		8:  11}
+		1:  1,
+		5:  2,
+		2:  3,
+		6:  4,
+		8:  5,
+		11: 6,
+		4:  7,
+		10: 8,
+		7:  9,
+		12: 10,
+		3:  11,
+		9:  12}
 
 	var currentTestCaseExecutionUuid string
 	var previousTestCaseExecutionUuid string

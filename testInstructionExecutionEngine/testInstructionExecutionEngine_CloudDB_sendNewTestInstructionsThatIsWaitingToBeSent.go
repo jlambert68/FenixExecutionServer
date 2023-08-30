@@ -380,7 +380,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 		"TIUE.\"TestDataSetUuid\", TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE, " +
 		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
-	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = 0 AND "
+	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = " +
+		strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_INITIATED)) + " AND "
 	sqlToExecute = sqlToExecute + "DP.\"DomainUuid\" = TIUE.\"DomainUuid\" "
 	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
 	sqlToExecute = sqlToExecute + "ORDER BY DP.\"DomainUuid\" ASC, TIUE.\"TestInstructionExecutionUuid\" ASC "
@@ -583,12 +584,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 			attributesForTestInstruction = []*fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage{}
 		} else {
 			// Create Attributes-message to be added to TestInstructionExecution-message
-
-			common_config.Logger.WithFields(logrus.Fields{
-				"id":              "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
-				"attributesSlice": attributesSlice,
-			}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
-
 			var newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionAttributeMessage
 
 			for _, attributeInSlice := range *attributesSlice {
@@ -603,13 +598,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 						TestInstructionAttributeTypeUuid: attributeInSlice.testInstructionExecutionTypeUuid,
 						TestInstructionAttributeTypeName: attributeInSlice.testInstructionExecutionTypeName,
 					}
-
-				common_config.Logger.WithFields(logrus.Fields{
-					"id": "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
-					"attributeInSlice.testInstructionAttributeType":                                                               attributeInSlice.testInstructionAttributeType,
-					"fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType)": fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum(attributeInSlice.testInstructionAttributeType),
-					"newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage":                                   newProcessTestInstructionExecutionRequest_TestInstructionAttributeMessage,
-				}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
 
 				// Append to TestInstructionsAttributes-message
 				attributesForTestInstruction = append(attributesForTestInstruction,
@@ -644,11 +632,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 			TestInstruction:              newTestInstructionToBeSentToExecutionWorkers,
 			TestData:                     newTestDataToBeSentToExecutionWorker,
 		}
-
-		common_config.Logger.WithFields(logrus.Fields{
-			"id": "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
-			"newProcessTestInstructionExecutionReveredRequest": newProcessTestInstructionExecutionReveredRequest,
-		}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
 
 		// Create one full TestInstruction-container, including address to Worker, so TestInstruction can be sent to Execution Worker over gPRC
 		var newProcessTestInstructionExecutionRequestMessageContainer processTestInstructionExecutionRequestAndResponseMessageContainer
@@ -764,11 +747,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 				// Append to slice of attributes
 				tempTestInstructionAttributes = append(tempTestInstructionAttributes, tempTestInstructionAttribute)
 
-				common_config.Logger.WithFields(logrus.Fields{
-					"id":                                   "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
-					"tempTestInstructionAttribute":         tempTestInstructionAttribute,
-					"testInstructionAttributesForReversed": testInstructionAttributesForReversed,
-				}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
 			}
 
 			processTestInstructionExecutionPubSubRequest.TestInstruction.TestInstructionAttributes = tempTestInstructionAttributes
@@ -789,12 +767,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 			}
 
 			processTestInstructionExecutionPubSubRequest.TestData.ManualOverrideForTestData = tempManualOverrideForTestDataMessage
-
-			common_config.Logger.WithFields(logrus.Fields{
-				"id": "6b45fb40-abb9-42b3-8c4b-7b98eacd7e29",
-				"processTestInstructionExecutionPubSubRequest":                                     processTestInstructionExecutionPubSubRequest,
-				"testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest,
-			}).Error("SHOUlD BE REMOVED ONLY USED FOR DEBUGGING")
 
 			responseFromWorker = fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub(
 				testInstructionToBeSentToExecutionWorkers.domainUuid,
@@ -843,7 +815,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 		//TODO - kolla här
 		// Save information about TestInstructionExecution when we got a positive response from Worker
 		if testInstructionExecutionResponse.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
-			tempTestInstructionExecutionStatus = "1" // TIE_EXECUTING
+			tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING)) // "2" // TIE_EXECUTING
 
 		} else {
 			// Extract how many times the TestInstructionExecution have been restarted
@@ -914,13 +886,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 			if numberOfResend+1 < common_config.MaxResendToWorkerWhenNoAnswer {
 
 				// Save information about TestInstructionExecution when we got unknown error response from Worker
-				tempTestInstructionExecutionStatus = "9" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
+				tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)) // "10" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
 				numberOfResend = numberOfResend + 1
 
 			} else {
 
 				// Max number of reruns already achieved, Save information about TestInstructionExecution when we got unknown error response from Worker
-				tempTestInstructionExecutionStatus = "8" // TIE_UNEXPECTED_INTERRUPTION
+				tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION)) // "9" // TIE_UNEXPECTED_INTERRUPTION
 			}
 		}
 
@@ -1000,10 +972,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 		// Save information about TestInstructionExecution when we got a positive response from Worker
 		if testInstructionExecutionResponse.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
-			tempTestInstructionExecutionStatus = "1" // TIE_EXECUTING
+			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
+				TestInstructionExecutionStatusEnum_TIE_EXECUTING.String() //"2" // TIE_EXECUTING
 		} else {
 			// Save information about TestInstructionExecution when we got unknown error response from Worker
-			tempTestInstructionExecutionStatus = "3" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
+			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
+				TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN.String() // "10" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
 		}
 
 		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
