@@ -972,12 +972,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 		// Save information about TestInstructionExecution when we got a positive response from Worker
 		if testInstructionExecutionResponse.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
-			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
-				TestInstructionExecutionStatusEnum_TIE_EXECUTING.String() //"2" // TIE_EXECUTING
+			tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.
+				TestInstructionExecutionStatusEnum_TIE_EXECUTING)) //"2" // TIE_EXECUTING
 		} else {
 			// Save information about TestInstructionExecution when we got unknown error response from Worker
-			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
-				TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN.String() // "10" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
+			tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.
+				TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)) // "10" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
 		}
 
 		sqlToExecute = sqlToExecute + "UPDATE \"" + usedDBSchema + "\".\"TestCasesUnderExecution\" "
