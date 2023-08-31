@@ -11,7 +11,10 @@ import (
 
 // ReportCompleteTestInstructionExecutionResult - *********************************************************************
 // When a TestInstruction has been fully executed the Client use this to inform the results of the execution result to the Server
-func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionExecutionResult(ctx context.Context, finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (*fenixExecutionServerGrpcApi.AckNackResponse, error) {
+func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionExecutionResult(
+	ctx context.Context,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (
+	*fenixExecutionServerGrpcApi.AckNackResponse, error) {
 
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "299bac9a-bb4c-4dcd-9ca6-e486efc9e112",

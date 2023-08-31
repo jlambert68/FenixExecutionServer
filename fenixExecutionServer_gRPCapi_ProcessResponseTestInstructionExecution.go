@@ -98,7 +98,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 
 		// Create Message to be sent to TestInstructionExecutionEngine
 		channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-			ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessFinalTestInstructionExecutionResultMessage,
+			ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionResponseStatus,
 			ProcessTestInstructionExecutionResponseStatus: processTestInstructionExecutionResponseStatus,
 		}
 
@@ -114,7 +114,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 
 		// Create Message to be sent to TestInstructionExecutionEngine
 		channelCommandMessage := testInstructionExecutionEngine.ChannelCommandStruct{
-			ChannelCommand: testInstructionExecutionEngine.ChannelCommandFinalTestInstructionExecutionResultIsNotHandledByThisExecutionInstance,
+			ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionResponseStatusIsNotHandledByThisExecutionInstance,
 			ProcessTestInstructionExecutionResponseStatus: processTestInstructionExecutionResponseStatus,
 		}
 

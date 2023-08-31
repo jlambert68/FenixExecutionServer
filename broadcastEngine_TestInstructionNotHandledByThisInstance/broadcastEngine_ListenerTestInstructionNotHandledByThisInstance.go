@@ -285,13 +285,13 @@ func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions co
 						common_config.Logger.WithFields(logrus.Fields{
 							"Id":                                   "788dea5f-31e1-4145-ad76-fd5e420ad230",
 							"common_config.ApplicationRuntimeUuid": common_config.ApplicationRuntimeUuid,
-							"finalTestInstructionExecutionResultMessage": tempProcessTestInstructionExecutionResponseStatusMessage,
+							"tempProcessTestInstructionExecutionResponseStatusMessage": tempProcessTestInstructionExecutionResponseStatusMessage,
 						}).Debug("Found 'ProcessTestInstructionExecutionResponseStatusMessage' in database that belongs to this 'ApplicationRuntimeUuid'")
 
 						// Create Message to be sent to TestInstructionExecutionEngine
 						var channelCommandMessage testInstructionExecutionEngine.ChannelCommandStruct
 						channelCommandMessage = testInstructionExecutionEngine.ChannelCommandStruct{
-							ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionResponseStatusIsNotHandledByThisExecutionInstance,
+							ChannelCommand: testInstructionExecutionEngine.ChannelCommandProcessTestInstructionExecutionResponseStatus,
 							ProcessTestInstructionExecutionResponseStatus: tempProcessTestInstructionExecutionResponseStatusMessage,
 						}
 

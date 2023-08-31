@@ -85,6 +85,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 				executionTrackNumber,
 				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
+		case ChannelCommandProcessTestInstructionExecutionResponseStatus:
+			executionEngine.triggerProcessTestInstructionExecutionResponseStatusSaveToCloudDB(
+				executionTrackNumber,
+				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
+
 		case ChannelCommandReCreateTimeOutTimersAtApplicationStartUp:
 			executionEngine.triggerReCreateTimeOutTimersAtApplicationStartUp(executionTrackNumber)
 
@@ -251,6 +256,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessRepor
 		_ = executionEngine.prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(
 			executionTrackNumber,
 			finalTestInstructionExecutionResultMessage)
+	}()
+
+}
+
+// Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
+func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestInstructionExecutionResponseStatusSaveToCloudDB(
+	executionTrackNumber int,
+	testInstructionExecutionResponseMessage *fenixExecutionServerGrpcApi.ProcessTestInstructionExecutionResponseStatus) {
+
+	go func() {
+		executionEngine.prepareProcessTestInstructionExecutionResponseStatusSaveToCloudDB(
+			executionTrackNumber,
+			testInstructionExecutionResponseMessage)
 	}()
 
 }

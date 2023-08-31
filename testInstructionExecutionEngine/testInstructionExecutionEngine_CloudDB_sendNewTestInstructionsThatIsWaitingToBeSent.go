@@ -793,7 +793,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 }
 
 // Update status on TestInstructions that could be sent to workers
-func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestInstructionsExecutionInCloudDB(dbTransaction pgx.Tx, testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestInstructionsExecutionInCloudDB(
+	dbTransaction pgx.Tx, testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
 
 	// If there are nothing to update then just exit
 	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {
