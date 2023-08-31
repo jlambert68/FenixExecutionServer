@@ -63,11 +63,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				incomingTimeOutChannelCommand,
 				common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult)
 
-		case common_config.TimeOutChannelCommandExistsTestInstructionExecutionInTimeOutTimer:
-			testInstructionExecutionTimeOutEngineObject.existsTestInstructionExecutionInTimeOutTimer(
-				executionTrack,
-				incomingTimeOutChannelCommand)
-
 		case common_config.TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut:
 			testInstructionExecutionTimeOutEngineObject.hasTestInstructionExecutionAlreadyTimedOut(
 				executionTrack,
@@ -85,6 +80,11 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		case common_config.TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer:
 			testInstructionExecutionTimeOutEngineObject.removeAllocationForTestInstructionExecutionToTimeOutTimer(
+				executionTrack,
+				incomingTimeOutChannelCommand)
+
+		case common_config.TimeOutChannelCommandVerifyIfTestInstructionIsHandledByThisExecutionInstance:
+			testInstructionExecutionTimeOutEngineObject.verifyIfTestInstructionIsHandledByThisExecutionInstance(
 				executionTrack,
 				incomingTimeOutChannelCommand)
 
@@ -119,13 +119,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		executionTrack,
 		&incomingTimeOutChannelCommand,
 		timeOutChannelCommand)
-}
-
-// Check if TestInstructionExecution exists within TimeOut-timer
-func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) existsTestInstructionExecutionInTimeOutTimer(
-	executionTrack int,
-	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
-
 }
 
 // Check if TestInstructionExecution already had TimedOut
@@ -167,6 +160,17 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
 
 	testInstructionExecutionTimeOutEngineObject.processRemoveAllocationForTestInstructionExecutionToTimeOutTimer(
+		executionTrack,
+		&incomingTimeOutChannelCommand)
+
+}
+
+// Verify if this executionServer-instance is the one responsible for incoming TestInstructionExecution
+func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) verifyIfTestInstructionIsHandledByThisExecutionInstance(
+	executionTrack int,
+	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
+
+	testInstructionExecutionTimeOutEngineObject.processVerifyIfTestInstructionIsHandledByThisExecutionInstance(
 		executionTrack,
 		&incomingTimeOutChannelCommand)
 
