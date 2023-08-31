@@ -73,6 +73,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructi
 	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
 		common_config.GenerateDatetimeTimeStampForDB())
 	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
+		int(testInstructionExecutionMessageReceivedByWrongExecution.MessageType))
+	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
 		testInstructionExecutionMessageReceivedByWrongExecution.MessageAsJsonString)
 
 	dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)

@@ -292,7 +292,7 @@ func deleteTestInstructionMessagesReceivedByWrongInstanceFromDatabaseInCloudDB(
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "7cb0a424-dd00-4785-90b5-493cc4f38e5b",
+			"Id":           "0632ac36-7599-415f-8eef-007b44de3b90",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
