@@ -53,6 +53,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 		dbTransaction,
 		testInstructionExecutionResponseMessage)
 
+	if err != nil {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "4d3790eb-3a2e-4242-91db-8a777bc7a68c",
+			"error": err,
+		}).Error("Couldn't Load TestCaseExecutionUuid and TestCaseExecutionVersion based on TestInstructionExecutionResponseMessage")
+
+		return
+	}
+
 	// Define Execution Track based on "lowest "TestCaseExecutionUuid
 	executionTrackNumber = common_config.CalculateExecutionTrackNumber(
 		testInstructionExecutionResponseMessage.TestInstructionExecutionUuid)
@@ -74,8 +84,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 	testInstructionThatWasSentToWorkersAndTheResponse = &processTestInstructionExecutionRequestAndResponseMessageContainer{
 		domainUuid:               "",
 		addressToExecutionWorker: "",
-		testCaseExecutionUuid:    "",
-		testCaseExecutionVersion: 0,
+		testCaseExecutionUuid:    channelCommandTestCaseExecution[0].TestCaseExecutionUuid,
+		testCaseExecutionVersion: int(channelCommandTestCaseExecution[0].TestCaseExecutionVersion),
 		processTestInstructionExecutionRequest: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest{
 			ProtoFileVersionUsedByClient: 0,
 			TestInstruction: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage{
