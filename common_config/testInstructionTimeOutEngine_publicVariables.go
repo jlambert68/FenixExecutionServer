@@ -42,6 +42,7 @@ var TimeOutChannelCommandsForDebugPrinting []string = []string{
 	"TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer",
 	"TimeOutChannelCommandTimeUntilNextTimeOutTimerToFires",
 	"TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer",
+	"TimeOutChannelCommandVerifyIfTestInstructionIsHandledByThisExecutionInstance",
 }
 
 // TimeOutChannelCommandTestInstructionExecutionStruct
