@@ -173,7 +173,7 @@ func loadTestInstructionExecutionMessagesReceivedByWrongExecutionInstance(
 		"TIERWEI.\"TestInstructionExecutionVersion\", TIERWEI.\"TimeStamp\", " +
 		"TIERWEI.\"MessageType\", TIERWEI.\"MessageAsJsonb\") "
 	sqlToExecute = sqlToExecute + "" +
-		"FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionsReceivedByWrongExecutionInstanc\" TIERWEI "
+		"FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionMessagesReceivedByWrongExecutionInstanc\" TIERWEI "
 	sqlToExecute = sqlToExecute + "" +
 		"WHERE TIERWEI.\"ApplicationExecutionRuntimeUuid\" != '" + common_config.ApplicationRuntimeUuid + "' AND "
 	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "' AND "
@@ -272,7 +272,7 @@ func deleteTestInstructionMessagesReceivedByWrongInstanceFromDatabaseInCloudDB(
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "" +
-		"DELETE FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionsReceivedByWrongExecutionInstanc\" TIERWEI "
+		"DELETE FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionMessagesReceivedByWrongExecutionInstanc\" TIERWEI "
 	sqlToExecute = sqlToExecute + "" +
 		"WHERE TIERWEI.\"ApplicationExecutionRuntimeUuid\" != '" + common_config.ApplicationRuntimeUuid + "' AND "
 	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "' AND "

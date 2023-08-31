@@ -96,7 +96,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructi
 
 	*/
 
-	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionExecutionsReceivedByWrongExecutionInstanc\" "
+	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionExecutionMessagesReceivedByWrongExecutionInstanc\" "
 	sqlToExecute = sqlToExecute + "(\"ApplicationExecutionRuntimeUuid\", \"TestInstructionExecutionUuid\", " +
 		"\"TestInstructionExecutionVersion\", \"TimeStamp\", \"MessageType\", \"MessageAsJsonb\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
