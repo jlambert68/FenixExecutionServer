@@ -175,7 +175,8 @@ func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions co
 			TimeOutReturnChannelForTimeOutHasOccurred:                               nil,
 			TimeOutResponseChannelForDurationUntilTimeOutOccurs:                     nil,
 			TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstance: &timeOutResponseChannelForIsThisHandledByThisExecutionInstance,
-			SendID: "4d545fda-d9e4-4d35-b8af-4bbbbacf971e",
+			SendID:                         "4d545fda-d9e4-4d35-b8af-4bbbbacf971e",
+			MessageInitiatedFromPubSubSend: false,
 		}
 
 		// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution is handled by this Execution-instance

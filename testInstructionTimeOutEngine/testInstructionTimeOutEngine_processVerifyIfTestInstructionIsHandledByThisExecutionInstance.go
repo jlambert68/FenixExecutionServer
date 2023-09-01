@@ -77,7 +77,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 	// Check if TestInstructionExecution exists in timeOut-map
 	_, existsInMap = (*timeOutMapSlice[executionTrack])[timeOutMapKey]
-	if existsInMap == false {
+	if existsInMap == true {
 
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id":            "6a7efe83-5ebd-4122-b870-e7cce13324c9",

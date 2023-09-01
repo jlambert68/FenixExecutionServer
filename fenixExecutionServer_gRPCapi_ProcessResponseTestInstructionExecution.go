@@ -80,7 +80,8 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 		TimeOutReturnChannelForTimeOutHasOccurred:                               nil,
 		TimeOutResponseChannelForDurationUntilTimeOutOccurs:                     nil,
 		TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstance: &timeOutResponseChannelForIsThisHandledByThisExecutionInstance,
-		SendID: "30303c99-11ca-494d-a082-9f0e46bc3364",
+		SendID:                         "30303c99-11ca-494d-a082-9f0e46bc3364",
+		MessageInitiatedFromPubSubSend: false,
 	}
 
 	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut

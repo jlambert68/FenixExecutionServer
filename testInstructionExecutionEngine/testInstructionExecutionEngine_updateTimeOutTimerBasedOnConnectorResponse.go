@@ -37,11 +37,17 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTimeOutTimerB
 		TimeOutReturnChannelForTimeOutHasOccurred:                               nil,
 		TimeOutResponseChannelForDurationUntilTimeOutOccurs:                     nil,
 		TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstance: &timeOutResponseChannelForIsThisHandledByThisExecutionInstance,
-		SendID: "30303c99-11ca-494d-a082-9f0e46bc3364",
+		SendID:                         "30303c99-11ca-494d-a082-9f0e46bc3364",
+		MessageInitiatedFromPubSubSend: false,
 	}
 
+	// Calculate Execution Track for TimeOutEngine
+	var executionTrackForTimeOutEngine int
+	executionTrackForTimeOutEngine = common_config.CalculateExecutionTrackNumber(
+		processTestInstructionExecutionResponseStatus.TestInstructionExecutionUuid)
+
 	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
-	*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrackNumber] <- tempTimeOutChannelCommand
+	*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrackForTimeOutEngine] <- tempTimeOutChannelCommand
 
 	// Response from TimeOutEngine
 	var timeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceValue common_config.TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceStruct
@@ -74,11 +80,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTimeOutTimerB
 				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-				SendID: "9d59fc1b-9b11-4adf-b175-1ebbc60eceae",
+				SendID:                         "9d59fc1b-9b11-4adf-b175-1ebbc60eceae",
+				MessageInitiatedFromPubSubSend: false,
 			}
 
 			// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
-			*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrackNumber] <- tempTimeOutChannelCommand
+			*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrackForTimeOutEngine] <- tempTimeOutChannelCommand
 		}
 
 		//Remove Allocation for TimeOut-timer because we got an AckNack=false as response
@@ -102,11 +109,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTimeOutTimerB
 				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-				SendID: "3f5b5990-c7c6-4cba-9136-f90ba7530981",
+				SendID:                         "3f5b5990-c7c6-4cba-9136-f90ba7530981",
+				MessageInitiatedFromPubSubSend: false,
 			}
 
 			// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
-			*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrackNumber] <- tempTimeOutChannelCommand
+			*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrackForTimeOutEngine] <- tempTimeOutChannelCommand
 
 		}
 

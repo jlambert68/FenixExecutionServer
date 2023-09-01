@@ -96,7 +96,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 			//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-			SendID: "18d960b0-a0dc-4058-9370-c66dce099e3d",
+			SendID:                         "18d960b0-a0dc-4058-9370-c66dce099e3d",
+			MessageInitiatedFromPubSubSend: false,
 		}
 
 		// Calculate Execution Track
@@ -230,7 +231,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 		TimeOutChannelTestInstructionExecutions:   tempTimeOutChannelTestInstructionExecutions,
 		TimeOutReturnChannelForTimeOutHasOccurred: &timeOutResponseChannelForTimeOutHasOccurred,
 		//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-		SendID: "7a1aab65-93ab-4f59-b341-3b8fe16f6631",
+		SendID:                         "7a1aab65-93ab-4f59-b341-3b8fe16f6631",
+		MessageInitiatedFromPubSubSend: false,
 	}
 
 	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
@@ -692,7 +694,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 
 	if err != nil {
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "a414a9b3-bed8-49ed-9ec4-b2077725f7fd",
+			"Id":           "a239085a-cc01-484e-b023-436c32717a43",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute_part1,
 		}).Error("Something went wrong when executing SQL")
@@ -750,10 +752,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 	sqlToExecute_part2 = sqlToExecute_part2 + "WHERE TIUE.\"TestCaseExecutionUuid\" = '" +
 		currentTestCaseExecution.testCaseExecutionUuid + "' AND "
 	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestCaseExecutionVersion\" = " + testCaseExecutionVersionAsString + " AND "
-	sqlToExecute_part2 = sqlToExecute_part2 + "(TIUE.\"TestInstructionExecutionStatus\" < " + fenixExecutionServerGrpcApi.
-		TestInstructionExecutionStatusEnum_TIE_FINISHED_OK.String() + " OR "
-	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestInstructionExecutionStatus\" > " + fenixExecutionServerGrpcApi.
-		TestInstructionExecutionStatusEnum_TIE_FINISHED_OK_CAN_BE_RERUN.String() + ");"
+	sqlToExecute_part2 = sqlToExecute_part2 + "(TIUE.\"TestInstructionExecutionStatus\" < " + strconv.Itoa(int(fenixExecutionServerGrpcApi.
+		TestInstructionExecutionStatusEnum_TIE_FINISHED_OK)) + " OR "
+	sqlToExecute_part2 = sqlToExecute_part2 + "TIUE.\"TestInstructionExecutionStatus\" > " + strconv.Itoa(int(fenixExecutionServerGrpcApi.
+		TestInstructionExecutionStatusEnum_TIE_FINISHED_OK_CAN_BE_RERUN)) + ");"
 
 	// Query DB
 	// Execute Query CloudDB

@@ -58,7 +58,7 @@ func fenixExecutionServerMain() {
 		// Always use standard output in GCP to be able for GCP to pick up logs
 		fenixExecutionServerObject.InitLogger("")
 	} else {
-		fenixExecutionServerObject.InitLogger("")
+		fenixExecutionServerObject.InitLogger("log107.log")
 	}
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information
@@ -180,7 +180,8 @@ func fenixExecutionServerMain() {
 						TimeOutChannelCommand:                               common_config.TimeOutChannelCommandTimeUntilNextTimeOutTimerToFires,
 						TimeOutResponseChannelForDurationUntilTimeOutOccurs: &timeOutResponseChannelForDurationUntilTimeOutOccurs,
 
-						SendID: "c208cca2-036c-449d-a997-00788c944441",
+						SendID:                         "c208cca2-036c-449d-a997-00788c944441",
+						MessageInitiatedFromPubSubSend: false,
 					}
 
 					// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut

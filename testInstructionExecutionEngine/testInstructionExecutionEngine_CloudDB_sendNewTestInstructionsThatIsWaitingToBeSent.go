@@ -277,7 +277,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as respons
-	err = executionEngine.setTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+	err = executionEngine.setTimeOutTimersForTestInstructionExecutions(
+		testInstructionsToBeSentToExecutionWorkersAndTheResponse,
+	)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -536,6 +538,7 @@ type processTestInstructionExecutionRequestAndResponseMessageContainer struct {
 	testCaseExecutionVersion                int
 	processTestInstructionExecutionRequest  *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest
 	processTestInstructionExecutionResponse *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse
+	messageInitiatedFromPubSubSend          bool
 }
 
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
@@ -690,6 +693,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer,
 			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 			SendID:                                  "6e7185e2-8b59-4bf0-aebb-96ab290a19ef",
+			MessageInitiatedFromPubSubSend:          false,
 		}
 
 		// Calculate Execution Track
@@ -772,11 +776,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 				testInstructionToBeSentToExecutionWorkers.domainUuid,
 				processTestInstructionExecutionPubSubRequest)
 
+			testInstructionToBeSentToExecutionWorkers.messageInitiatedFromPubSubSend = true
+
 		} else {
 			// Worker is not using PubSub to forward message to Connector
 			responseFromWorker = fenixExecutionWorkerObject.SendProcessTestInstructionExecutionToExecutionWorkerServer(
 				testInstructionToBeSentToExecutionWorkers.domainUuid,
 				testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
+
+			testInstructionToBeSentToExecutionWorkers.messageInitiatedFromPubSubSend = true
 		}
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -1064,7 +1072,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-				SendID: "9d59fc1b-9b11-4adf-b175-1ebbc60eceae",
+				SendID:                         "e5c5e57a-89fb-4204-9e70-0f6c0a12380f",
+				MessageInitiatedFromPubSubSend: testInstructionExecution.messageInitiatedFromPubSubSend,
 			}
 			// Calculate Execution Track
 			var executionTrack int
@@ -1110,7 +1119,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) removeTimeOutTimerA
 				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-				SendID: "3f5b5990-c7c6-4cba-9136-f90ba7530981",
+				SendID:                         "3f5b5990-c7c6-4cba-9136-f90ba7530981",
+				MessageInitiatedFromPubSubSend: false,
 			}
 			// Calculate Execution Track
 			var executionTrack int
