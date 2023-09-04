@@ -135,4 +135,24 @@ func init() {
 		os.Exit(0)
 	}
 
+	// Should PubSub be used for sending 'ExecutionsStatus-update-message' to GuiExecutionServer
+	common_config.UsePubSubWhenSendingExecutionStatusToGuiExecutionServer, err = strconv.ParseBool(mustGetenv("UsePubSubWhenSendingExecutionStatusToGuiExecutionServer"))
+	if err != nil {
+		fmt.Println("Couldn't convert environment variable 'UsePubSubWhenSendingExecutionStatusToGuiExecutionServer' to a boolean, error: ", err)
+		os.Exit(0)
+	}
+
+	// Extract PubSub-Topic for where to send 'ExecutionStatus-messages'
+	common_config.ExecutionStatusPubSubTopic = mustGetenv("ExecutionStatusPubSubTopic")
+
+	// Extract local path to Service-Account file
+	common_config.LocalServiceAccountPath = mustGetenv("LocalServiceAccountPath")
+	// The only way have an OK space is to replace an existing character
+	if common_config.LocalServiceAccountPath == "#" {
+		common_config.LocalServiceAccountPath = ""
+	}
+
+	// Set the environment variable that Google-client-libraries look for
+	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", common_config.LocalServiceAccountPath)
+
 }

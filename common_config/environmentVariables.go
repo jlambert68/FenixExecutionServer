@@ -56,3 +56,15 @@ var GCPProjectId string
 var WorkerIsUsingPubSubWhenSendingTestInstructionExecutions bool
 
 var LogAllSQLs bool
+
+// UsePubSubWhenSendingExecutionStatusToGuiExecutionServer
+// Should PubSub be used for sending 'ExecutionsStatus-update-message' to GuiExecutionServer
+var UsePubSubWhenSendingExecutionStatusToGuiExecutionServer bool
+
+// ExecutionStatusPubSubTopic
+// PubSub-Topic for where to send 'ExecutionStatus-messages'
+var ExecutionStatusPubSubTopic string
+
+// LocalServiceAccountPath
+// Local path to Service-Account file
+var LocalServiceAccountPath string

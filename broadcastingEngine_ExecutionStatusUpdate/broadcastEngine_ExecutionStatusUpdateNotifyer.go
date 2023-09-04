@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
-	"log"
 	"strings"
 	"time"
 )
@@ -168,14 +167,46 @@ func InitiateAndStartBroadcastNotifyEngine_ExecutionStatusUpdate() {
 		broadcastingMessageForExecutionsAsByteSlice, err = json.Marshal(broadcastingMessageForExecutions)
 		broadcastingMessageForExecutionsAsByteSliceAsString = string(broadcastingMessageForExecutionsAsByteSlice)
 
-		common_config.Logger.WithFields(logrus.Fields{
-			"id": "5c9019a5-1b97-4d5f-97a3-79977f6aa824",
-			"broadcastingMessageForExecutionsAsByteSliceAsString": broadcastingMessageForExecutionsAsByteSliceAsString,
-		}).Debug("Message sent over Broadcast system")
+		// Should Message be sent using Postgres-Broadcast or PubSub to GuiExecutionServer
+		if common_config.UsePubSubWhenSendingExecutionStatusToGuiExecutionServer == false {
+			// Use Postgres-Broadcast-system
 
-		_, err = fenixSyncShared.DbPool.Exec(context.Background(), "SELECT pg_notify('notes', $1)", broadcastingMessageForExecutionsAsByteSlice)
-		if err != nil {
-			log.Println("error sending notification:", err)
+			common_config.Logger.WithFields(logrus.Fields{
+				"id": "5c9019a5-1b97-4d5f-97a3-79977f6aa824",
+				"broadcastingMessageForExecutionsAsByteSliceAsString": broadcastingMessageForExecutionsAsByteSliceAsString,
+			}).Debug("Message sent over Broadcast system")
+
+			_, err = fenixSyncShared.DbPool.Exec(context.Background(), "SELECT pg_notify('notes', $1)", broadcastingMessageForExecutionsAsByteSlice)
+			if err != nil {
+				//log.Println("error sending notification:", err)
+				common_config.Logger.WithFields(logrus.Fields{
+					"id": "208845b7-666b-4d0b-9891-cc969ab39d2f",
+					"broadcastingMessageForExecutionsAsByteSliceAsString": broadcastingMessageForExecutionsAsByteSliceAsString,
+					"err": err.Error(),
+				}).Error("Error sending notification")
+			}
+		} else {
+
+			// Use PubSub to Publish ExecutionStatus-message to GuiExecutionServer
+			err = pubSubPublish(broadcastingMessageForExecutionsAsByteSliceAsString)
+
+			// Some problem when sending over PubSub
+			if err != nil {
+				common_config.Logger.WithFields(logrus.Fields{
+					"id": "208845b7-666b-4d0b-9891-cc969ab39d2f",
+					"broadcastingMessageForExecutionsAsByteSliceAsString": broadcastingMessageForExecutionsAsByteSliceAsString,
+					"err": err.Error(),
+				}).Error("Error sending notification")
+
+				continue
+			}
+
+			// Success in sending over PubSub
+			common_config.Logger.WithFields(logrus.Fields{
+				"id": "e3eb343d-62cd-4308-8016-bcff4b50a062",
+				"broadcastingMessageForExecutionsAsByteSliceAsString": broadcastingMessageForExecutionsAsByteSliceAsString,
+			}).Debug("Success in sending over PubSub")
+
 		}
 
 		previousBroadCastTimestamp = broadcastTimestamp
