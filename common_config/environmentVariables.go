@@ -68,3 +68,7 @@ var ExecutionStatusPubSubTopic string
 // LocalServiceAccountPath
 // Local path to Service-Account file
 var LocalServiceAccountPath string
+
+// ExecutionStatusPubSubDeatLetteringSubscription
+// The PubSub-DeadLettering-subscription where all messages that no one reads end up
+var ExecutionStatusPubSubDeatLetteringSubscription string

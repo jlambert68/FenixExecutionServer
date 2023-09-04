@@ -155,4 +155,7 @@ func init() {
 	// Set the environment variable that Google-client-libraries look for
 	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", common_config.LocalServiceAccountPath)
 
+	// Extract PubSub-Topic-DeadLettering-subscription for where to send 'ExecutionStatus-messages' end up when no one reads them
+	common_config.ExecutionStatusPubSubDeatLetteringSubscription = mustGetenv("ExecutionStautsPubSubTopic-DeadLettering-Subscription")
+
 }

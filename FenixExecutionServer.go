@@ -45,6 +45,9 @@ func fenixExecutionServerMain() {
 	// Connect to CloudDB
 	fenixSyncShared.ConnectToDB()
 
+	// Start cleaner for ExecutionStatus-message on 'DeadLettering'
+	go broadcastingEngine_ExecutionStatusUpdate.PullPubSubExecutionStatusMessagesFromDeadLettering()
+
 	// Set up BackendObject
 	fenixExecutionServerObject = &fenixExecutionServerObjectStruct{
 		logger:                         nil,
