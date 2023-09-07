@@ -45,8 +45,10 @@ func fenixExecutionServerMain() {
 	// Connect to CloudDB
 	fenixSyncShared.ConnectToDB()
 
-	// Start cleaner for ExecutionStatus-message on 'DeadLettering'
-	go broadcastingEngine_ExecutionStatusUpdate.PullPubSubExecutionStatusMessagesFromDeadLettering()
+	// Start cleaner for ExecutionStatus-message on 'DeadLettering', when it should be used
+	if common_config.UsePubSubWhenSendingExecutionStatusToGuiExecutionServer == true {
+		go broadcastingEngine_ExecutionStatusUpdate.PullPubSubExecutionStatusMessagesFromDeadLettering()
+	}
 
 	// Set up BackendObject
 	fenixExecutionServerObject = &fenixExecutionServerObjectStruct{
@@ -61,7 +63,7 @@ func fenixExecutionServerMain() {
 		// Always use standard output in GCP to be able for GCP to pick up logs
 		fenixExecutionServerObject.InitLogger("")
 	} else {
-		fenixExecutionServerObject.InitLogger("log107.log")
+		fenixExecutionServerObject.InitLogger("")
 	}
 
 	// Clean up when leaving. Is placed after logger because shutdown logs information

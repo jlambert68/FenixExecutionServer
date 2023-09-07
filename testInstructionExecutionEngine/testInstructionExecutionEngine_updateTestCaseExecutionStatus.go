@@ -31,22 +31,25 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
-		// Create message to be sent to BroadcastEngine
-		var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
-		broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
-			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
-			TestCaseExecutions:               testCaseExecutions,
-			TestInstructionExecutions:        nil,
+		// Only try to broadcast if there are messages to send
+		if len(testCaseExecutions) > 0 {
+
+			// Create message to be sent to BroadcastEngine
+			var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
+			broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
+				OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
+				TestCaseExecutions:               testCaseExecutions,
+				TestInstructionExecutions:        nil,
+			}
+
+			// Send message to BroadcastEngine over channel
+			broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+
+			defer executionEngine.logger.WithFields(logrus.Fields{
+				"id":                               "6ad2a565-bd85-4e69-a677-9212beddd94f",
+				"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
+			}).Debug("Sent message on Broadcast channel")
 		}
-
-		// Send message to BroadcastEngine over channel
-		broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
-
-		defer executionEngine.logger.WithFields(logrus.Fields{
-			"id":                               "6ad2a565-bd85-4e69-a677-9212beddd94f",
-			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
-		}).Debug("Sent message on Broadcast channel")
-
 		/*
 			// Trigger TestInstructionEngine to check if there are any TestInstructions on the ExecutionQueue
 			go func() {
@@ -110,7 +113,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 		&txn,
 		&doCommitNotRoleBack,
 		//&testCaseExecutionsToProcess,
-		&testCaseExecutions) //txn.Commit(context.Background())
+		&testCaseExecutions)
 
 	// Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecutionUuid
 	var loadTestInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct
@@ -153,26 +156,43 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	// Prepare message data to be sent over Broadcast system
 	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
 
-		var testCaseExecution broadcastingEngine_ExecutionStatusUpdate.TestCaseExecutionBroadcastMessageStruct
-		testCaseExecution = broadcastingEngine_ExecutionStatusUpdate.TestCaseExecutionBroadcastMessageStruct{
-			TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
-			TestCaseExecutionVersion: strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion),
-			TestCaseExecutionStatus: fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(
-				testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
+		// Should the message be broadcasted
+		var messageShouldBeBroadcasted bool
+		messageShouldBeBroadcasted = executionEngine.shouldMessageBeBroadcasted(
+			shouldMessageBeBroadcasted_ThisIsATestCaseExecution,
+			testCaseExecutionStatusMessage.ExecutionStatusReportLevel,
+			fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum(testCaseExecutionStatusMessage.TestCaseExecutionStatus),
+			fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TestInstructionExecutionStatusEnum_DEFAULT_NOT_SET))
 
-			ExecutionStartTimeStamp: testCaseExecutionStatusMessage.ExecutionStartTimeStampAsString,
+		if messageShouldBeBroadcasted == true {
 
-			ExecutionHasFinished:           testCaseExecutionStatusMessage.ExecutionHasFinishedAsString,
-			ExecutionStatusUpdateTimeStamp: testCaseExecutionStatusMessage.ExecutionStatusUpdateTimeStampAsString,
+			var testCaseExecution broadcastingEngine_ExecutionStatusUpdate.TestCaseExecutionBroadcastMessageStruct
+			testCaseExecution = broadcastingEngine_ExecutionStatusUpdate.TestCaseExecutionBroadcastMessageStruct{
+				TestCaseExecutionUuid:    testCaseExecutionStatusMessage.TestCaseExecutionUuid,
+				TestCaseExecutionVersion: strconv.Itoa(testCaseExecutionStatusMessage.TestCaseExecutionVersion),
+				TestCaseExecutionStatus: fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_name[int32(
+					testCaseExecutionStatusMessage.TestCaseExecutionStatus)],
+
+				ExecutionStartTimeStamp: testCaseExecutionStatusMessage.ExecutionStartTimeStampAsString,
+
+				ExecutionHasFinished:           testCaseExecutionStatusMessage.ExecutionHasFinishedAsString,
+				ExecutionStatusUpdateTimeStamp: testCaseExecutionStatusMessage.ExecutionStatusUpdateTimeStampAsString,
+			}
+
+			// Only send 'ExecutionStopTimeStamp' when the TestCaseExecutionUuid is finished
+			if testCaseExecutionStatusMessage.ExecutionHasFinishedAsString == "true" {
+				testCaseExecution.ExecutionStopTimeStamp = testCaseExecutionStatusMessage.ExecutionStopTimeStampAsString
+			}
+
+			// Add TestCaseExecutionUuid to slice of executions to be sent over Broadcast system
+			testCaseExecutions = append(testCaseExecutions, testCaseExecution)
+
+		} else {
+
+			// Message should not be broadcasted
+
 		}
 
-		// Only send 'ExecutionStopTimeStamp' when the TestCaseExecutionUuid is finished
-		if testCaseExecutionStatusMessage.ExecutionHasFinishedAsString == "true" {
-			testCaseExecution.ExecutionStopTimeStamp = testCaseExecutionStatusMessage.ExecutionStopTimeStampAsString
-		}
-
-		// Add TestCaseExecutionUuid to slice of executions to be sent over Broadcast system
-		testCaseExecutions = append(testCaseExecutions, testCaseExecution)
 	}
 
 	// No errors occurred so secure that commit is done
@@ -201,6 +221,7 @@ type testCaseExecutionStatusStruct struct {
 	ExecutionStopTimeStampAsString         string
 	ExecutionHasFinishedAsString           string
 	ExecutionStatusUpdateTimeStampAsString string
+	ExecutionStatusReportLevel             fenixExecutionServerGrpcApi.ExecutionStatusReportLevelEnum
 }
 
 // used as type when getting number of TestInstructionExecutions on TestInstructionExecutionQueue
@@ -573,7 +594,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 }
 
 // Update TestExecutions in database with the new TestCaseExecutionStatus
-func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecutionsWithNewTestCaseExecutionStatus(dbTransaction pgx.Tx, testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct, numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecutionsWithNewTestCaseExecutionStatus(
+	dbTransaction pgx.Tx,
+	testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct,
+	numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType) (err error) {
 
 	// If there are nothing to update then exit
 	if len(testCaseExecutionStatusMessages) == 0 {
@@ -701,6 +725,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 				&testCaseExecutionDetails.ExecutionHasFinished,
 				&tempUniqueCounter,
 				&tempExecutionStatusUpdateTimeStamp,
+
+				&testCaseExecutionBasicInformation.ExecutionStatusReportLevel,
 			)
 
 			if err != nil {
@@ -825,6 +851,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		testCaseExecutionStatusMessage.ExecutionStopTimeStampAsString = testCaseExecutionUpdateTimeStamp
 		testCaseExecutionStatusMessage.ExecutionStatusUpdateTimeStampAsString = testCaseExecutionUpdateTimeStamp
 		testCaseExecutionStatusMessage.ExecutionHasFinishedAsString = testCaseExecutionHasFinishedAsString
+		testCaseExecutionStatusMessage.ExecutionStatusReportLevel = fenixExecutionServerGrpcApi.
+			ExecutionStatusReportLevelEnum(testCasesUnderExecution[0].GetTestCaseExecutionBasicInformation().
+				ExecutionStatusReportLevel)
 
 	}
 

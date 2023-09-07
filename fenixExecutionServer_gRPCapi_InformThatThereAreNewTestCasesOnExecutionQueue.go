@@ -52,8 +52,10 @@ func (s *fenixExecutionServerGrpcServicesServer) InformThatThereAreNewTestCasesO
 	for _, testCaseExecutionToProcessMessage := range testCaseExecutionsToProcessMessage.TestCaseExecutionsToProcess {
 		var channelCommandTestCaseExecution testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct
 		channelCommandTestCaseExecution = testInstructionExecutionEngine.ChannelCommandTestCaseExecutionStruct{
-			TestCaseExecutionUuid:    testCaseExecutionToProcessMessage.TestCaseExecutionsUuid,
-			TestCaseExecutionVersion: testCaseExecutionToProcessMessage.TestCaseExecutionVersion,
+			TestCaseExecutionUuid:    testCaseExecutionToProcessMessage.GetTestCaseExecutionsUuid(),
+			TestCaseExecutionVersion: testCaseExecutionToProcessMessage.GetTestCaseExecutionVersion(),
+			ExecutionStatusReportLevelEnum: fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum(
+				testCaseExecutionToProcessMessage.GetExecutionStatusReportLevel()),
 		}
 		channelCommandTestCasesExecution = append(channelCommandTestCasesExecution, channelCommandTestCaseExecution)
 	}

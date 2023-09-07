@@ -70,8 +70,9 @@ type ChannelCommandStruct struct {
 // ChannelCommandTestCaseExecutionStruct
 // Hold one TestCaseExecution that will be processed by the executionEngine
 type ChannelCommandTestCaseExecutionStruct struct {
-	TestCaseExecutionUuid    string
-	TestCaseExecutionVersion int32
+	TestCaseExecutionUuid          string
+	TestCaseExecutionVersion       int32
+	ExecutionStatusReportLevelEnum fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum
 }
 
 // ChannelCommandTestInstructionExecutionStruct

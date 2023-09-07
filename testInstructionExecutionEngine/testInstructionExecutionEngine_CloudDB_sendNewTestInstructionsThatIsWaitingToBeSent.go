@@ -24,32 +24,39 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
 	testInstructionExecutionsReference *[]broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct,
-	channelCommandTestCaseExecutionReference *[]ChannelCommandTestCaseExecutionStruct) {
+	channelCommandTestCaseExecutionReference *[]ChannelCommandTestCaseExecutionStruct,
+	messageShallNotBeBroadcastedReference *bool) {
 
 	executionTrackNumber := *executionTrackNumberReference
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testInstructionExecutions := *testInstructionExecutionsReference
 	channelCommandTestCaseExecution := *channelCommandTestCaseExecutionReference
+	messageShallNotBeBroadcasted := *messageShallNotBeBroadcastedReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
-		// Create message to be sent to BroadcastEngine
-		var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
-		broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
-			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
-			TestCaseExecutions:               nil,
-			TestInstructionExecutions:        testInstructionExecutions,
+		// Only broadcast message if it should be broadcasted
+		if messageShallNotBeBroadcasted == true {
+
+			// Create message to be sent to BroadcastEngine
+			var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
+			broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
+				OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
+				TestCaseExecutions:               nil,
+				TestInstructionExecutions:        testInstructionExecutions,
+			}
+
+			// Send message to BroadcastEngine over channel
+			broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+
+			defer common_config.Logger.WithFields(logrus.Fields{
+				"id":                               "dc384f61-13a6-4f3b-9e1d-345669cf3947",
+				"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
+			}).Debug("Sent message on Broadcast channel")
+
 		}
-
-		// Send message to BroadcastEngine over channel
-		broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
-
-		defer common_config.Logger.WithFields(logrus.Fields{
-			"id":                               "dc384f61-13a6-4f3b-9e1d-345669cf3947",
-			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
-		}).Debug("Sent message on Broadcast channel")
 
 		// Update status for TestCaseExecutionUuid, based there are TestInstructionExecution
 		if len(testInstructionExecutions) > 0 {
@@ -103,6 +110,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	// All TestCaseExecutions to update status on
 	var channelCommandTestCaseExecution []ChannelCommandTestCaseExecutionStruct
 
+	// Defines if a message should be broadcasted for signaling a ExecutionStatus change
+	var messageShallNotBeBroadcastedReference *bool
+
 	// Extract "lowest" TestCaseExecutionUuid
 	if len(testCaseExecutionsToProcess) > 0 {
 		var uuidSlice []string
@@ -122,7 +132,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		&txn,
 		&doCommitNotRoleBack,
 		&testInstructionExecutions,
-		&channelCommandTestCaseExecution)
+		&channelCommandTestCaseExecution,
+		messageShallNotBeBroadcastedReference)
 
 	// Generate a new TestCaseExecutionUuid-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()

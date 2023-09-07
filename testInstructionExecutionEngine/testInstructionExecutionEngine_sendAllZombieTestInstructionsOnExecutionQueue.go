@@ -136,7 +136,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 
 	sqlToExecute = ""
 	sqlToExecute = sqlToExecute + "SELECT TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestCaseExecutionVersion\", " +
-		"TIEQ.\"QueueTimeStamp\" "
+		"TIEQ.\"QueueTimeStamp\", TIEQ.\"ExecutionStatusReportLevel\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ "
 	sqlToExecute = sqlToExecute + "LEFT JOIN  " + tempraryTableName + " tmp "
 	sqlToExecute = sqlToExecute + "ON TIEQ.\"TestCaseExecutionUuid\" = tmp.\"TestCaseExecutionUuid\" AND "
@@ -184,6 +184,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllZombieTestIn
 			&tempTestCaseExecutionToProcess.TestCaseExecutionUuid,
 			&tempTestCaseExecutionToProcess.TestCaseExecutionVersion,
 			&tempQueueTimeStamp,
+			&tempTestCaseExecutionToProcess.ExecutionStatusReportLevelEnum,
 		)
 
 		if err != nil {

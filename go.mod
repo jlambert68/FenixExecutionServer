@@ -4,10 +4,11 @@ go 1.18
 
 require (
 	cloud.google.com/go/firestore v1.12.0
+	cloud.google.com/go/pubsub v1.33.0
 	github.com/go-gota/gota v0.12.0
 	github.com/google/uuid v1.3.1
 	github.com/jackc/pgx/v4 v4.18.1
-	github.com/jlambert68/FenixGrpcApi v0.0.0-20230829122329-364796dded30
+	github.com/jlambert68/FenixGrpcApi v0.0.0-20230907164649-e25f974be5e1
 	github.com/jlambert68/FenixSyncShared v0.0.0-20230703094150-8d1c9829298f
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/net v0.14.0
@@ -21,6 +22,7 @@ require (
 	cloud.google.com/go v0.110.6 // indirect
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/iam v1.1.1 // indirect
 	cloud.google.com/go/longrunning v0.5.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect

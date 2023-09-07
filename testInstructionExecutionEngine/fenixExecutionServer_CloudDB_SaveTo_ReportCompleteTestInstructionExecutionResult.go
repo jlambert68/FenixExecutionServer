@@ -21,7 +21,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 	testCaseExecutionsToProcessReference *[]ChannelCommandTestCaseExecutionStruct,
 	thereExistsOnGoingTestInstructionExecutionsReference *bool,
 	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference *bool,
-	testInstructionExecutionReference *broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct) {
+	testInstructionExecutionReference *broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct,
+	messageShallNotBeBroadcastedReference *bool) {
 
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
@@ -29,25 +30,31 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 	thereExistsOnGoingTestInstructionExecutions := *thereExistsOnGoingTestInstructionExecutionsReference
 	triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions := *triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutionsReference
 	testInstructionExecution := *testInstructionExecutionReference
+	messageShallNotBeBroadcasted := *messageShallNotBeBroadcastedReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
-		// Create message to be sent to BroadcastEngine
-		var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
-		broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
-			OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
-			TestCaseExecutions:               nil,
-			TestInstructionExecutions:        []broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct{testInstructionExecution},
+		// Only broadcast message if it should be broadcasted
+		if messageShallNotBeBroadcasted == true {
+
+			// Create message to be sent to BroadcastEngine
+			var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
+			broadcastingMessageForExecutions = broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct{
+				OriginalMessageCreationTimeStamp: strings.Split(time.Now().UTC().String(), " m=")[0],
+				TestCaseExecutions:               nil,
+				TestInstructionExecutions:        []broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct{testInstructionExecution},
+			}
+
+			// Send message to BroadcastEngine over channel
+			broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":                               "c71501df-2ddc-4874-953f-4cca70d9b698",
+				"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
+			}).Debug("Sent message on Broadcast channel")
+
 		}
-
-		// Send message to BroadcastEngine over channel
-		broadcastingEngine_ExecutionStatusUpdate.BroadcastEngineMessageChannel <- broadcastingMessageForExecutions
-
-		common_config.Logger.WithFields(logrus.Fields{
-			"id":                               "c71501df-2ddc-4874-953f-4cca70d9b698",
-			"broadcastingMessageForExecutions": broadcastingMessageForExecutions,
-		}).Debug("Sent message on Broadcast channel")
 
 		// Remove TestInstructionExecution from TimeOut-timer
 
@@ -266,6 +273,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 		return ackNackResponse
 	}
 
+	// Verify that the Status is a final ExecutionStatus
 	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < fenixExecutionServerGrpcApi.
 		TestInstructionExecutionStatusEnum_TIE_CONTROLLED_INTERRUPTION {
 
@@ -335,13 +343,17 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	var triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions bool
 	var testInstructionExecutionMessageToBroadcastSystem broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 
+	// Defines if a message should be broadcasted for signaling a ExecutionStatus change
+	var messageShallNotBeBroadcastedReference *bool
+
 	defer executionEngine.commitOrRoleBackReportCompleteTestInstructionExecutionResult(
 		&txn,
 		&doCommitNotRoleBack,
 		&testCaseExecutionsToProcess,
 		&thereExistsOnGoingTestInstructionExecutionsOnQueue,
 		&triggerSetTestCaseExecutionStatusAndCheckQueueForNewTestInstructionExecutions,
-		&testInstructionExecutionMessageToBroadcastSystem) //txn.Commit(context.Background())
+		&testInstructionExecutionMessageToBroadcastSystem,
+		messageShallNotBeBroadcastedReference)
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB2(txn, finalTestInstructionExecutionResultMessage)
@@ -387,30 +399,50 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 		return ackNackResponse
 	}
 
-	// Create the BroadCastMessage for the TestInstructionExecution
+	// Create the BroadCastMessage for the TestInstructionExecution when the message should be broadcasted due to ExecutionStatus-change
 	var testInstructionExecutionBroadcastMessages []broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
-	testInstructionExecutionBroadcastMessages, err = executionEngine.loadTestInstructionExecutionDetailsForBroadcastMessage(
-		txn,
-		finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
 
-	if err != nil {
+	// Should the message be broadcasted
+	var messageShouldBeBroadcasted bool
+	messageShouldBeBroadcasted = executionEngine.shouldMessageBeBroadcasted(
+		shouldMessageBeBroadcasted_ThisIsATestInstructionExecution,
+		fenixExecutionServerGrpcApi.ExecutionStatusReportLevelEnum(testCaseExecutionsToProcess[0].ExecutionStatusReportLevelEnum),
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TestInstructionExecutionStatusEnum_DEFAULT_NOT_SET),
+		finalTestInstructionExecutionResultMessage.GetTestInstructionExecutionStatus())
 
-		// Set Error codes to return message
-		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+	if messageShouldBeBroadcasted == true {
 
-		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
-		errorCodes = append(errorCodes, errorCode)
+		// Message should be broadcasted
+		*messageShallNotBeBroadcastedReference = true
 
-		// Create Return message
-		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
-			AckNack:                      false,
-			Comments:                     err.Error(),
-			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		testInstructionExecutionBroadcastMessages, err = executionEngine.loadTestInstructionExecutionDetailsForBroadcastMessage(
+			txn,
+			finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid)
+
+		if err != nil {
+
+			// Set Error codes to return message
+			var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+			var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+			errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+			errorCodes = append(errorCodes, errorCode)
+
+			// Create Return message
+			ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+				AckNack:                      false,
+				Comments:                     err.Error(),
+				ErrorCodes:                   errorCodes,
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			}
+
+			return ackNackResponse
 		}
+	} else {
 
-		return ackNackResponse
+		// Message should not be broadcasted
+		*messageShallNotBeBroadcastedReference = false
+
 	}
 
 	// There should only be one message
@@ -590,9 +622,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"ExecutionStatusReportLevel\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
-	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid + "'; "
+	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + finalTestInstructionExecutionResultMessage.
+		TestInstructionExecutionUuid + "'; "
 
 	// Log SQL to be executed if Environment variable is true
 	if common_config.LogAllSQLs == true {
@@ -630,6 +664,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 		err := rows.Scan(
 			&channelCommandTestCaseExecution.TestCaseExecutionUuid,
 			&channelCommandTestCaseExecution.TestCaseExecutionVersion,
+			&channelCommandTestCaseExecution.ExecutionStatusReportLevelEnum,
 		)
 
 		if err != nil {
@@ -819,7 +854,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	sqlToExecute = sqlToExecute + "TIUE.\"SentTimeStamp\", TIUE.\"ExpectedExecutionEndTimeStamp\", "
 	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\", TIUE.\"TestInstructionExecutionEndTimeStamp\", "
 	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionHasFinished\", TIUE.\"UniqueCounter\", "
-	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionCanBeReExecuted\", TIUE.\"ExecutionStatusUpdateTimeStamp\" "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionCanBeReExecuted\", TIUE.\"ExecutionStatusUpdateTimeStamp\", " +
+		"\"ExecutionStatusReportLevel\")  "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "'; "
 
@@ -863,6 +899,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		tempUniqueDatabaseRowCounter             int
 		tempTestInstructionCanBeReExecuted       bool
 		tempExecutionStatusUpdateTimeStamp       time.Time
+		tempExecutionStatusReportLevel           fenixExecutionServerGrpcApi.ExecutionStatusReportLevelEnum
 	)
 
 	// Variable to store Message to be broadcast
@@ -885,6 +922,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			&tempUniqueDatabaseRowCounter,
 			&tempTestInstructionCanBeReExecuted,
 			&tempExecutionStatusUpdateTimeStamp,
+			&tempExecutionStatusReportLevel,
 		)
 
 		if err != nil {
@@ -929,6 +967,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			UniqueDatabaseRowCounter:             strconv.Itoa(int(tempUniqueDatabaseRowCounter)),
 			TestInstructionCanBeReExecuted:       strconv.FormatBool(tempTestInstructionExecutionHasFinished),
 			ExecutionStatusUpdateTimeStamp:       common_config.GenerateDatetimeFromTimeInputForDB(tempExecutionStatusUpdateTimeStamp),
+			ExecutionStatusReportLevel:           tempExecutionStatusReportLevel,
 		}
 
 		// Add TestCaseExecutionUUID and its TestCaseExecutionVersion to slice of messages

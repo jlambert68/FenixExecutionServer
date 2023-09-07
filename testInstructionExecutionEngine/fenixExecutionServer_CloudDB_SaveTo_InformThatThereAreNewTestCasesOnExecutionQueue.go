@@ -113,7 +113,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
-	testCaseExecutionQueueMessages, err := executionEngine.loadTestCaseExecutionQueueMessages(
+	var testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct
+	testCaseExecutionQueueMessages, err = executionEngine.loadTestCaseExecutionQueueMessages(
 		txn, testCaseExecutionsToProcess)
 	if err != nil {
 
@@ -310,22 +311,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 
 // Struct to use with variable to hold TestCaseExecutionQueue-messages
 type tempTestCaseExecutionQueueInformationStruct struct {
-	domainUuid                string
-	domainName                string
-	testSuiteUuid             string
-	testSuiteName             string
-	testSuiteVersion          int
-	testSuiteExecutionUuid    string
-	testSuiteExecutionVersion int
-	testCaseUuid              string
-	testCaseName              string
-	testCaseVersion           int
-	testCaseExecutionUuid     string
-	testCaseExecutionVersion  int
-	queueTimeStamp            time.Time
-	testDataSetUuid           string
-	executionPriority         int
-	uniqueCounter             int
+	domainUuid                 string
+	domainName                 string
+	testSuiteUuid              string
+	testSuiteName              string
+	testSuiteVersion           int
+	testSuiteExecutionUuid     string
+	testSuiteExecutionVersion  int
+	testCaseUuid               string
+	testCaseName               string
+	testCaseVersion            int
+	testCaseExecutionUuid      string
+	testCaseExecutionVersion   int
+	queueTimeStamp             time.Time
+	testDataSetUuid            string
+	executionPriority          int
+	uniqueCounter              int
+	executionStatusReportLevel int
 }
 
 // Struct to use with variable to hold TestInstructionExecutionQueue-messages
@@ -346,6 +348,7 @@ type tempTestInstructionExecutionQueueInformationStruct struct {
 	testInstructionExecutionOrder     int
 	uniqueCounter                     int
 	testInstructionOriginalUuid       string
+	executionStatusReportLevel        int
 }
 
 // Struct to be used when extracting TestInstructions from TestCases
@@ -375,7 +378,10 @@ type tempAttributeStruct struct {
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
-func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionQueueMessages(dbTransaction pgx.Tx, testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionQueueMessages(
+	dbTransaction pgx.Tx,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
+	testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, err error) {
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -457,6 +463,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 			&testCaseExecutionQueueMessage.testDataSetUuid,
 			&testCaseExecutionQueueMessage.executionPriority,
 			&testCaseExecutionQueueMessage.uniqueCounter,
+
+			// ReportingLevel
+			&testCaseExecutionQueueMessage.executionStatusReportLevel,
 		)
 
 		if err != nil {
@@ -480,7 +489,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 }
 
 // Put all messages found on TestCaseExecutionQueue to the ongoing executions table
-func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(
+	dbTransaction pgx.Tx,
+	testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (
+	err error) {
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"Id": "8e857aa4-3f15-4415-bc08-5ac97bf64446",
@@ -555,6 +567,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngo
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, false)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp)
 
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessage.executionStatusReportLevel)
+
 		dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
 	}
@@ -564,7 +578,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngo
 		"\"TestSuiteExecutionUuid\", \"TestSuiteExecutionVersion\", \"TestCaseUuid\", \"TestCaseName\", \"TestCaseVersion\"," +
 		" \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"QueueTimeStamp\", \"TestDataSetUuid\", \"ExecutionPriority\", " +
 		"\"ExecutionStartTimeStamp\", \"ExecutionStopTimeStamp\", \"TestCaseExecutionStatus\", \"ExecutionHasFinished\", " +
-		"\"ExecutionStatusUpdateTimeStamp\") "
+		"\"ExecutionStatusUpdateTimeStamp\", \"ExecutionStatusReportLevel\")  "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
@@ -906,6 +920,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, 1) //TestInstructionExecutionVersion
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionOrder[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid].temporaryOrderNumber)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOrignalUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].executionStatusReportLevel)
 
 			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 		}
@@ -914,7 +929,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" "
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
 		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
-		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\") "
+		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", " +
+		"\"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\", \"ExecutionStatusReportLevel\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 

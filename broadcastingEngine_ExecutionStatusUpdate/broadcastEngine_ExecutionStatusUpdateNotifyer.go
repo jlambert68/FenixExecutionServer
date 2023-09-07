@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/common_config"
 	"context"
 	"encoding/json"
+	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -38,6 +39,7 @@ type TestCaseExecutionBroadcastMessageStruct struct {
 	ExecutionStatusUpdateTimeStamp string `json:"executionstatusupdatetimestamp"` // The timestamp when the status was last updated
 	BroadcastTimeStamp             string `json:"broadcasttimestamp"`
 	PreviousBroadcastTimeStamp     string `json:"previousbroadcasttimestamp"`
+	ExecutionStatusReportLevel     fenixExecutionServerGrpcApi.ExecutionStatusReportLevelEnum
 }
 
 type TestInstructionExecutionBroadcastMessageStruct struct {
@@ -56,6 +58,7 @@ type TestInstructionExecutionBroadcastMessageStruct struct {
 	ExecutionStatusUpdateTimeStamp       string `json:"executionstatusupdatetimestamp"`
 	BroadcastTimeStamp                   string `json:"broadcasttimestamp"`
 	PreviousBroadcastTimeStamp           string `json:"previousbroadcasttimestamp"`
+	ExecutionStatusReportLevel           fenixExecutionServerGrpcApi.ExecutionStatusReportLevelEnum
 }
 
 var err error

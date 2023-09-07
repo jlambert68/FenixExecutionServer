@@ -48,10 +48,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 	// All TestCaseExecutions to update status on
 	var channelCommandTestCaseExecution []ChannelCommandTestCaseExecutionStruct
 
+	// Defines if a message should be broadcasted for signaling a ExecutionStatus change
+	var messageShallNotBeBroadcastedReference *bool
+
 	// Load TestCaseExecutionUuid and TestCaseExecutionVersion based on TestInstructionExecutionResponseMessage
-	channelCommandTestCaseExecution, err = executionEngine.loadTestCaseExecutionAndTestCaseExecutionVersionBasedOnTestInstructionExecutionResponseMessage(
-		dbTransaction,
-		testInstructionExecutionResponseMessage)
+	channelCommandTestCaseExecution, err = executionEngine.
+		loadTestCaseExecutionAndTestCaseExecutionVersionBasedOnTestInstructionExecutionResponseMessage(
+			dbTransaction,
+			testInstructionExecutionResponseMessage)
 
 	if err != nil {
 
@@ -74,7 +78,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 		&dbTransaction,
 		&doCommitNotRoleBack,
 		&testInstructionExecutions,
-		&channelCommandTestCaseExecution)
+		&channelCommandTestCaseExecution,
+		messageShallNotBeBroadcastedReference)
 
 	// Update status on TestInstructions that could be sent to workers
 	var testInstructionsThatWasSentToWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer
@@ -162,6 +167,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 		var testInstructionExecutionDetailsForBroadcastSystem broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 		testInstructionExecutionDetailsForBroadcastSystem = testInstructionExecutionBroadcastMessages[0]
 
+		var tempTestInstructionExecutionStatus fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum
+
 		// Only BroadCast 'TIE_EXECUTING' if we got an AckNack=true as respons
 		if testInstructionExecutionStatusMessage.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
 			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
@@ -169,6 +176,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 					fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING)]
 			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
 				strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING))
+
+			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
+				TestInstructionExecutionStatusEnum_TIE_EXECUTING
+
 		} else {
 			//  BroadCast 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' if we got an AckNack=false as respons
 			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
@@ -176,6 +187,29 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 					fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)]
 			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
 				strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN))
+
+			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
+				TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
+		}
+
+		// Should the message be broadcasted
+		var messageShouldBeBroadcasted bool
+		messageShouldBeBroadcasted = executionEngine.shouldMessageBeBroadcasted(
+			shouldMessageBeBroadcasted_ThisIsATestInstructionExecution,
+			testInstructionExecutionBroadcastMessages[0].ExecutionStatusReportLevel,
+			fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TestInstructionExecutionStatusEnum_DEFAULT_NOT_SET),
+			tempTestInstructionExecutionStatus)
+
+		if messageShouldBeBroadcasted == true {
+
+			// Message should be broadcasted
+			*messageShallNotBeBroadcastedReference = true
+
+		} else {
+
+			// Message should not be broadcasted
+			*messageShallNotBeBroadcastedReference = false
+
 		}
 
 		// Add TestInstructionExecution to slice of executions to be sent over Broadcast system
@@ -248,7 +282,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", " +
+		"TIUE\"ExecutionStatusReportLevel\")  "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionResponseMessage.TestInstructionExecutionUuid + "'; "
 
@@ -288,6 +323,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 		err := rows.Scan(
 			&channelCommandTestCaseExecution.TestCaseExecutionUuid,
 			&channelCommandTestCaseExecution.TestCaseExecutionVersion,
+			&channelCommandTestCaseExecution.ExecutionStatusReportLevelEnum,
 		)
 
 		if err != nil {
