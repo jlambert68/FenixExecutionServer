@@ -49,7 +49,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 	var channelCommandTestCaseExecution []ChannelCommandTestCaseExecutionStruct
 
 	// Defines if a message should be broadcasted for signaling a ExecutionStatus change
-	var messageShallNotBeBroadcastedReference *bool
+	var messageShallBeBroadcasted bool
 
 	// Load TestCaseExecutionUuid and TestCaseExecutionVersion based on TestInstructionExecutionResponseMessage
 	channelCommandTestCaseExecution, err = executionEngine.
@@ -79,7 +79,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 		&doCommitNotRoleBack,
 		&testInstructionExecutions,
 		&channelCommandTestCaseExecution,
-		messageShallNotBeBroadcastedReference)
+		&messageShallBeBroadcasted)
 
 	// Update status on TestInstructions that could be sent to workers
 	var testInstructionsThatWasSentToWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer
@@ -193,24 +193,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 		}
 
 		// Should the message be broadcasted
-		var messageShouldBeBroadcasted bool
-		messageShouldBeBroadcasted = executionEngine.shouldMessageBeBroadcasted(
+		messageShallBeBroadcasted = executionEngine.shouldMessageBeBroadcasted(
 			shouldMessageBeBroadcasted_ThisIsATestInstructionExecution,
 			testInstructionExecutionBroadcastMessages[0].ExecutionStatusReportLevel,
 			fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TestInstructionExecutionStatusEnum_DEFAULT_NOT_SET),
 			tempTestInstructionExecutionStatus)
-
-		if messageShouldBeBroadcasted == true {
-
-			// Message should be broadcasted
-			*messageShallNotBeBroadcastedReference = true
-
-		} else {
-
-			// Message should not be broadcasted
-			*messageShallNotBeBroadcastedReference = false
-
-		}
 
 		// Add TestInstructionExecution to slice of executions to be sent over Broadcast system
 		testInstructionExecutions = append(testInstructionExecutions, testInstructionExecutionDetailsForBroadcastSystem)
@@ -283,7 +270,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", " +
-		"TIUE\"ExecutionStatusReportLevel\")  "
+		"TIUE.\"ExecutionStatusReportLevel\"  "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionResponseMessage.TestInstructionExecutionUuid + "'; "
 

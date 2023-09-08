@@ -124,7 +124,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) shouldMessageBeBroa
 
 		// Only changes in execution status for TestCases are reported
 		case fenixExecutionServerGrpcApi.ExecutionStatusReportLevelEnum_REPORT_ONLY_ALL_STATUS_CHANGES_ON_TESTCASE_EXECUTIONS:
-			return true
+			return false
 
 		// Only changes into execution end status for TestCases are reported
 		case fenixExecutionServerGrpcApi.ExecutionStatusReportLevelEnum_REPORT_ONLY_ALL_END_STATUS_CHANGES_ON_TESTCASE_EXECUTIONS:

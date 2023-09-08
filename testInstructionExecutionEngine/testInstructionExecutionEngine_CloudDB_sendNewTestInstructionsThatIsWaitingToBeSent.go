@@ -25,20 +25,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	doCommitNotRoleBackReference *bool,
 	testInstructionExecutionsReference *[]broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct,
 	channelCommandTestCaseExecutionReference *[]ChannelCommandTestCaseExecutionStruct,
-	messageShallNotBeBroadcastedReference *bool) {
+	messageShallBeBroadcastedReference *bool) {
 
 	executionTrackNumber := *executionTrackNumberReference
 	dbTransaction := *dbTransactionReference
 	doCommitNotRoleBack := *doCommitNotRoleBackReference
 	testInstructionExecutions := *testInstructionExecutionsReference
 	channelCommandTestCaseExecution := *channelCommandTestCaseExecutionReference
-	messageShallNotBeBroadcasted := *messageShallNotBeBroadcastedReference
+	messageShallBeBroadcasted := *messageShallBeBroadcastedReference
 
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
 		// Only broadcast message if it should be broadcasted
-		if messageShallNotBeBroadcasted == true {
+		if messageShallBeBroadcasted == true {
 
 			// Create message to be sent to BroadcastEngine
 			var broadcastingMessageForExecutions broadcastingEngine_ExecutionStatusUpdate.BroadcastingMessageForExecutionsStruct
@@ -111,7 +111,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	var channelCommandTestCaseExecution []ChannelCommandTestCaseExecutionStruct
 
 	// Defines if a message should be broadcasted for signaling a ExecutionStatus change
-	var messageShallNotBeBroadcastedReference *bool
+	var messageShallBeBroadcasted bool
 
 	// Extract "lowest" TestCaseExecutionUuid
 	if len(testCaseExecutionsToProcess) > 0 {
@@ -133,7 +133,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		&doCommitNotRoleBack,
 		&testInstructionExecutions,
 		&channelCommandTestCaseExecution,
-		messageShallNotBeBroadcastedReference)
+		&messageShallBeBroadcasted)
 
 	// Generate a new TestCaseExecutionUuid-UUID
 	//testCaseExecutionUuid := uuidGenerator.New().String()
@@ -242,6 +242,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		var testInstructionExecutionDetailsForBroadcastSystem broadcastingEngine_ExecutionStatusUpdate.TestInstructionExecutionBroadcastMessageStruct
 		testInstructionExecutionDetailsForBroadcastSystem = testInstructionExecutionBroadcastMessages[0]
 
+		var tempTestInstructionExecutionStatus fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum
+
 		// Only BroadCast 'TIE_EXECUTING' if we got an AckNack=true as respons
 		if testInstructionExecutionStatusMessage.processTestInstructionExecutionResponse.AckNackResponse.AckNack == true {
 			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
@@ -249,6 +251,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 					fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING)]
 			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
 				strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_EXECUTING))
+
+			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
+				TestInstructionExecutionStatusEnum_TIE_EXECUTING
+
 		} else {
 			//  BroadCast 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' if we got an AckNack=false as respons
 			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
@@ -256,7 +262,17 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 					fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)]
 			testInstructionExecutionDetailsForBroadcastSystem.TestInstructionExecutionStatusName =
 				strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN))
+
+			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
+				TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
 		}
+
+		// Should the message be broadcasted
+		messageShallBeBroadcasted = executionEngine.shouldMessageBeBroadcasted(
+			shouldMessageBeBroadcasted_ThisIsATestInstructionExecution,
+			testInstructionExecutionBroadcastMessages[0].ExecutionStatusReportLevel,
+			fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TestInstructionExecutionStatusEnum_DEFAULT_NOT_SET),
+			tempTestInstructionExecutionStatus)
 
 		// Add TestInstructionExecution to slice of executions to be sent over Broadcast system
 		testInstructionExecutions = append(testInstructionExecutions, testInstructionExecutionDetailsForBroadcastSystem)
