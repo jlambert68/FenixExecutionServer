@@ -334,6 +334,8 @@ type tempTestCaseExecutionQueueInformationStruct struct {
 type tempTestInstructionExecutionQueueInformationStruct struct {
 	domainUuid                        string
 	domainName                        string
+	executionDomainUuid               string
+	executionDomainName               string
 	testInstructionExecutionUuid      string
 	testInstructionUuid               string
 	testInstructionName               string
@@ -355,6 +357,8 @@ type tempTestInstructionExecutionQueueInformationStruct struct {
 type tempTestInstructionInTestCaseStruct struct {
 	domainUuid                       string
 	domainName                       string
+	executionDomainUuid              string
+	executionDomainName              string
 	testCaseUuid                     string
 	testCaseName                     string
 	testCaseVersion                  int
@@ -919,8 +923,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionVersion)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, 1) //TestInstructionExecutionVersion
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionOrder[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid].temporaryOrderNumber)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOrignalUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalUuid)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].executionStatusReportLevel)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.ExecutionDomainUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.ExecutionDomainName)
 
 			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 		}
@@ -930,7 +936,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
 		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
 		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", " +
-		"\"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\", \"ExecutionStatusReportLevel\") "
+		"\"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\", \"ExecutionStatusReportLevel\", " +
+		"\"ExecutionDomainUuid\", \"ExecutionDomainName\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 

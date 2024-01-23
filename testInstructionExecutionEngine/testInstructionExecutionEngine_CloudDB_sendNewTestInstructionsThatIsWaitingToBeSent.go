@@ -341,6 +341,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 type newTestInstructionToBeSentToExecutionWorkersStruct struct {
 	domainUuid                        string
 	domainName                        string
+	executionDomainUuid               string
+	executionDomainName               string
 	executionWorkerAddress            string
 	testInstructionExecutionUuid      string
 	testInstructionOriginalUuid       string
@@ -406,7 +408,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	sqlToExecute = sqlToExecute + "SELECT DP.\"DomainUuid\", DP.\"DomainName\", DP.\"ExecutionWorker Address\", " +
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionOriginalUuid\", TIUE.\"TestInstructionName\", " +
 		"TIUE.\"TestInstructionMajorVersionNumber\", TIUE.\"TestInstructionMinorVersionNumber\", " +
-		"TIUE.\"TestDataSetUuid\", TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\" "
+		"TIUE.\"TestDataSetUuid\", TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\"," +
+		", \"ExecutionDomainUuid\", \"ExecutionDomainName\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE, " +
 		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = " +
@@ -460,6 +463,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			&tempTestInstructionAndAttributeData.testDataSetUuid,
 			&tempTestInstructionAndAttributeData.TestCaseExecutionUuid,
 			&tempTestInstructionAndAttributeData.testCaseExecutionVersion,
+			&tempTestInstructionAndAttributeData.executionDomainUuid,
+			&tempTestInstructionAndAttributeData.executionDomainName,
 		)
 
 		if err != nil {
@@ -560,6 +565,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 // Holds address, to the execution worker, and a message that will be sent to worker
 type processTestInstructionExecutionRequestAndResponseMessageContainer struct {
 	domainUuid                              string
+	executionDomainUuid                     string
 	addressToExecutionWorker                string
 	testCaseExecutionUuid                   string
 	testCaseExecutionVersion                int
@@ -669,6 +675,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 			addressToExecutionWorker:               rawTestInstructionData.executionWorkerAddress,
 			processTestInstructionExecutionRequest: newProcessTestInstructionExecutionReveredRequest,
 			domainUuid:                             rawTestInstructionData.domainUuid,
+			executionDomainUuid:                    rawTestInstructionData.executionDomainUuid,
 			testCaseExecutionUuid:                  rawTestInstructionData.TestCaseExecutionUuid,
 			testCaseExecutionVersion:               rawTestInstructionData.testCaseExecutionVersion,
 		}
@@ -740,7 +747,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 			//Convert outgoing message to Worker to fit PubSub-process
 			var processTestInstructionExecutionPubSubRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest
 			processTestInstructionExecutionPubSubRequest = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest{
-				ProtoFileVersionUsedByClient: fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_CurrentFenixExecutionWorkerProtoFileVersionEnum(testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.ProtoFileVersionUsedByClient),
+				DomainIdentificationAnfProtoFileVersionUsedByClient: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_ClientSystemIdentificationMessage{
+					DomainUuid:          testInstructionToBeSentToExecutionWorkers.domainUuid,
+					ExecutionDomainUuid: testInstructionToBeSentToExecutionWorkers.executionDomainUuid,
+					ProtoFileVersionUsedByClient: fenixExecutionWorkerGrpcApi.
+						ProcessTestInstructionExecutionPubSubRequest_CurrentFenixExecutionWorkerProtoFileVersionEnum(
+							testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
+								ProtoFileVersionUsedByClient),
+				},
 				TestInstruction: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionExecutionMessage{
 					TestInstructionExecutionUuid: testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
 					TestInstructionUuid:          testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionUuid,

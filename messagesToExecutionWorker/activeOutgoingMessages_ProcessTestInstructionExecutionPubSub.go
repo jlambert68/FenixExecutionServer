@@ -114,7 +114,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 	}
 
 	// Finalize message to be sent to Worker
-	processTestInstructionExecutionRequest.ProtoFileVersionUsedByClient = fenixExecutionWorkerGrpcApi.
+	processTestInstructionExecutionRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.ProtoFileVersionUsedByClient = fenixExecutionWorkerGrpcApi.
 		ProcessTestInstructionExecutionPubSubRequest_CurrentFenixExecutionWorkerProtoFileVersionEnum(
 			fenixExecutionWorkerGrpcApi.CurrentFenixExecutionWorkerProtoFileVersionEnum(
 				common_config.GetHighestExecutionWorkerProtoFileVersion(domainUuid)))
@@ -169,7 +169,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 				"error":                  err,
 				"domainUuid":             domainUuid,
 				"gRPCCallAttemptCounter": gRPCCallAttemptCounter,
-			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'ProcessTestInstructionExecution'")
+			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub'")
 
 			// Only return the error after last attempt
 			if gRPCCallAttemptCounter >= numberOfgRPCCallAttempts {
@@ -207,7 +207,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 				"ID":                  "c104fc85-c6ca-4084-a756-409e53491bfe",
 				"domainUuid":          domainUuid,
 				"Message from Worker": processTestInstructionExecutionResponse.AckNackResponse.Comments,
-			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendProcessTestInstructionExecutionToExecutionWorkerServer'")
+			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub'")
 
 			// Set Error codes to return message
 			var errorCodes []fenixExecutionWorkerGrpcApi.ErrorCodesEnum
