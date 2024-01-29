@@ -142,8 +142,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Load all TestInstructions and their attributes to be sent to the Executions Workers over gRPC
-	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err := executionEngine.loadNewTestInstructionToBeSentToExecutionWorkers(
-		txn, testCaseExecutionsToProcess)
+	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err :=
+		executionEngine.loadNewTestInstructionToBeSentToExecutionWorkers(
+			txn, testCaseExecutionsToProcess)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -172,7 +173,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	testInstructionsToBeSentToExecutionWorkersAndTheResponse, err := executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "25cd9e94-76f6-40ca-8f4c-eed10b618224",
+			"id":    "75b01b7b-cb47-47da-8fe9-eea85c38f5e3",
 			"error": err,
 		}).Error("Some problem when transforming raw rawTestInstructionsToBeSentToExecutionWorkers- and Attributes-data into gRPC-messages")
 
@@ -409,7 +410,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionOriginalUuid\", TIUE.\"TestInstructionName\", " +
 		"TIUE.\"TestInstructionMajorVersionNumber\", TIUE.\"TestInstructionMinorVersionNumber\", " +
 		"TIUE.\"TestDataSetUuid\", TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\"," +
-		", \"ExecutionDomainUuid\", \"ExecutionDomainName\" "
+		" \"ExecutionDomainUuid\", \"ExecutionDomainName\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE, " +
 		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = " +
@@ -936,13 +937,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 			if numberOfResend+1 < common_config.MaxResendToWorkerWhenNoAnswer {
 
 				// Save information about TestInstructionExecution when we got unknown error response from Worker
-				tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)) // "10" // TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
+				tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_INITIATED))
 				numberOfResend = numberOfResend + 1
 
 			} else {
 
 				// Max number of reruns already achieved, Save information about TestInstructionExecution when we got unknown error response from Worker
-				tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION)) // "9" // TIE_UNEXPECTED_INTERRUPTION
+				tempTestInstructionExecutionStatus = strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN)) // "9" // TIE_UNEXPECTED_INTERRUPTION
 			}
 		}
 
@@ -952,8 +953,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" = '%s', ", tempTestInstructionExecutionStatus)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionStatusUpdateTimeStamp\" = '%s', ", currentDataTimeStamp)
 		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionResendCounter\" = %d ", numberOfResend)
-		sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionResponse.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
-
+		sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' AND ", testInstructionExecutionResponse.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" = %s ",
+			strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_INITIATED)))
+		sqlToExecute = sqlToExecute + "AND "
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionResendCounter\" < %s ",
+			strconv.Itoa(common_config.MaxResendToWorkerWhenNoAnswer))
 		sqlToExecute = sqlToExecute + "; "
 
 	}

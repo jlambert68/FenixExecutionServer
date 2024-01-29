@@ -69,6 +69,10 @@ var ExecutionStatusPubSubTopic string
 // Local path to Service-Account file
 var LocalServiceAccountPath string
 
-// ExecutionStatusPubSubDeatLetteringSubscription
+// ExecutionStatusPubSubDeadLetteringSubscription
 // The PubSub-DeadLettering-subscription where all messages that no one reads end up
-var ExecutionStatusPubSubDeatLetteringSubscription string
+var ExecutionStatusPubSubDeadLetteringSubscription string
+
+// SleepTimeInSecondsBeforeClaimingTestInstructionExecutionFromDatabase
+// The number of seconds before this ExecutionServer tries to claim a TestInstructionExecution from database
+var SleepTimeInSecondsBeforeClaimingTestInstructionExecutionFromDatabase int

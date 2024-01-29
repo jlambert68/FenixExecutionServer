@@ -189,6 +189,42 @@ func convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions co
 		timeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceValue =
 			<-timeOutResponseChannelForIsThisHandledByThisExecutionInstance
 
+		// If TestInstructionExecution is not handled by this Execution-instance then wait 'x' seconds and
+		// if no one claims the TestInstructionExecution from database-table then claim responsibility of the TestInstructionExecution
+		if timeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceValue.
+			TestInstructionIsHandledByThisExecutionInstance == false {
+
+			// Sleep to see if someone claims the TestInstructionExecution from database
+			time.Sleep(time.Duration(common_config.SleepTimeInSecondsBeforeClaimingTestInstructionExecutionFromDatabase) * time.Second)
+
+			// Check the TestInstructionExecution is claimed by some other ExecutionServer
+			var foundInDatabase bool
+			foundInDatabase, err = prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance(
+				tempTestInstructionExecution.TestInstructionExecutionUuid,
+				int32(tempTestInstructionVersion))
+
+			if err != nil {
+				common_config.Logger.WithFields(logrus.Fields{
+					"id":                           "3816de0b-f5f9-4f55-9f0d-cb04f4dee0da",
+					"TestInstructionExecutionUuid": tempTestInstructionExecution.TestInstructionExecutionUuid,
+					"TestInstructionVersion":       tempTestInstructionVersion,
+					"error":                        err,
+				}).Error("Problem when checking if TestInstructionExecution, received by wrong ExecutionServer, exists in database.")
+
+				// Drop this message and continue with next message
+				continue
+			}
+
+			// Some other ExecutionServer claimed the TestInstructionExecution
+			if foundInDatabase == false {
+				continue
+			}
+
+			// Claim the TestInstructionExecution
+			timeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceValue.
+				TestInstructionIsHandledByThisExecutionInstance = true
+		}
+
 		// Verify if TestInstructionExecution is handled by this Execution-instance
 		if timeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceValue.
 			TestInstructionIsHandledByThisExecutionInstance == true {

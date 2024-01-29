@@ -184,6 +184,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 		}
 	} else {
 		dbTransaction.Rollback(context.Background())
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                       "0543cdc8-4179-4674-9470-ea0611b9a3b0",
+			"testInstructionExecution": testInstructionExecution,
+		}).Debug("Performing a Rollback in 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
 	}
 }
 
@@ -193,18 +198,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Verify that the ExecutionStatus is a final status
-	// (0, 'TIE_INITIATED') -> NOT OK
-	// (1, 'TIE_EXECUTING') -> NOT OK
-	// (2, 'TIE_CONTROLLED_INTERRUPTION' -> OK
-	// (3, 'TIE_CONTROLLED_INTERRUPTION_CAN_BE_RERUN' -> OK
-	// (4, 'TIE_FINISHED_OK' -> OK
-	// (5, 'TIE_FINISHED_OK_CAN_BE_RERUN' -> OK
-	// (6, 'TIE_FINISHED_NOT_OK' -> OK
-	// (7, 'TIE_FINISHED_NOT_OK_CAN_BE_RERUN' -> OK
-	// (8, 'TIE_UNEXPECTED_INTERRUPTION' -> OK
-	// (9, 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' -> OK
-	// (10, 'TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN' -> OK
-	// (11, 'TIE_TIMEOUT_INTERRUPTION' -> OK
+	// (0, 'TestCaseExecutionStatusEnum_DEFAULT_NOT_SET' -> NOT OK
+	// (1, 'TIE_INITIATED') -> NOT OK
+	// (2, 'TIE_EXECUTING') -> NOT OK
+	// (3, 'TIE_CONTROLLED_INTERRUPTION' -> OK
+	// (4, 'TIE_CONTROLLED_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (5, 'TIE_FINISHED_OK' -> OK
+	// (6, 'TIE_FINISHED_OK_CAN_BE_RERUN' -> OK
+	// (7, 'TIE_FINISHED_NOT_OK' -> OK
+	// (8, 'TIE_FINISHED_NOT_OK_CAN_BE_RERUN' -> OK
+	// (9, 'TIE_UNEXPECTED_INTERRUPTION' -> OK
+	// (10, 'TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (11, 'TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN' -> OK
+	// (12, 'TIE_TIMEOUT_INTERRUPTION' -> OK
 
 	// Calculate Execution Track
 	var executionTrack int
@@ -336,7 +342,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	// TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
 	var testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct
 
-	// TestInstructionExecution didn't end with an OK(4, 'TIE_FINISHED_OK' or 5, 'TIE_FINISHED_OK_CAN_BE_RERUN') then Stop further processing
+	// TestInstructionExecution didn't end with an OK(5, 'TIE_FINISHED_OK' or 6, 'TIE_FINISHED_OK_CAN_BE_RERUN') then Stop further processing
 	var thereExistsOnGoingTestInstructionExecutionsOnQueue bool
 
 	// If this is the last TestInstructionExecution and any TestInstructionExecution failed, then trigger change in TestCaseExecutionUuid-status
@@ -355,7 +361,35 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 		&testInstructionExecutionMessageToBroadcastSystem,
 		&messageShallBeBroadcasted)
 
-	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
+	// Lock Row before update execution status on TestInstructionExecution
+	err = lockRowBeforeUpdateStatusOnTestInstructionsExecutionInCloudDB2(txn, finalTestInstructionExecutionResultMessage)
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "32e9da38-9a53-4146-85de-32b9c0e96185",
+			"error": err,
+			"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+		}).Error("Problem when locking row in 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:                      false,
+			Comments:                     "Problem when locking row in 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB': " + err.Error(),
+			ErrorCodes:                   errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+	}
+
+	// Update status, which came from Connector/Worker, on ongoing TestInstructionExecution
 	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB2(txn, finalTestInstructionExecutionResultMessage)
 	if err != nil {
 
@@ -507,7 +541,10 @@ type testInstructionExecutionSiblingsStatusStruct struct {
 }
 
 // Update status, which came from Connector/Worker, on ongoing TestInstructionExecution
-func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestInstructionsExecutionInCloudDB2(dbTransaction pgx.Tx, finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestInstructionsExecutionInCloudDB2(
+	dbTransaction pgx.Tx,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (
+	err error) {
 
 	// If there are nothing to update then just exit
 	if finalTestInstructionExecutionResultMessage == nil {
@@ -977,4 +1014,68 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	return testInstructionExecutionBroadcastMessages, err
 
+}
+
+// Lock Row before update execution status on TestInstructionExecution
+func lockRowBeforeUpdateStatusOnTestInstructionsExecutionInCloudDB2(
+	dbTransaction pgx.Tx,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id": "818a7d69-7e39-4d08-a4ba-f22218b5e62d",
+		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+	}).Debug("Entering: lockRowBeforeUpdateStatusOnTestInstructionsExecutionInCloudDB2()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "c15e0837-f939-4b53-9570-84560abf5092",
+		}).Debug("Exiting: lockRowBeforeUpdateStatusOnTestInstructionsExecutionInCloudDB2()")
+	}()
+
+	var testInstructionExecutionUuid string
+	testInstructionExecutionUuid = finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid
+
+	sqlToExecute := ""
+
+	sqlToExecute = sqlToExecute + "SELECT * "
+	sqlToExecute = sqlToExecute + "" +
+		"FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIEUE "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ", testInstructionExecutionUuid)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("(\"TestInstructionExecutionStatus\" <> %s ",
+		strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION_CAN_BE_RERUN)))
+	sqlToExecute = sqlToExecute + fmt.Sprintf("OR ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionStatus\" <> %s) ",
+		strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_TIMEOUT_INTERRUPTION)))
+
+	sqlToExecute = sqlToExecute + "FOR UPDATE; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "ede1c8af-30c0-4741-bd06-1da57aadeb00",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'lockRowBeforeUpdateStatusOnTestInstructionsExecutionInCloudDB2'")
+	}
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "c5d8c59d-4223-47a4-9246-7e526e415b41",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	return err
 }

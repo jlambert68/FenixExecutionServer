@@ -23,6 +23,25 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		"id": "772d4001-f5a8-45e4-8515-03fd0301476a",
 	}).Debug("Outgoing 'processHasTestInstructionExecutionAlreadyTimedOut'")
 
+	// When FinalTestInstructionResult is claimed from database due to that other ExecutionServer then the one sent
+	// the TestInstructionExecution then no timer is set in this instance
+	if incomingTimeOutChannelCommand.MessageReceivedByOtherExecutionServerWasClaimedFromDatabase == true {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id": "69a5236f-b76f-40da-9b91-7118ad7189c7",
+		}).Debug("This TestInstructionExecution was claimed due no other is processing it")
+
+		// TestInstructionExecution hasn't timed out due to Timer was not set
+		var timedOutResponse common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
+		timedOutResponse = common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct{
+			TimeOutWasTriggered: false}
+
+		// Send response on response channel
+		*incomingTimeOutChannelCommand.TimeOutReturnChannelForTimeOutHasOccurred <- timedOutResponse
+
+		return
+	}
+
 	// Create Map-key for 'timedOutMap'
 	var timeOutMapKey string
 

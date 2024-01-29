@@ -15,7 +15,7 @@ import (
 
 func PullPubSubExecutionStatusMessagesFromDeadLettering() {
 	projectID := common_config.GCPProjectId
-	subID := common_config.ExecutionStatusPubSubDeatLetteringSubscription
+	subID := common_config.ExecutionStatusPubSubDeadLetteringSubscription
 
 	var pubSubClient *pubsub.Client
 	var err error

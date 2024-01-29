@@ -156,6 +156,14 @@ func init() {
 	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", common_config.LocalServiceAccountPath)
 
 	// Extract PubSub-Topic-DeadLettering-subscription for where to send 'ExecutionStatus-messages' end up when no one reads them
-	common_config.ExecutionStatusPubSubDeatLetteringSubscription = mustGetenv("ExecutionStautsPubSubTopic-DeadLettering-Subscription")
+	common_config.ExecutionStatusPubSubDeadLetteringSubscription = mustGetenv("ExecutionStautsPubSubTopic-DeadLettering-Subscription")
+
+	// Extract the number of seconds before this ExecutionServer tries to claim a TestInstructionExecution from database
+	common_config.SleepTimeInSecondsBeforeClaimingTestInstructionExecutionFromDatabase, err = strconv.Atoi(mustGetenv("SleepTimeInSecondsBeforeClaimingTestInstructionExecutionFromDatabase"))
+	if err != nil {
+		fmt.Println("Couldn't convert environment variable 'SleepTimeInSecondsBeforeClaimingTestInstructionExecutionFromDatabase' to an integer, error: ", err)
+		os.Exit(0)
+
+	}
 
 }

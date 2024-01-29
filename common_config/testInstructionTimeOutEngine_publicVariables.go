@@ -65,6 +65,7 @@ type TimeOutChannelCommandStruct struct {
 	TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstance *TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceType
 	SendID                                                                  string
 	MessageInitiatedFromPubSubSend                                          bool
+	MessageReceivedByOtherExecutionServerWasClaimedFromDatabase             bool
 	//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer *TimeOutReturnChannelForExistsTestInstructionExecutionWithinTimeOutTimerType
 }
 

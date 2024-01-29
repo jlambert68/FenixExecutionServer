@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/common_config"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/jackc/pgx/v4"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
@@ -76,6 +77,20 @@ func prepareLoadTestInstructionExecutionMessagesReceivedByWrongInstance(
 		&txn,
 		&doCommitNotRoleBack)
 
+	// Lock the row
+	err = lockRowForTestInstructionExecutionMessageReceivedByWrongInstanceAndThenDeleteFromDatabaseInCloudDB(
+		txn, testInstructionExecutionUuid, testInstructionVersion)
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "ee92c4fa-999a-47a8-aa64-00a6e00212c9",
+			"error": err,
+			"messagesReceivedByWrongExecutionInstance": messagesReceivedByWrongExecutionInstance,
+		}).Error("Problem when Loading TestInstructionExecution from database in 'prepareLoadTestInstructionExecutionMessagesReceivedByWrongInstance'.")
+
+		return nil, err
+	}
+
 	// Extract TestInstructionExecution-messages  and then remove row from database
 	messagesReceivedByWrongExecutionInstance, err = loadTestInstructionExecutionMessageReceivedByWrongInstanceAndThenDeleteFromDatabaseInCloudDB(
 		txn, testInstructionExecutionUuid, testInstructionVersion)
@@ -94,6 +109,68 @@ func prepareLoadTestInstructionExecutionMessagesReceivedByWrongInstance(
 	doCommitNotRoleBack = true
 
 	return messagesReceivedByWrongExecutionInstance, err
+}
+
+// Lock Row before Load TestInstructionExecution from database and then remove data in database
+func lockRowForTestInstructionExecutionMessageReceivedByWrongInstanceAndThenDeleteFromDatabaseInCloudDB(
+	dbTransaction pgx.Tx,
+	testInstructionExecutionUuid string,
+	testInstructionExecutionVersion int32) (
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":                              "4f91bed6-2c12-4d3b-9961-66654e0340c2",
+		"testInstructionExecutionUuid":    testInstructionExecutionUuid,
+		"testInstructionExecutionVersion": testInstructionExecutionVersion,
+	}).Debug("Entering: lockRowForTestInstructionExecutionMessageReceivedByWrongInstanceAndThenDeleteFromDatabaseInCloudDB()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "c15e0837-f939-4b53-9570-84560abf5092",
+		}).Debug("Exiting: lockRowForTestInstructionExecutionMessageReceivedByWrongInstanceAndThenDeleteFromDatabaseInCloudDB()")
+	}()
+
+	var testInstructionExecutionVersionAsString string
+	testInstructionExecutionVersionAsString = strconv.Itoa(int(testInstructionExecutionVersion))
+
+	sqlToExecute := ""
+
+	sqlToExecute = sqlToExecute + "SELECT * "
+	sqlToExecute = sqlToExecute + "" +
+		"FROM \"FenixExecution\".\"TestInstructionExecutionMessagesReceivedByWrongExecutionInstanc\" TIERWEI "
+	sqlToExecute = sqlToExecute + "" +
+		"WHERE TIERWEI.\"ApplicationExecutionRuntimeUuid\" != '" + common_config.ApplicationRuntimeUuid + "' AND "
+	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "' AND "
+	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionVersion\" = " + testInstructionExecutionVersionAsString + " "
+	sqlToExecute = sqlToExecute + "FOR UPDATE; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "0fe8b61a-0821-40ea-8e2c-1ca64564bcec",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'lockRowForTestInstructionExecutionMessageReceivedByWrongInstanceAndThenDeleteFromDatabaseInCloudDB'")
+	}
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "023a0ebe-e0e1-427d-8069-29fea93431e0",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	return err
 }
 
 // Load TestInstructionExecution from database and then remove data in database
@@ -327,5 +404,222 @@ func deleteTestInstructionMessagesReceivedByWrongInstanceFromDatabaseInCloudDB(
 
 	// No errors occurred
 	return nil
+
+}
+
+// Prepare to check if TestInstructionExecution exists in from database for TestInstructionExecution received by
+// ExecutionServer not responsible for its execution
+func prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance(
+	testInstructionExecutionUuid string,
+	testInstructionVersion int32) (
+	foundInDatabase bool,
+	err error) {
+
+	// Calculate Execution Track
+	var executionTrack int
+	executionTrack = common_config.CalculateExecutionTrackNumber(testInstructionExecutionUuid)
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                           "74acd4ea-420c-4f6e-9b95-444bd1edc1fe",
+		"executionTrack":               executionTrack,
+		"testInstructionExecutionUuid": testInstructionExecutionUuid,
+		"testInstructionVersion":       testInstructionVersion,
+	}).Debug("Incoming 'prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance'")
+
+	defer common_config.Logger.WithFields(logrus.Fields{
+		"id": "7278641b-c929-4b1c-9c4e-f99f5e17f3af",
+	}).Debug("Outgoing 'prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance'")
+
+	// Begin SQL Transaction
+	var txn pgx.Tx
+	txn, err = fenixSyncShared.DbPool.Begin(context.Background())
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                           "f93bb897-ac1e-481b-8f43-13bb6d949b0d",
+			"error":                        err,
+			"executionTrack":               executionTrack,
+			"testInstructionExecutionUuid": testInstructionExecutionUuid,
+			"testInstructionVersion":       testInstructionVersion,
+		}).Error("Problem to do 'DbPool.Begin'  in 'prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance'")
+
+		return false, err
+	}
+
+	// After all stuff is done, then Commit or Rollback depending on result
+	var doCommitNotRoleBack bool
+
+	// Standard is to do a Rollback
+	doCommitNotRoleBack = false
+
+	defer commitOrRoleBackLoadTestInstructionExecutionResultMessage(
+		&txn,
+		&doCommitNotRoleBack)
+
+	var numberOfRows int
+	numberOfRows, err = countTestInstructionExecutionMessagesReceivedByWrongExecutionInstance(
+		txn, testInstructionExecutionUuid, testInstructionVersion)
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                           "90de2bba-b261-4322-bae6-496076ea9a5b",
+			"testInstructionExecutionUuid": testInstructionExecutionUuid,
+			"testInstructionVersion":       testInstructionVersion,
+			"error":                        err,
+		}).Error("Problem when checking if TestInstructionExecution exists in database in 'prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance'.")
+
+		return false, err
+	}
+
+	var tempNnumberOfRows int
+	if numberOfRows > 2 {
+		tempNnumberOfRows = 2
+	} else {
+		tempNnumberOfRows = numberOfRows
+	}
+
+	// Decide how to respond
+	switch tempNnumberOfRows {
+
+	// Not found in database
+	case 0:
+		foundInDatabase = false
+
+	// Found in database
+	case 1:
+		foundInDatabase = true
+
+	// More than one instance found, not expected
+	case 2:
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                           "57444d10-19dd-42b0-b8b3-f1c9ddd6235d",
+			"ApplicationRuntimeUuid":       common_config.ApplicationRuntimeUuid,
+			"testInstructionExecutionUuid": testInstructionExecutionUuid,
+			"testInstructionVersion":       testInstructionVersion,
+			"error":                        err,
+		}).Error("More than one instance found in database in 'prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance'.")
+
+		foundInDatabase = false
+		err = errors.New(fmt.Sprintf("More than one instance found in database. ApplicationRuntimeUuid=%s; "+
+			"TestInstructionExecutionUuid=%s; TestInstructionVersion=%d",
+			common_config.ApplicationRuntimeUuid,
+			testInstructionExecutionUuid,
+			testInstructionVersion))
+
+		return false, err
+
+	// Unhandled 'number of rows'
+	default:
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                           "57444d10-19dd-42b0-b8b3-f1c9ddd6235d",
+			"ApplicationRuntimeUuid":       common_config.ApplicationRuntimeUuid,
+			"testInstructionExecutionUuid": testInstructionExecutionUuid,
+			"testInstructionVersion":       testInstructionVersion,
+			"numberOfRows":                 numberOfRows,
+			"error":                        err,
+		}).Fatalln("Unhandled number of instances found in database in 'prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance''.")
+
+	}
+
+	// Do the commit and send over Broadcast-system
+	doCommitNotRoleBack = true
+
+	return foundInDatabase, err
+}
+
+// Check if, TestInstructionExecution-message from database that didn't belong to ExecutionInstance that received it, is still not claimed from database
+func countTestInstructionExecutionMessagesReceivedByWrongExecutionInstance(
+	dbTransaction pgx.Tx,
+	testInstructionExecutionUuid string,
+	testInstructionExecutionVersion int32) (
+	numberOfRows int,
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id": "a4be91c9-ab95-4f20-9e10-45c2980e5ca2",
+	}).Debug("Entering: countTestInstructionExecutionMessagesReceivedByWrongExecutionInstance()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "ca1ce6d6-23e0-4f38-9f50-66fe48772972",
+		}).Debug("Exiting: countTestInstructionExecutionMessagesReceivedByWrongExecutionInstance()")
+	}()
+
+	var testInstructionExecutionVersionAsString string
+	testInstructionExecutionVersionAsString = strconv.Itoa(int(testInstructionExecutionVersion))
+
+	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
+
+	sqlToExecute := ""
+
+	sqlToExecute = sqlToExecute + "" +
+		"SELECT count(TIERWEI.\"ApplicationExecutionRuntimeUuid\") "
+	sqlToExecute = sqlToExecute + "" +
+		"FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionMessagesReceivedByWrongExecutionInstanc\" TIERWEI "
+	sqlToExecute = sqlToExecute + "" +
+		"WHERE TIERWEI.\"ApplicationExecutionRuntimeUuid\" != '" + common_config.ApplicationRuntimeUuid + "' AND "
+	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionUuid\" = '" + testInstructionExecutionUuid + "' AND "
+	sqlToExecute = sqlToExecute + "TIERWEI.\"TestInstructionExecutionVersion\" = " + testInstructionExecutionVersionAsString + " "
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "dc23529f-4af1-47c3-b037-de29050cec38",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadTestInstructionExecutionMessagesReceivedByWrongExecutionInstance'")
+	}
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "cd39e9b3-0d2e-4853-86e3-f391d426e183",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return 0, err
+	}
+
+	// Extract data from DB result set
+	var rowCounter int
+	for rows.Next() {
+
+		rowCounter = rowCounter + 1
+
+		err := rows.Scan(
+			&numberOfRows,
+		)
+
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "292328c5-bdd1-463a-ae8d-1ba328465af6",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return 0, err
+		}
+
+	}
+
+	// More than 1 row
+	if rowCounter > 1 {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "9556b0aa-c179-448c-9196-ed7970f2af58",
+			"sqlToExecute": sqlToExecute,
+		}).Fatalln("Got more than 1 row when processing result from database")
+
+	}
+
+	// Return result from database
+	return numberOfRows, err
 
 }
