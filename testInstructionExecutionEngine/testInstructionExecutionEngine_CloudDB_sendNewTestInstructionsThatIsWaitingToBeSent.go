@@ -5,6 +5,7 @@ import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	fenixTestCaseBuilderServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixTestCaseBuilderServer/fenixTestCaseBuilderServerGrpcApi/go_grpc_api"
 	"sort"
 	"strings"
 	"time"
@@ -142,7 +143,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	//placedOnTestExecutionQueueTimeStamp := time.Now()
 
 	// Load all TestInstructions and their attributes to be sent to the Executions Workers over gRPC
-	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err :=
+	var rawTestInstructionsToBeSentToExecutionWorkers []newTestInstructionToBeSentToExecutionWorkersStruct
+	var rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct
+	rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers, err =
 		executionEngine.loadNewTestInstructionToBeSentToExecutionWorkers(
 			txn, testCaseExecutionsToProcess)
 	if err != nil {
@@ -170,7 +173,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Transform Raw TestInstructions and Attributes, from DB, into messages ready to be sent over gRPC to Execution Workers
-	testInstructionsToBeSentToExecutionWorkersAndTheResponse, err := executionEngine.transformRawTestInstructionsAndAttributeIntoGrpcMessages(rawTestInstructionsToBeSentToExecutionWorkers, rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
+	var testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer
+	testInstructionsToBeSentToExecutionWorkersAndTheResponse, err = executionEngine.
+		transformRawTestInstructionsAndAttributeIntoGrpcMessages(
+			rawTestInstructionsToBeSentToExecutionWorkers,
+			rawTestInstructionAttributesToBeSentToExecutionWorkers) //(txn)
+
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
 			"id":    "75b01b7b-cb47-47da-8fe9-eea85c38f5e3",
@@ -187,7 +195,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Send TestInstructionExecutions with their attributes to correct Execution Worker
-	err = executionEngine.sendTestInstructionExecutionsToWorker(testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+	err = executionEngine.sendTestInstructionExecutionsToWorker(
+		testInstructionsToBeSentToExecutionWorkersAndTheResponse)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -200,7 +209,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Update status on TestInstructions that could be sent to workers
-	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB(txn, testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB(
+		txn,
+		testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -213,7 +225,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 	}
 
 	// Update status on TestCases that TestInstructions have been sent to workers
-	err = executionEngine.updateStatusOnTestCasesExecutionInCloudDB(txn, testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+	err = executionEngine.updateStatusOnTestCasesExecutionInCloudDB(
+		txn,
+		testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -347,6 +362,7 @@ type newTestInstructionToBeSentToExecutionWorkersStruct struct {
 	executionWorkerAddress            string
 	testInstructionExecutionUuid      string
 	testInstructionOriginalUuid       string
+	matureTestInstructionUuid         string
 	testInstructionName               string
 	testInstructionMajorVersionNumber int
 	testInstructionMinorVersionNumber int
@@ -410,7 +426,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionOriginalUuid\", TIUE.\"TestInstructionName\", " +
 		"TIUE.\"TestInstructionMajorVersionNumber\", TIUE.\"TestInstructionMinorVersionNumber\", " +
 		"TIUE.\"TestDataSetUuid\", TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\"," +
-		" \"ExecutionDomainUuid\", \"ExecutionDomainName\" "
+		" \"ExecutionDomainUuid\", \"ExecutionDomainName\", \"MatureTestInstructionUuid\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE, " +
 		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = " +
@@ -466,6 +482,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			&tempTestInstructionAndAttributeData.testCaseExecutionVersion,
 			&tempTestInstructionAndAttributeData.executionDomainUuid,
 			&tempTestInstructionAndAttributeData.executionDomainName,
+			&tempTestInstructionAndAttributeData.matureTestInstructionUuid,
 		)
 
 		if err != nil {
@@ -648,7 +665,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 		newTestInstructionToBeSentToExecutionWorkers = &fenixExecutionWorkerGrpcApi.
 			ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage{
 			TestInstructionExecutionUuid: rawTestInstructionData.testInstructionExecutionUuid,
-			TestInstructionUuid:          rawTestInstructionData.testInstructionOriginalUuid,
+			TestInstructionOriginalUuid:  rawTestInstructionData.testInstructionOriginalUuid,
+			MatureTestInstructionUuid:    rawTestInstructionData.matureTestInstructionUuid,
 			TestInstructionName:          rawTestInstructionData.testInstructionName,
 			MajorVersionNumber:           uint32(rawTestInstructionData.testInstructionMajorVersionNumber),
 			MinorVersionNumber:           uint32(rawTestInstructionData.testInstructionMinorVersionNumber),
@@ -788,6 +806,30 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 					AttributeValueUuid:               testInstructionAttributesForReversed.AttributeValueUuid,
 					TestInstructionAttributeTypeUuid: testInstructionAttributesForReversed.TestInstructionAttributeTypeUuid,
 					TestInstructionAttributeTypeName: testInstructionAttributesForReversed.TestInstructionAttributeTypeName,
+				}
+
+				// Switch type of attribute, e.g. TextBox, ComboBox and so on
+				switch tempTestInstructionAttribute.GetTestInstructionAttributeType() {
+				case fenixExecutionWorkerGrpcApi.
+					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
+						fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_TEXTBOX):
+
+					// Do nothing 'AttributeValueAsString' with response data from previous TestInstructionExecution
+
+				case fenixExecutionWorkerGrpcApi.
+					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
+						fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX):
+					// Replace
+
+					var responseValueFromPreviousTestInstructionExectution string
+					responseValueFromPreviousTestInstructionExectution = executionEngine.
+						loadResponseVariableToUseForAttribute(testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction)
+
+				default:
+					common_config.Logger.WithFields(logrus.Fields{
+						"Id":                           "e526648d-beb8-492f-b928-6f59a561e533",
+						"TestInstructionAttributeType": tempTestInstructionAttribute.GetTestInstructionAttributeType(),
+					}).Fatalln("Unhandled TestInstructionAttributeType. Exiting")
 				}
 
 				// Append to slice of attributes

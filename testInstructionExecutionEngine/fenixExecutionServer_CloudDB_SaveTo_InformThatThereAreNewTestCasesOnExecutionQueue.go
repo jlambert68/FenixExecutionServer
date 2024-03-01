@@ -64,7 +64,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) PrepareInformThatTh
 
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
-	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
+	ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
 
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
@@ -161,7 +162,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	}
 
 	// Save the Initiation of a new TestCaseExecutionUuid in the CloudDB
-	err = executionEngine.saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
+	err = executionEngine.saveTestCasesOnOngoingExecutionsQueueSaveToCloudDB(
+		txn,
+		testCaseExecutionQueueMessages)
+
 	if err != nil {
 
 		common_config.Logger.WithFields(logrus.Fields{
@@ -181,10 +185,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 
 		// Create Return message
 		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
-			AckNack:                      false,
-			Comments:                     "Problem when saving to database",
-			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			AckNack:    false,
+			Comments:   "Problem when saving to database",
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
+				CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -192,7 +197,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	}
 
 	// Delete messages in ExecutionQueue that has been put to ongoing executions
-	err = executionEngine.clearTestCasesExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages)
+	err = executionEngine.clearTestCasesExecutionQueueSaveToCloudDB(
+		txn,
+		testCaseExecutionQueueMessages)
 	if err != nil {
 
 		common_config.Logger.WithFields(logrus.Fields{
@@ -212,10 +219,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 
 		// Create Return message
 		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
-			AckNack:                      false,
-			Comments:                     "Problem when saving to database",
-			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			AckNack:    false,
+			Comments:   "Problem when saving to database",
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
+				CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -223,7 +231,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	}
 
 	//Load all data around TestCase to be used for putting TestInstructions on the TestInstructionExecutionQueue
-	allDataAroundAllTestCase, err := executionEngine.loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(txn, testCaseExecutionQueueMessages)
+	var allDataAroundAllTestCase []*tempTestInstructionInTestCaseStruct
+	allDataAroundAllTestCase, err = executionEngine.
+		loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(
+			txn,
+			testCaseExecutionQueueMessages)
+
 	if err != nil {
 
 		common_config.Logger.WithFields(logrus.Fields{
@@ -254,7 +267,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	}
 
 	// Add TestInstructions to TestInstructionsExecutionQueue
-	testInstructionUuidTotestInstructionExecutionUuidMap, err := executionEngine.SaveTestInstructionsToExecutionQueueSaveToCloudDB(txn, testCaseExecutionQueueMessages, allDataAroundAllTestCase)
+	var testInstructionUuidTotestInstructionExecutionUuidMap map[string]tempAttributesType
+	testInstructionUuidTotestInstructionExecutionUuidMap, err = executionEngine.
+		SaveTestInstructionsToExecutionQueueSaveToCloudDB(
+			txn,
+			testCaseExecutionQueueMessages,
+			allDataAroundAllTestCase)
+
 	if err != nil {
 
 		common_config.Logger.WithFields(logrus.Fields{
@@ -285,7 +304,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	}
 
 	// Add attributes to table for 'TestInstructionAttributesUnderExecution'
-	err = executionEngine.saveTestInstructionAttributesUnderExecutionSaveToCloudDB(txn, testInstructionUuidTotestInstructionExecutionUuidMap)
+	err = executionEngine.saveTestInstructionAttributesUnderExecutionSaveToCloudDB(
+		txn,
+		testInstructionUuidTotestInstructionExecutionUuidMap)
+
 	if err != nil {
 
 		common_config.Logger.WithFields(logrus.Fields{
@@ -337,7 +359,7 @@ type tempTestInstructionExecutionQueueInformationStruct struct {
 	executionDomainUuid               string
 	executionDomainName               string
 	testInstructionExecutionUuid      string
-	testInstructionUuid               string
+	matureTestInstructionUuid         string
 	testInstructionName               string
 	testInstructionMajorVersionNumber int
 	testInstructionMinorVersionNumber int
@@ -775,7 +797,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAn
 }
 
 // Save all TestInstructions in 'TestInstructionExecutionQueue'
-func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct, testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(
+	dbTransaction pgx.Tx,
+	testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct,
+	testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (
+	testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType,
+	err error) {
 
 	// Get a common dateTimeStamp to use
 	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
@@ -834,7 +861,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 		}
 
 		// Initiate map for TestInstructionExecution Order
-		testInstructionExecutionOrder := make(map[string]*testInstructionsRawExecutionOrderStruct) //map[testInstructionUuid]*testInstructionsRawExecutionOrderStruct
+		testInstructionExecutionOrder := make(map[string]*testInstructionsRawExecutionOrderStruct) //map[matureTestInstructionUuid]*testInstructionsRawExecutionOrderStruct
 
 		err = executionEngine.testInstructionExecutionOrderCalculator(
 			testCaseBasicInformationMessage.TestCaseModel.FirstMatureElementUuid,
@@ -895,6 +922,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
 					}
 
+				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX:
+					attributeToStoreInDB = tempAttributeStruct{
+						testInstructionExecutionUuid: newTestInstructionExecutionUuid,
+						testInstructionAttributeType: int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
+						TestInstructionAttributeUuid: attribute.AttributeInformation.ResponseVariableComboBoxProperty.
+							TestInstructionAttributeResponseVariableComboBoxUuid,
+						TestInstructionAttributeName: attribute.AttributeInformation.ResponseVariableComboBoxProperty.
+							TestInstructionAttributeResponseVariableComboBoxName,
+						AttributeValueAsString:           attribute.AttributeInformation.ResponseVariableComboBoxProperty.ComboBoxAttributeValueAsString,
+						AttributeValueUuid:               attribute.AttributeInformation.ResponseVariableComboBoxProperty.ChosenResponseVariableTypeUuid,
+						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
+						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
+					}
+
 				default:
 					common_config.Logger.WithFields(logrus.Fields{
 						"Id": "f9c124ba-beb2-40c7-a1b3-52d5b9997b2b",
@@ -933,11 +974,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	}
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" "
-	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
-		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
+	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", " +
+		"\"MatureTestInstructionUuid\", \"TestInstructionName\", \"TestInstructionMajorVersionNumber\", " +
+		"\"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
 		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", " +
 		"\"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\", \"ExecutionStatusReportLevel\", " +
-		"\"ExecutionDomainUuid\", \"ExecutionDomainName\") "
+		"\"ExecutionDomainUuid\", \"ExecutionDomainName\", ) "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 

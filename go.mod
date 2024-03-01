@@ -2,13 +2,15 @@ module FenixExecutionServer
 
 go 1.21
 
+toolchain go1.22.0
+
 require (
 	cloud.google.com/go/firestore v1.14.0
-	cloud.google.com/go/pubsub v1.36.1
+	cloud.google.com/go/pubsub v1.36.2
 	github.com/go-gota/gota v0.12.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v4 v4.18.1
-	github.com/jlambert68/FenixGrpcApi v0.0.0-20240229133233-2d6b9756388e
+	github.com/jlambert68/FenixGrpcApi v0.0.0-20240301154802-aac4694e1349
 	github.com/jlambert68/FenixSyncShared v0.0.0-20240215140904-db0840b5d70a
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/net v0.21.0
@@ -29,7 +31,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.2 // indirect
@@ -48,12 +49,10 @@ require (
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	golang.org/x/crypto v0.20.0 // indirect
-	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gonum.org/v1/gonum v0.14.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240228224816-df926f6c8641 // indirect

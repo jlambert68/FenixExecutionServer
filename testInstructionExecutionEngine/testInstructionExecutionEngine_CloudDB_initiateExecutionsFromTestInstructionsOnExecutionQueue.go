@@ -202,7 +202,7 @@ type tempTestInstructionExecutionQueueInformationStruct struct {
 	domainUuid                        string
 	domainName                        string
 	testInstructionExecutionUuid      string
-	testInstructionUuid               string
+	matureTestInstructionUuid               string
 	testInstructionName               string
 	testInstructionMajorVersionNumber int
 	testInstructionMinorVersionNumber int
@@ -329,7 +329,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			&tempTestInstructionExecutionQueueMessage.domainUuid,
 			&tempTestInstructionExecutionQueueMessage.domainName,
 			&tempTestInstructionExecutionQueueMessage.testInstructionExecutionUuid,
-			&tempTestInstructionExecutionQueueMessage.testInstructionUuid,
+			&tempTestInstructionExecutionQueueMessage.matureTestInstructionUuid,
 			&tempTestInstructionExecutionQueueMessage.testInstructionName,
 			&tempTestInstructionExecutionQueueMessage.testInstructionMajorVersionNumber,
 			&tempTestInstructionExecutionQueueMessage.testInstructionMinorVersionNumber,
@@ -405,7 +405,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.domainUuid)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.domainName)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.testInstructionExecutionUuid)
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.testInstructionUuid)
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.matureTestInstructionUuid)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.testInstructionName)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.testInstructionMajorVersionNumber)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.testInstructionMinorVersionNumber)
@@ -430,7 +430,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 	}
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" "
-	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"TestInstructionUuid\", \"TestInstructionName\", " +
+	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"DomainName\", \"TestInstructionExecutionUuid\", \"MatureTestInstructionUuid\", \"TestInstructionName\", " +
 		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"SentTimeStamp\", \"TestInstructionExecutionStatus\", \"ExecutionStatusUpdateTimeStamp\", " +
 		" \"TestDataSetUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"TestInstructionInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", " +
 		"\"TestInstructionOriginalUuid\", \"TestInstructionExecutionHasFinished\", \"QueueTimeStamp\"," +
