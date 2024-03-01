@@ -4,8 +4,10 @@ import (
 	"FenixExecutionServer/broadcastingEngine_ExecutionStatusUpdate"
 	"FenixExecutionServer/common_config"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
@@ -390,7 +392,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	}
 
 	// Update status, which came from Connector/Worker, on ongoing TestInstructionExecution
-	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB2(txn, finalTestInstructionExecutionResultMessage)
+	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB2(
+		txn,
+		finalTestInstructionExecutionResultMessage)
+
 	if err != nil {
 
 		// Set Error codes to return message
@@ -402,17 +407,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 
 		// Create Return message
 		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
-			AckNack:                      false,
-			Comments:                     "Problem when Updating TestInstructionExecutionStatus in database: " + err.Error(),
-			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			AckNack:    false,
+			Comments:   "Problem when Updating TestInstructionExecutionStatus in database: " + err.Error(),
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(
+				common_config.GetHighestFenixExecutionServerProtoFileVersion()),
 		}
 
 		return ackNackResponse
 	}
 
 	// Load TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage
-	testCaseExecutionsToProcess, err = executionEngine.loadTestCaseExecutionAndTestCaseExecutionVersion(txn, finalTestInstructionExecutionResultMessage)
+	testCaseExecutionsToProcess, err = executionEngine.loadTestCaseExecutionAndTestCaseExecutionVersion(
+		txn,
+		finalTestInstructionExecutionResultMessage)
+
 	if err != nil {
 
 		// Set Error codes to return message
@@ -428,6 +437,60 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 			Comments:                     "Problem when loading TestCaseExecutionUuid and TestCaseExecutionVersion based on FinalTestInstructionExecutionResultMessage, from database: " + err.Error(),
 			ErrorCodes:                   errorCodes,
 			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+	}
+
+	// Store Logs in database
+	err = executionEngine.saveExecutionLogInCloudDB(
+		txn,
+		finalTestInstructionExecutionResultMessage,
+		testCaseExecutionsToProcess[0])
+
+	if err != nil {
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   "Problem when saving Execution Log-posts in database: " + err.Error(),
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(
+				common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+	}
+
+	//Store Response Variables in database
+	err = executionEngine.saveResponseVariablesInCloudDB(
+		txn,
+		finalTestInstructionExecutionResultMessage,
+		testCaseExecutionsToProcess[0])
+
+	if err != nil {
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   "Problem when saving Execution Response Variables in database: " + err.Error(),
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(
+				common_config.GetHighestFenixExecutionServerProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -719,6 +782,316 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	}
 
 	return channelCommandTestCaseExecutions, err
+
+}
+
+// Save all Log-posts from the 'FinalTestInstructionExecutionResultMessage'
+func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInCloudDB(
+	dbTransaction pgx.Tx,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage,
+	testCaseExecutionData ChannelCommandTestCaseExecutionStruct) (
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id": "89fa52be-a48a-4415-9a42-05cd0a1615e7",
+		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+	}).Debug("Entering: saveExecutionLogInCloudDB()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "1094680f-082f-40d9-ac6e-65a2fb9ec0a3",
+		}).Debug("Exiting: saveExecutionLogInCloudDB()")
+	}()
+
+	// Get a common dateTimeStamp to use
+	//currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	var dataRowToBeInsertedMultiType []interface{}
+	var dataRowsToBeInsertedMultiType [][]interface{}
+	var sqlToExecute string
+
+	sqlToExecute = ""
+
+	// Create Insert Statement for Ongoing TestInstructionExecution
+	// Data to be inserted in the DB-table
+	dataRowsToBeInsertedMultiType = nil
+
+	// Structs used for converting into json
+	type FoundVersusExpectedValueStruct struct {
+		FoundValue    string `json:"FoundValue"`
+		ExpectedValue string `json:"ExpectedValue"`
+	}
+
+	type FoundVersusExpectedValueForVariableMessageStruct struct {
+		VariableName              string                          `json:"VariableName"`
+		VariableDescription       string                          `json:"VariableDescription"`
+		FoundVersusExpectedValues *FoundVersusExpectedValueStruct `json:"FoundVersusExpectedValues"`
+	}
+
+	for _, logPost := range finalTestInstructionExecutionResultMessage.GetLogPosts() {
+
+		// Create FoundVersusExpectedValueForVariable
+		var foundVersusExpectedValueForVariables []*FoundVersusExpectedValueForVariableMessageStruct
+
+		for _, tempFoundVersusExpectedValueForVariable := range logPost.GetFoundVersusExpectedValueForVariable() {
+
+			var foundVersusExpectedValueForVariableGrpc = &FoundVersusExpectedValueForVariableMessageStruct{
+				VariableName:        tempFoundVersusExpectedValueForVariable.GetVariableName(),
+				VariableDescription: tempFoundVersusExpectedValueForVariable.GetVariableDescription(),
+				FoundVersusExpectedValues: &FoundVersusExpectedValueStruct{
+					FoundValue:    tempFoundVersusExpectedValueForVariable.GetFoundVersusExpectedValue().GetFoundValue(),
+					ExpectedValue: tempFoundVersusExpectedValueForVariable.GetFoundVersusExpectedValue().GetExpectedValue(),
+				},
+			}
+
+			// Append to list of Expected vs Found values for variable
+			foundVersusExpectedValueForVariables = append(foundVersusExpectedValueForVariables, foundVersusExpectedValueForVariableGrpc)
+
+		}
+
+		// Generate json from LogPost-message
+		var foundVersusExpectedValueForVariablesAsJson []byte
+		foundVersusExpectedValueForVariablesAsJson, err = json.Marshal(foundVersusExpectedValueForVariables)
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                                   "54aac9a0-c930-4e1b-ac1c-def88892aea8",
+				"foundVersusExpectedValueForVariables": foundVersusExpectedValueForVariables,
+			}).Error("Couldn't convert 'FoundVersusExpectedValueForVariables-message' into json")
+
+			return err
+
+		}
+
+		dataRowToBeInsertedMultiType = nil
+
+		//DomainUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
+			GetClientSystemIdentification().GetDomainUuid())
+
+		// TestCaseExecutionUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionData.
+			TestCaseExecutionUuid)
+
+		// TestCaseExecutionVersion
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionData.
+			TestCaseExecutionVersion)
+
+		// TestInstructionExecutionUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
+			GetTestInstructionExecutionUuid())
+
+		// TestInstructionExecutionVersion
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
+			GetTestInstructionExecutionVersion())
+
+		//TestInstructionExecutionStatus
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
+			GetTestInstructionExecutionStatus().Number())
+
+		// LogPostUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, logPost.
+			GetLogPostUuid())
+
+		// LogPostTimeStamp
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, logPost.
+			GetLogPostTimeStamp())
+
+		// LogPostStatus
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, logPost.
+			GetLogPostStatus().Number())
+
+		// LogPostText
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, logPost.
+			GetLogPostText())
+
+		// FoundVsExpectedValuesAsJson
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
+			string(foundVersusExpectedValueForVariablesAsJson))
+
+		// Append row to slice of rows
+		dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
+
+	}
+
+	sqlToExecute = sqlToExecute + "INSERT INTO " + "\"FenixExecution\".\"ExecutionLogPosts\" "
+	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", " +
+		"\"TestInstructionExecutionUuid\", \"TestInstructionExecutionVersion\", ´\"TestInstructionExecutionStatus\", " +
+		"\"LogPostUuid\", \"LogPostTimeStamp\" \"LogPostStatus\" , \"LogPostText\", \"FoundVsExpectedValuesAsJsonb\") "
+	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
+	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "07ba24b2-704e-452f-a4bf-624e98702b5f",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'saveExecutionLogInCloudDB'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "e10642f4-195c-40aa-b2f1-869165fc4918",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":                       "69b366c1-5d98-43f5-83ad-573fbe1b57b4",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return nil
+
+}
+
+// Save all Response Variables from the 'FinalTestInstructionExecutionResultMessage'
+func (executionEngine *TestInstructionExecutionEngineStruct) saveResponseVariablesInCloudDB(
+	dbTransaction pgx.Tx,
+	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage,
+	testCaseExecutionData ChannelCommandTestCaseExecutionStruct) (
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id": "0cd14e8f-2459-4094-88f2-3fdc5df9c75c",
+		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+	}).Debug("Entering: saveResponseVariablesInCloudDB()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "54fde4c3-c8e0-4d25-9b12-201aa1c32b7e",
+		}).Debug("Exiting: saveExecutionLogInCloudDB()")
+	}()
+
+	var dataRowToBeInsertedMultiType []interface{}
+	var dataRowsToBeInsertedMultiType [][]interface{}
+	var sqlToExecute string
+
+	sqlToExecute = ""
+
+	// Create Insert Statement for Ongoing TestInstructionExecution
+	// Data to be inserted in the DB-table
+	dataRowsToBeInsertedMultiType = nil
+
+	var currentDataTimeStamp string
+	var uniqueUuidAsString string
+
+	// Loop response variables and add to array to be inserted into database
+	for _, responseVariable := range finalTestInstructionExecutionResultMessage.GetResponseVariables() {
+
+		// Get a common dateTimeStamp to use
+		currentDataTimeStamp = fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+		// Generate Unique UUID for the row
+		uniqueUuidAsString = uuid.NewString()
+
+		dataRowToBeInsertedMultiType = nil
+
+		// UniqueUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, uniqueUuidAsString)
+
+		// DomainUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
+			GetClientSystemIdentification().GetDomainUuid())
+
+		// TestCaseExecutionUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionData.
+			TestCaseExecutionUuid)
+
+		// TestCaseExecutionVersion
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionData.
+			TestCaseExecutionVersion)
+
+		// TestInstructionExecutionUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
+			GetTestInstructionExecutionUuid())
+
+		// TestInstructionExecutionVersion
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
+			GetTestInstructionExecutionVersion())
+
+		// ResponseVariableUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, responseVariable.
+			GetResponseVariableUuid())
+
+		// ResponseVariableName
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, responseVariable.
+			GetResponseVariableName())
+
+		// ResponseVariableTypeUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, responseVariable.
+			GetResponseVariableTypeUuid())
+
+		// ResponseVariableTypeName
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, responseVariable.
+			GetResponseVariableTypeName())
+
+		// ResponseVariableValueAsString
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, responseVariable.
+			GetResponseVariableValueAsString())
+
+		// InsertedTimeStamp
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp)
+
+		// Append row to slice of rows
+		dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
+
+	}
+
+	sqlToExecute = sqlToExecute + "INSERT INTO " + "\"FenixExecution\".\"ResponseVariablesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "(\"UniqueUuid\", \"DomainUuid\", \"TestCaseExecutionUuid\", " +
+		"\"TestCaseExecutionVersion\", \"TestInstructionExecutionUuid\", \"TestInstructionExecutionVersion\", " +
+		"\"ResponseVariableUuid\", \"ResponseVariableName\", \"ResponseVariableTypeUuid\", " +
+		"\"ResponseVariableTypeName\", \"ResponseVariableValueAsString\", \"InsertedTimeStamp\") "
+	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
+	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "6223a614-c0f4-4472-9baf-d7b5c0245d49",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'saveResponseVariablesInCloudDB'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "ea5c20b6-6c25-4791-8840-c6f7c4b74b51",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":                       "742c9eff-2a46-4243-9dc2-342d03a5d875",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return nil
 
 }
 
