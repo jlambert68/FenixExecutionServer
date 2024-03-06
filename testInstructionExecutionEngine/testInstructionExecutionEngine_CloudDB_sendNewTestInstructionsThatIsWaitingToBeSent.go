@@ -835,7 +835,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 						loadResponseVariableToUseForAttribute(
 							dbTransaction,
 							testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
-								TestInstruction)
+								TestInstruction,
+							testInstructionToBeSentToExecutionWorkers)
 
 					if err != nil {
 						common_config.Logger.WithFields(logrus.Fields{
@@ -911,22 +912,45 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariableToUseForAttribute(
 	dbTransaction pgx.Tx,
 	testInstruction *fenixExecutionWorkerGrpcApi.
-		ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage) (
+		ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage,
+	testInstructionToBeSentToExecutionWorkers *processTestInstructionExecutionRequestAndResponseMessageContainer) (
 	responseValueFromPreviousTestInstructionExecution string,
 	err error) {
 
 	// Variables used in SQL
-	var tempTestInstructionExecutionUuid string
-	var tempMatureTestInstructionUuid string
-	tempTestInstructionExecutionUuid = testInstruction.GetTestInstructionExecutionUuid()
-	tempMatureTestInstructionUuid = testInstruction.GetMatureTestInstructionUuid()
+	var tempTestCaseExecutionUuid string
+	var tempTestCaseExecutionVersion int
+	tempTestCaseExecutionUuid = testInstructionToBeSentToExecutionWorkers.testCaseExecutionUuid
+	tempTestCaseExecutionVersion = testInstructionToBeSentToExecutionWorkers.testCaseExecutionVersion
+
+	// Extract MatureTestInstructionUuid, from Attribute, to use in SQL
+	var potentialMatureTestInstructionUuidList string
+	for _, tempAttribute := range testInstruction.TestInstructionAttributes {
+
+		if tempAttribute.TestInstructionAttributeType == fenixExecutionWorkerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX {
+
+			if len(potentialMatureTestInstructionUuidList) == 0 {
+				// First post
+				potentialMatureTestInstructionUuidList = fmt.Sprintf("'%s'", tempAttribute.AttributeValueUuid)
+
+			} else {
+				// Not first post
+				potentialMatureTestInstructionUuidList = potentialMatureTestInstructionUuidList + fmt.Sprintf(", '%s'", tempAttribute.AttributeValueUuid)
+			}
+		}
+	}
+
+	//AttributeValueUuid = db.MatureTestInstructionUuid AND
+	//= db.TestCaseExecutionUuid
+	//= db.TestCaseExecutionVersion
 
 	// *** Process TestInstructions ***
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT rvue.\"ResponseVariableValueAsString\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"ResponseVariablesUnderExecution\" rvue "
-	sqlToExecute = sqlToExecute + "WHERE rvue.\"TestInstructionExecutionUuid\" = '" + tempTestInstructionExecutionUuid + "'" +
-		" AND rvue.\"MatureTestInstructionUuid\" = '" + tempMatureTestInstructionUuid + "' "
+	sqlToExecute = sqlToExecute + "WHERE rvue.\"TestCaseExecutionUuid\" = '" + tempTestCaseExecutionUuid + "' AND " +
+		"rvue.\"TestCaseExecutionVersion\" = " + strconv.Itoa(tempTestCaseExecutionVersion) + " AND " +
+		"rvue.\"MatureTestInstructionUuid\" IN (" + potentialMatureTestInstructionUuidList + ") "
 	sqlToExecute = sqlToExecute + "ORDER BY rvue.\"InsertedTimeStamp\" DESC "
 	sqlToExecute = sqlToExecute + "LIMIT 1; "
 
@@ -983,11 +1007,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	if foundRow == false {
 
 		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":                               "2b1cef21-1cb3-441a-ae23-2f8fb2f21762",
-			"Error":                            err,
-			"tempTestInstructionExecutionUuid": tempTestInstructionExecutionUuid,
-			"tempMatureTestInstructionUuid":    tempMatureTestInstructionUuid,
-			"sqlToExecute":                     sqlToExecute,
+			"Id":                                     "2b1cef21-1cb3-441a-ae23-2f8fb2f21762",
+			"Error":                                  err,
+			"tempTestCaseExecutionUuid":              tempTestCaseExecutionUuid,
+			"tempTestCaseExecutionVersion":           tempTestCaseExecutionVersion,
+			"potentialMatureTestInstructionUuidList": potentialMatureTestInstructionUuidList,
+			"sqlToExecute":                           sqlToExecute,
 		}).Error("Couldn't find any ResponseVariable row in database, should never happen")
 
 		return "", err
