@@ -830,6 +830,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInC
 
 	for _, logPost := range finalTestInstructionExecutionResultMessage.GetLogPosts() {
 
+		// Secure that there are no "'" in the text
+		logPost.LogPostText = strings.ReplaceAll(logPost.LogPostText, "'", "\"")
+
 		// Create FoundVersusExpectedValueForVariable
 		var foundVersusExpectedValueForVariables []*FoundVersusExpectedValueForVariableMessageStruct
 
@@ -849,9 +852,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInC
 
 		}
 
-		// Generate json from LogPost-message
+		// Generate json from foundVersusExpectedValueForVariables-message
 		var foundVersusExpectedValueForVariablesAsJson []byte
-		foundVersusExpectedValueForVariablesAsJson, err = json.Marshal(foundVersusExpectedValueForVariables)
+		if foundVersusExpectedValueForVariables == nil {
+			var jsonAsString string
+			jsonAsString = "{}"
+			foundVersusExpectedValueForVariablesAsJson, err = json.Marshal(jsonAsString)
+		} else {
+			foundVersusExpectedValueForVariablesAsJson, err = json.Marshal(foundVersusExpectedValueForVariables)
+		}
+
 		if err != nil {
 			common_config.Logger.WithFields(logrus.Fields{
 				"Id":                                   "54aac9a0-c930-4e1b-ac1c-def88892aea8",
@@ -885,8 +895,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInC
 			GetTestInstructionExecutionVersion())
 
 		//TestInstructionExecutionStatus
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
-			GetTestInstructionExecutionStatus().Number())
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, int(finalTestInstructionExecutionResultMessage.
+			GetTestInstructionExecutionStatus().Number()))
 
 		// LogPostUuid
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, logPost.
@@ -897,8 +907,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInC
 			GetLogPostTimeStamp())
 
 		// LogPostStatus
-		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, logPost.
-			GetLogPostStatus().Number())
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, int(logPost.
+			GetLogPostStatus().Number()))
 
 		// LogPostText
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, logPost.
@@ -915,8 +925,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInC
 
 	sqlToExecute = sqlToExecute + "INSERT INTO " + "\"FenixExecution\".\"ExecutionLogPosts\" "
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", " +
-		"\"TestInstructionExecutionUuid\", \"TestInstructionExecutionVersion\", ´\"TestInstructionExecutionStatus\", " +
-		"\"LogPostUuid\", \"LogPostTimeStamp\" \"LogPostStatus\" , \"LogPostText\", \"FoundVsExpectedValuesAsJsonb\") "
+		"\"TestInstructionExecutionUuid\", \"TestInstructionExecutionVersion\", \"TestInstructionExecutionStatus\", " +
+		"\"LogPostUuid\", \"LogPostTimeStamp\", \"LogPostStatus\" , \"LogPostText\", \"FoundVsExpectedValuesAsJsonb\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
@@ -1045,6 +1055,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveResponseVariabl
 		// InsertedTimeStamp
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp)
 
+		// MatureTestInstructionUuid
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, finalTestInstructionExecutionResultMessage.
+			GetMatureTestInstructionUuid())
+
 		// Append row to slice of rows
 		dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
@@ -1054,7 +1068,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveResponseVariabl
 	sqlToExecute = sqlToExecute + "(\"UniqueUuid\", \"DomainUuid\", \"TestCaseExecutionUuid\", " +
 		"\"TestCaseExecutionVersion\", \"TestInstructionExecutionUuid\", \"TestInstructionExecutionVersion\", " +
 		"\"ResponseVariableUuid\", \"ResponseVariableName\", \"ResponseVariableTypeUuid\", " +
-		"\"ResponseVariableTypeName\", \"ResponseVariableValueAsString\", \"InsertedTimeStamp\") "
+		"\"ResponseVariableTypeName\", \"ResponseVariableValueAsString\", \"InsertedTimeStamp\", \"MatureTestInstructionUuid\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 

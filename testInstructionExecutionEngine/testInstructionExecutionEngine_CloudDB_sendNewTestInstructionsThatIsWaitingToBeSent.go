@@ -196,6 +196,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 
 	// Send TestInstructionExecutions with their attributes to correct Execution Worker
 	err = executionEngine.sendTestInstructionExecutionsToWorker(
+		txn,
 		testInstructionsToBeSentToExecutionWorkersAndTheResponse)
 	if err != nil {
 
@@ -361,6 +362,7 @@ type newTestInstructionToBeSentToExecutionWorkersStruct struct {
 	executionDomainName               string
 	executionWorkerAddress            string
 	testInstructionExecutionUuid      string
+	testInstructionExecutionVersion   int
 	testInstructionOriginalUuid       string
 	matureTestInstructionUuid         string
 	testInstructionName               string
@@ -426,7 +428,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionOriginalUuid\", TIUE.\"TestInstructionName\", " +
 		"TIUE.\"TestInstructionMajorVersionNumber\", TIUE.\"TestInstructionMinorVersionNumber\", " +
 		"TIUE.\"TestDataSetUuid\", TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\"," +
-		" \"ExecutionDomainUuid\", \"ExecutionDomainName\", \"MatureTestInstructionUuid\" "
+		" \"ExecutionDomainUuid\", \"ExecutionDomainName\", \"MatureTestInstructionUuid\", " +
+		"\"TestInstructionInstructionExecutionVersion\" "
 	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE, " +
 		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = " +
@@ -483,6 +486,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 			&tempTestInstructionAndAttributeData.executionDomainUuid,
 			&tempTestInstructionAndAttributeData.executionDomainName,
 			&tempTestInstructionAndAttributeData.matureTestInstructionUuid,
+			&tempTestInstructionAndAttributeData.testInstructionExecutionVersion,
 		)
 
 		if err != nil {
@@ -664,13 +668,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 			ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage
 		newTestInstructionToBeSentToExecutionWorkers = &fenixExecutionWorkerGrpcApi.
 			ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage{
-			TestInstructionExecutionUuid: rawTestInstructionData.testInstructionExecutionUuid,
-			TestInstructionOriginalUuid:  rawTestInstructionData.testInstructionOriginalUuid,
-			MatureTestInstructionUuid:    rawTestInstructionData.matureTestInstructionUuid,
-			TestInstructionName:          rawTestInstructionData.testInstructionName,
-			MajorVersionNumber:           uint32(rawTestInstructionData.testInstructionMajorVersionNumber),
-			MinorVersionNumber:           uint32(rawTestInstructionData.testInstructionMinorVersionNumber),
-			TestInstructionAttributes:    attributesForTestInstruction,
+			TestInstructionExecutionUuid:    rawTestInstructionData.testInstructionExecutionUuid,
+			TestInstructionOriginalUuid:     rawTestInstructionData.testInstructionOriginalUuid,
+			TestInstructionExecutionVersion: int32(rawTestInstructionData.testInstructionExecutionVersion),
+			MatureTestInstructionUuid:       rawTestInstructionData.matureTestInstructionUuid,
+			TestInstructionName:             rawTestInstructionData.testInstructionName,
+			MajorVersionNumber:              uint32(rawTestInstructionData.testInstructionMajorVersionNumber),
+			MinorVersionNumber:              uint32(rawTestInstructionData.testInstructionMinorVersionNumber),
+			TestInstructionAttributes:       attributesForTestInstruction,
 		}
 
 		// Create the TestData object, to be sent later
@@ -709,6 +714,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformRawTestIns
 
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
 func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstructionExecutionsToWorker(
+	dbTransaction pgx.Tx,
 	testInstructionsToBeSentToExecutionWorkers []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
 
 	executionEngine.logger.WithFields(logrus.Fields{
@@ -766,6 +772,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 			//Convert outgoing message to Worker to fit PubSub-process
 			var processTestInstructionExecutionPubSubRequest *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest
 			processTestInstructionExecutionPubSubRequest = &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest{
+				TestCaseExecutionUuid: testInstructionToBeSentToExecutionWorkers.testCaseExecutionUuid,
 				DomainIdentificationAnfProtoFileVersionUsedByClient: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_ClientSystemIdentificationMessage{
 					DomainUuid:          testInstructionToBeSentToExecutionWorkers.domainUuid,
 					ExecutionDomainUuid: testInstructionToBeSentToExecutionWorkers.executionDomainUuid,
@@ -775,12 +782,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 								ProtoFileVersionUsedByClient),
 				},
 				TestInstruction: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestInstructionExecutionMessage{
-					TestInstructionExecutionUuid: testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-					TestInstructionUuid:          testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionUuid,
-					TestInstructionName:          testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionName,
-					MajorVersionNumber:           testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.MajorVersionNumber,
-					MinorVersionNumber:           testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.MinorVersionNumber,
-					TestInstructionAttributes:    nil, // Is set below
+					TestInstructionExecutionUuid:    testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
+					TestInstructionExecutionVersion: uint32(testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionVersion),
+					TestInstructionOriginalUuid:     testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionOriginalUuid,
+					MatureTestInstructionUuid:       testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.MatureTestInstructionUuid,
+					TestInstructionName:             testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionName,
+					MajorVersionNumber:              testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.MajorVersionNumber,
+					MinorVersionNumber:              testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.MinorVersionNumber,
+					TestInstructionAttributes:       nil, // Is set below
 				},
 				TestData: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionPubSubRequest_TestDataMessage{
 					TestDataSetUuid:           testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestData.TestDataSetUuid,
@@ -821,9 +830,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 						fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX):
 					// Replace
 
-					var responseValueFromPreviousTestInstructionExectution string
-					responseValueFromPreviousTestInstructionExectution = executionEngine.
-						loadResponseVariableToUseForAttribute(testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction)
+					var responseValueFromPreviousTestInstructionExecution string
+					responseValueFromPreviousTestInstructionExecution, err = executionEngine.
+						loadResponseVariableToUseForAttribute(
+							dbTransaction,
+							testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
+								TestInstruction)
+
+					if err != nil {
+						common_config.Logger.WithFields(logrus.Fields{
+							"Id":              "28153566-1fb2-4496-ba3a-cc078dd9fdea",
+							"TestInstruction": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction,
+							"err":             err.Error(),
+						}).Error("Got some error when reading response variables from database")
+					}
+
+					// Add the response value to the attribute
+					tempTestInstructionAttribute.AttributeValueAsString = responseValueFromPreviousTestInstructionExecution
 
 				default:
 					common_config.Logger.WithFields(logrus.Fields{
@@ -882,6 +905,96 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 		//fmt.Println(responseFromWorker)
 	}
 	return err
+}
+
+// Load the response variable that was previously sent back from Connector in another TestInstructionExecution
+func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariableToUseForAttribute(
+	dbTransaction pgx.Tx,
+	testInstruction *fenixExecutionWorkerGrpcApi.
+		ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage) (
+	responseValueFromPreviousTestInstructionExecution string,
+	err error) {
+
+	// Variables used in SQL
+	var tempTestInstructionExecutionUuid string
+	var tempMatureTestInstructionUuid string
+	tempTestInstructionExecutionUuid = testInstruction.GetTestInstructionExecutionUuid()
+	tempMatureTestInstructionUuid = testInstruction.GetMatureTestInstructionUuid()
+
+	// *** Process TestInstructions ***
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT rvue.\"ResponseVariableValueAsString\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"ResponseVariablesUnderExecution\" rvue "
+	sqlToExecute = sqlToExecute + "WHERE rvue.\"TestInstructionExecutionUuid\" = '" + tempTestInstructionExecutionUuid + "'" +
+		" AND rvue.\"MatureTestInstructionUuid\" = '" + tempMatureTestInstructionUuid + "' "
+	sqlToExecute = sqlToExecute + "ORDER BY rvue.\"InsertedTimeStamp\" DESC "
+	sqlToExecute = sqlToExecute + "LIMIT 1; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "eb59969b-d76c-46fd-9d54-f6fa53c28113",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadNewTestInstructionToBeSentToExecutionWorkers'")
+	}
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "ac262275-5f05-48c8-982a-46ff2392d3f2",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return "", err
+	}
+
+	// Extract data from DB result set
+	var foundRow bool
+	for rows.Next() {
+
+		err = rows.Scan(
+			&responseValueFromPreviousTestInstructionExecution,
+		)
+
+		if err != nil {
+
+			executionEngine.logger.WithFields(logrus.Fields{
+				"Id":           "78fdc874-d376-4726-a75f-e801e65cd950",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return "", err
+		}
+
+		foundRow = true
+
+	}
+
+	// If there were no ResponseVariabel then there some that is wrong(should never happen), so exit
+	if foundRow == false {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":                               "2b1cef21-1cb3-441a-ae23-2f8fb2f21762",
+			"Error":                            err,
+			"tempTestInstructionExecutionUuid": tempTestInstructionExecutionUuid,
+			"tempMatureTestInstructionUuid":    tempMatureTestInstructionUuid,
+			"sqlToExecute":                     sqlToExecute,
+		}).Error("Couldn't find any ResponseVariable row in database, should never happen")
+
+		return "", err
+	}
+
+	return responseValueFromPreviousTestInstructionExecution, err
+
 }
 
 // Update status on TestInstructions that could be sent to workers

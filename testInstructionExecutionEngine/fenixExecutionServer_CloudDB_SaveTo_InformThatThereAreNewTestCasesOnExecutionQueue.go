@@ -979,7 +979,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 		"\"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
 		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", " +
 		"\"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\", \"ExecutionStatusReportLevel\", " +
-		"\"ExecutionDomainUuid\", \"ExecutionDomainName\", ) "
+		"\"ExecutionDomainUuid\", \"ExecutionDomainName\" ) "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 

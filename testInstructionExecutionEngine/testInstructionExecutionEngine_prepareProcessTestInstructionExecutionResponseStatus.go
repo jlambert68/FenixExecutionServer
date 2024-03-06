@@ -95,7 +95,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 			ProtoFileVersionUsedByClient: 0,
 			TestInstruction: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage{
 				TestInstructionExecutionUuid: testInstructionExecutionResponseMessage.GetTestInstructionExecutionUuid(),
-				TestInstructionUuid:          "",
+				TestInstructionOriginalUuid:  "",
+				MatureTestInstructionUuid:    "",
 				TestInstructionName:          "",
 				MajorVersionNumber:           0,
 				MinorVersionNumber:           0,

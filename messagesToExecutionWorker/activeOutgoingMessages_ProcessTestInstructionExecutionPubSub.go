@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/common_config"
 	"context"
 	"fmt"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -201,7 +202,28 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 			// Sleep for some time before retrying to connect
 			time.Sleep(time.Millisecond * time.Duration(sleepTimeBetweenGrpcCallAttempts[gRPCCallAttemptCounter-1]))
 
-		} else if processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
+		} else if processTestInstructionExecutionResponse == nil ||
+			processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
+
+			// Handle when processTestInstructionExecutionResponse == nil
+			if processTestInstructionExecutionResponse == nil {
+				processTestInstructionExecutionResponse = &fenixExecutionWorkerGrpcApi.
+					ProcessTestInstructionExecutionResponse{
+					AckNackResponse: &fenixExecutionWorkerGrpcApi.AckNackResponse{
+						AckNack:                      false,
+						Comments:                     "",
+						ErrorCodes:                   nil,
+						ProtoFileVersionUsedByClient: 0,
+					},
+					TestInstructionExecutionUuid: "",
+					ExpectedExecutionDuration: &timestamp.Timestamp{
+						Seconds: 0,
+						Nanos:   0,
+					},
+					TestInstructionCanBeReExecuted: false,
+				}
+			}
+
 			// ExecutionWorker couldn't handle gPRC call
 			common_config.Logger.WithFields(logrus.Fields{
 				"ID":                  "c104fc85-c6ca-4084-a756-409e53491bfe",
