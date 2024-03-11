@@ -103,10 +103,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 				executionTrackNumber,
 				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
 
-		case ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse:
-			executionEngine.triggerUpdateTimeOutTimerBasedOnConnectorResponse(
-				executionTrackNumber,
-				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
+			//		case ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse:
+			//			executionEngine.triggerUpdateTimeOutTimerBasedOnConnectorResponse(
+			//				executionTrackNumber,
+			//				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
 
 		// No other command is supported
 		default:
@@ -309,7 +309,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerTestInstruct
 
 }
 
+// TODO - not used so remove it
 // The Connector has done active response, so update TimeOutTimer based on response
+/*
 func (executionEngine *TestInstructionExecutionEngineStruct) triggerUpdateTimeOutTimerBasedOnConnectorResponse(
 	executionTrackNumber int,
 	processTestInstructionExecutionResponseStatus *fenixExecutionServerGrpcApi.ProcessTestInstructionExecutionResponseStatus) {
@@ -318,3 +320,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerUpdateTimeOu
 		executionTrackNumber,
 		processTestInstructionExecutionResponseStatus)
 }
+
+
+*/

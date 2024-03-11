@@ -20,6 +20,7 @@ const extractTimerMarginalBeforeTimeOut time.Duration = time.Second * 60 * 2
 
 // The time that is removed from when TestInstructionExecution finished quite near the end of TimeOut
 const extractTimerMarginalBeforeTimeOut_25percent time.Duration = time.Second * 180
+const extractTimerMarginalBeforeTimeOut_15Seconds time.Duration = time.Second * 15
 
 // allocatedTimeOutTimerMap, the map that keeps track of all allocated TimeOut-timers which are created before sending TestInstructionExecution to Worker
 // The reason for keeping track of these are when the execution-response is very fast and Timer had no time to start. Probably only a problem in development-tests

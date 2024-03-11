@@ -20,6 +20,8 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 	fenixExecutionServerObject.logger.WithFields(logrus.Fields{
 		"id": "360b280b-ff75-410d-8a46-5a6311e4d047",
 		"processTestInstructionExecutionResponseStatus": processTestInstructionExecutionResponseStatus,
+		"ExpectedExecutionDuration in UTC-time": common_config.ConvertGrpcTimeStampToStringForDB(
+			processTestInstructionExecutionResponseStatus.ExpectedExecutionDuration),
 	}).Debug("Incoming 'gRPC - ProcessResponseTestInstructionExecution'")
 
 	defer fenixExecutionServerObject.logger.WithFields(logrus.Fields{
@@ -88,7 +90,8 @@ func (s *fenixExecutionServerGrpcServicesServer) ProcessResponseTestInstructionE
 	*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrackNumber] <- tempTimeOutChannelCommand
 
 	// Response from TimeOutEngine
-	var timeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceValue common_config.TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceStruct
+	var timeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceValue common_config.
+		TimeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceStruct
 
 	// Wait for response from TimeOutEngine
 	timeOutResponseChannelForVerifyIfTestInstructionIsHandledByThisInstanceValue = <-timeOutResponseChannelForIsThisHandledByThisExecutionInstance

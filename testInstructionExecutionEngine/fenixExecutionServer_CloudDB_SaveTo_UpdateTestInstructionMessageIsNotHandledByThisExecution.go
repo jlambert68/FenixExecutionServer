@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/jackc/pgx/v4"
 	"github.com/sirupsen/logrus"
+	"strings"
 )
 
 // Commit or Rollback changes 'TestInstructionIsNotHandledByThisExecutionInstanceUpSaveToCloudDB' and send over Broadcast-channel
@@ -52,6 +53,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructi
 		}).Debug("Exiting: updateTestInstructionIsNotHandledByThisExecutionInstanceSaveToCloudDBInCloudDB()")
 	}()
 
+	// Secure that there are no "'" in the json
+	var cleanedMessageAsJsonString string
+	cleanedMessageAsJsonString = strings.ReplaceAll(testInstructionExecutionMessageReceivedByWrongExecution.MessageAsJsonString, "'", "\"")
+
 	var dataRowToBeInsertedMultiType []interface{}
 	var dataRowsToBeInsertedMultiType [][]interface{}
 
@@ -74,8 +79,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestInstructi
 		common_config.GenerateDatetimeTimeStampForDB())
 	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
 		int(testInstructionExecutionMessageReceivedByWrongExecution.MessageType))
-	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType,
-		testInstructionExecutionMessageReceivedByWrongExecution.MessageAsJsonString)
+	dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, cleanedMessageAsJsonString)
 
 	dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 

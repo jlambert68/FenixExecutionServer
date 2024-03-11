@@ -18,10 +18,11 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	common_config.Logger.WithFields(logrus.Fields{
 		"id":                                      "bb9dcac7-ef0d-4559-b710-9ac04b3b4c6a",
 		"incomingTimeOutChannelCommand":           incomingTimeOutChannelCommand,
+		"TimeOutChannelCommand":                   common_config.TimeOutChannelCommandsForDebugPrinting[incomingTimeOutChannelCommand.TimeOutChannelCommand],
 		"executionTrack":                          executionTrack,
 		"len(*timeOutMapSlice[executionTrack])":   len(*timeOutMapSlice[executionTrack]),
 		"len(*timedOutMapSlice[executionTrack]),": len(*timedOutMapSlice[executionTrack]),
-		"SendID":                                  incomingTimeOutChannelCommand.SendID,
+		"SendID": incomingTimeOutChannelCommand.SendID,
 	}).Debug("Incoming 'processAddTestInstructionExecutionToTimeOutTimer'")
 
 	defer common_config.Logger.WithFields(logrus.Fields{
@@ -36,34 +37,23 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		"incomingTimeOutMapCount": incomingTimeOutMapCount,
 	}).Debug("Number of incoming items '*timeOutMapSlice[executionTrack]'")
 
+	var noOfTimeOutTimerWasFound bool
+
 	// Secure that number of TimeOut-timers has increased by one
 	defer func() {
 		outgoingTimeOutMapCount := len(*timeOutMapSlice[executionTrack])
 
-		if incomingTimeOutChannelCommand.MessageInitiatedFromPubSubSend == true {
-			if outgoingTimeOutMapCount-incomingTimeOutMapCount != 1 {
-				common_config.Logger.WithFields(logrus.Fields{
-					"id":  "07a9f4a2-92d1-4dbf-b366-bff9092def5b",
-					"key": incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
-				}).Error("Initiated from PubSub-response. Missing one item in '*timeOutMapSlice[executionTrack]'")
+		if noOfTimeOutTimerWasFound == false && outgoingTimeOutMapCount-incomingTimeOutMapCount != 1 {
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":       "07a9f4a2-92d1-4dbf-b366-bff9092def5b",
+				"key":      incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
+				"SenderId": incomingTimeOutChannelCommand.SendID,
+			}).Error("Missing one item in '*timeOutMapSlice[executionTrack]'")
 
-				testInstructionExecutionTimeOutEngineObject.processAddTestInstructionExecutionToTimeOutTimer(
-					executionTrack,
-					incomingTimeOutChannelCommand)
-			}
-		} else {
-			if outgoingTimeOutMapCount-incomingTimeOutMapCount != 0 {
-				common_config.Logger.WithFields(logrus.Fields{
-					"id":  "878e21ef-cae6-4370-81b6-b7e5bcbb6b5c",
-					"key": incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid,
-				}).Error("Initiated from Connector-response. Missing one item in '*timeOutMapSlice[executionTrack]'")
-
-				testInstructionExecutionTimeOutEngineObject.processAddTestInstructionExecutionToTimeOutTimer(
-					executionTrack,
-					incomingTimeOutChannelCommand)
-			}
+			//			testInstructionExecutionTimeOutEngineObject.processAddTestInstructionExecutionToTimeOutTimer(
+			//				executionTrack,
+			//				incomingTimeOutChannelCommand)
 		}
-
 	}()
 
 	// Force GC to clear up, should see a memory drop
@@ -83,49 +73,16 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	timeOutMapKey = incomingTimeOutChannelCommand.TimeOutChannelTestInstructionExecutions.TestInstructionExecutionUuid +
 		testInstructionExecutionVersionAsString
 
-	// Depending on when this function is called there are two different flows
-	if incomingTimeOutChannelCommand.MessageInitiatedFromPubSubSend == true {
-		// Initiated from PubSub-response
+	// Secure that the TimeOut-timer doesn't already exist
+	_, existsInMap = (*timeOutMapSlice[executionTrack])[timeOutMapKey]
+	if existsInMap == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":            "47e01275-2517-4c7a-8e09-71a15eb133c7",
+			"timeOutMapKey": timeOutMapKey,
+		}).Error("'*timeOutMapSlice[executionTrack]' already exist")
 
-		// There must be an allocation before a TimeOut-timer can be added
-		// The reason is that sometime a very fast response, from sent TestInstructionExecutions, then the TimerRemove-command comes in before the TimerAdd-command
-		_, existsInMap = (AllocatedTimeOutTimerMapSlice[executionTrack])[timeOutMapKey]
-		if existsInMap == false {
+		return
 
-			common_config.Logger.WithFields(logrus.Fields{
-				"id":                            "da1ea775-627d-4856-961c-1da9f20c9751",
-				"incomingTimeOutChannelCommand": incomingTimeOutChannelCommand,
-				"timeOutMapKey":                 timeOutMapKey,
-				"incomingTimeOutChannelCommand.MessageInitiatedFromPubSubSend": incomingTimeOutChannelCommand.MessageInitiatedFromPubSubSend,
-			}).Debug("Initiated from PubSub-response. There exist no allocated TimeOut-timer so we should NOT create a new TimeOut-timer")
-
-			return
-		}
-
-		// Secure that the TimeOut-timer doesn't already exist
-		_, existsInMap = (*timeOutMapSlice[executionTrack])[timeOutMapKey]
-		if existsInMap == true {
-			common_config.Logger.WithFields(logrus.Fields{
-				"id":            "7a4925ac-f20e-4adc-bfda-296dd43d3b6c",
-				"timeOutMapKey": timeOutMapKey,
-			}).Error("'*timeOutMapSlice[executionTrack]' does already contain an object for for the 'timeOutMapKey'")
-
-			return
-		}
-	} else {
-		// Initiated from Connector-response
-
-		// Secure that the TimeOut-timer already exist
-		_, existsInMap = (*timeOutMapSlice[executionTrack])[timeOutMapKey]
-		if existsInMap == false {
-			common_config.Logger.WithFields(logrus.Fields{
-				"id":            "efeba77a-d36d-4c32-a27f-8b7bbe2e3855",
-				"timeOutMapKey": timeOutMapKey,
-			}).Error("'*timeOutMapSlice[executionTrack]' doesn't already exist, but should exist due to PubSub-response")
-
-			return
-
-		}
 	}
 
 	// If the map is empty then this TestInstructionExecution has the next, and only, upcoming TimeOut
@@ -145,9 +102,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 		// Set variable that keeps track of next object with upcoming Timeout
 		nextUpcomingObjectMapKeyWithTimeOutSlice[executionTrack] = timeOutMapKey
-
-		// Remove Allocation for TimeOut-timer
-		delete(AllocatedTimeOutTimerMapSlice[executionTrack], timeOutMapKey)
 
 		// Start new TimeOut-timer for this TestInstructionExecution as go-routine
 		go testInstructionExecutionTimeOutEngineObject.startTimeOutTimerTestInstructionExecution(

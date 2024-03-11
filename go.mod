@@ -2,7 +2,7 @@ module FenixExecutionServer
 
 go 1.21
 
-toolchain go1.22.0
+//toolchain go1.21.0
 
 require (
 	cloud.google.com/go/firestore v1.15.0

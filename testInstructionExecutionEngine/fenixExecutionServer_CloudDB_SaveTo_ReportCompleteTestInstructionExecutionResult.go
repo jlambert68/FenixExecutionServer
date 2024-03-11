@@ -237,7 +237,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 	var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
 	tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
 		TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
-		TestInstructionExecutionVersion: 1,
+		TestInstructionExecutionVersion: finalTestInstructionExecutionResultMessage.TestInstructionExecutionVersion,
 	}
 
 	var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct

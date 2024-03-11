@@ -42,8 +42,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	if existsInMap == false {
 
 		// Check if Remove-command comes from that an TestInstructionExecution was done or
-		// if it was triggered by the TimeOut-timer
-		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
+		// Response from Connector regarding TimeOutTime
+		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToResponseFromConnector ||
+			timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
 
 			// Only log Warning when Executions is done.
 			// TODO fix this so when it times out then it is put in a certain bucket that Execution-Remove will look into when it's not found in main-map
@@ -51,7 +52,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				"id":                    "67a83431-0a18-458a-b0a1-032ad21de613",
 				"timeOutMapKeyToRemove": timeOutMapKeyToRemove,
 				"timeOutChannelCommand": timeOutChannelCommand,
-			}).Warning("'timeOutMap' doesn't contain the object to be removed")
+			}).Warning("'timeOutMap' doesn't contain the object to be removed. Probably due to that the it " +
+				"already was timed out before Connector execution was finished")
 
 		} else {
 
@@ -95,8 +97,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	// If the map only consist of 1 object then just remove it
 	if len((*timeOutMapSlice[executionTrack])) == 1 {
 
-		// Only Cancel Timer when TestInstructionExecution was finished, otherwise Timer has finished
-		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
+		// Only Cancel Timer when TestInstructionExecution was finished, otherwise Timer has finished or
+		// new TimeOutTime was received from Connector
+		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToResponseFromConnector ||
+			timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
 
 			// Cancel timer
 			currentTimeOutObjectToRemove.cancellableTimer.Cancel()
@@ -128,8 +132,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	if previousTimeOutMapKey == timeOutMapKeyToRemove &&
 		timeOutMapKeyToRemove != nextTimeOutMapKey {
 
-		// Only Cancel Timer when TestInstructionExecution was finished, otherwise Timer has finished
-		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
+		// Only Cancel Timer when TestInstructionExecution was finished, otherwise Timer has finished or
+		// new TimeOutTime was received from Connector
+		if timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToResponseFromConnector ||
+			timeOutChannelCommand == common_config.TimeOutChannelCommandRemoveTestInstructionExecutionFromTimeOutTimerDueToExecutionResult {
 
 			// Cancel timer
 			currentTimeOutObjectToRemove.cancellableTimer.Cancel()

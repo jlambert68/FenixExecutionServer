@@ -11,7 +11,7 @@ import (
 func ConvertGrpcTimeStampToStringForDB(grpcTimeStamp *timestamppb.Timestamp) (grpcTimeStampAsTimeStampAsString string) {
 	grpcTimeStampAsTimeStamp := grpcTimeStamp.AsTime().UTC()
 
-	timeStampLayOut := "2006-01-02 15:04:05.000000 +0000" //milliseconds
+	timeStampLayOut := "2006-01-02 15:04:05.000000 -0000" //milliseconds
 
 	grpcTimeStampAsTimeStampAsString = grpcTimeStampAsTimeStamp.Format(timeStampLayOut)
 

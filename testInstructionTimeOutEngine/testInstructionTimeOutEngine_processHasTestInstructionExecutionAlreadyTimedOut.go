@@ -158,7 +158,7 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 
 	// remove 25% of TimerOut-time safety margin
 	var timeDurationUntilTimerSignal time.Duration
-	timeDurationUntilTimerSignal = durationToTimeOut - extractTimerMarginalBeforeTimeOut_25percent
+	timeDurationUntilTimerSignal = durationToTimeOut - extractTimerMarginalBeforeTimeOut_15Seconds
 
 	// When 'timeDurationUntilTimerSignal' gets negative then the Timer is close to Time out and therefor counts as a TimeOut
 	if timeDurationUntilTimerSignal < 0 {

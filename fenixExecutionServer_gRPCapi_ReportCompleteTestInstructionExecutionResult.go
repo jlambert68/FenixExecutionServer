@@ -64,7 +64,7 @@ func (s *fenixExecutionServerGrpcServicesServer) ReportCompleteTestInstructionEx
 		TestCaseExecutionUuid:                   "",
 		TestCaseExecutionVersion:                0,
 		TestInstructionExecutionUuid:            finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
-		TestInstructionExecutionVersion:         1,
+		TestInstructionExecutionVersion:         finalTestInstructionExecutionResultMessage.TestInstructionExecutionVersion,
 		TestInstructionExecutionCanBeReExecuted: false,
 		TimeOutTime:                             time.Time{},
 	}

@@ -1,12 +1,8 @@
 package testInstructionTimeOutEngine
 
-import (
-	"FenixExecutionServer/common_config"
-	"github.com/sirupsen/logrus"
-	"strconv"
-)
-
 // Allocate a Timer before starting it. Used to handle really fast responses for TestInstructionExecutions so stuff doesn't happen in wrong order
+//TODO Not used
+/*
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) processAllocateTestInstructionExecutionToTimeOutTimer(
 	executionTrack int,
 	incomingTimeOutChannelCommand *common_config.TimeOutChannelCommandStruct) {
@@ -48,3 +44,6 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	(AllocatedTimeOutTimerMapSlice[executionTrack])[allocatedTimeOutTimerMapKey] = allocatedTimeOutTimerMapKey
 
 }
+
+
+*/

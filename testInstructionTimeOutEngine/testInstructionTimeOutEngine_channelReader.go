@@ -68,25 +68,42 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 				executionTrack,
 				incomingTimeOutChannelCommand)
 
-		case common_config.TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer:
-			testInstructionExecutionTimeOutEngineObject.allocateTestInstructionExecutionToTimeOutTimer(
-				executionTrack,
-				incomingTimeOutChannelCommand)
+			//		case common_config.TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer:
+			//			testInstructionExecutionTimeOutEngineObject.allocateTestInstructionExecutionToTimeOutTimer(
+			//				executionTrack,
+			//				incomingTimeOutChannelCommand)
 
 		case common_config.TimeOutChannelCommandTimeUntilNextTimeOutTimerToFires:
 			testInstructionExecutionTimeOutEngineObject.timeUntilNextTimeOutTimerToFires(
 				executionTrack,
 				incomingTimeOutChannelCommand)
 
-		case common_config.TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer:
-			testInstructionExecutionTimeOutEngineObject.removeAllocationForTestInstructionExecutionToTimeOutTimer(
-				executionTrack,
-				incomingTimeOutChannelCommand)
+			//		case common_config.TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer:
+			//			testInstructionExecutionTimeOutEngineObject.removeAllocationForTestInstructionExecutionToTimeOutTimer(
+			//				executionTrack,
+			//				incomingTimeOutChannelCommand)
 
 		case common_config.TimeOutChannelCommandVerifyIfTestInstructionIsHandledByThisExecutionInstance:
 			testInstructionExecutionTimeOutEngineObject.verifyIfTestInstructionIsHandledByThisExecutionInstance(
 				executionTrack,
 				incomingTimeOutChannelCommand)
+
+		case common_config.TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToProblemInCallToWorker:
+			testInstructionExecutionTimeOutEngineObject.removeTestInstructionExecutionFromTimeOutTimer(
+				executionTrack,
+				incomingTimeOutChannelCommand,
+				common_config.TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToProblemInCallToWorker)
+
+		case common_config.TimeOutChannelCommandAddTemporaryTimeOutTimerBeforeCallToWorker:
+			testInstructionExecutionTimeOutEngineObject.addTestInstructionExecutionToTimeOutTimer(
+				executionTrack,
+				incomingTimeOutChannelCommand)
+
+		case common_config.TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToResponseFromConnector:
+			testInstructionExecutionTimeOutEngineObject.removeTestInstructionExecutionFromTimeOutTimer(
+				executionTrack,
+				incomingTimeOutChannelCommand,
+				common_config.TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToResponseFromConnector)
 
 		// No other command is supported
 		default:
@@ -133,6 +150,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 }
 
 // Allocate a Timer before starting it. Used to handle really fast responses for TestInstructionExecutions so stuff doesn't happen in wrong order
+// TODO Not used
+/*
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) allocateTestInstructionExecutionToTimeOutTimer(
 	executionTrack int,
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
@@ -142,6 +161,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		&incomingTimeOutChannelCommand)
 
 }
+
+*/
 
 // Check the duration until next TimeOut-timer to fire
 func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineObjectStruct) timeUntilNextTimeOutTimerToFires(

@@ -73,7 +73,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
-	defer executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
+	defer executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallelSave(
 		&executionTrackNumber,
 		&dbTransaction,
 		&doCommitNotRoleBack,
@@ -88,19 +88,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 	// Only set needed values
 	testInstructionThatWasSentToWorkersAndTheResponse = &processTestInstructionExecutionRequestAndResponseMessageContainer{
 		domainUuid:               "",
+		executionDomainUuid:      "",
 		addressToExecutionWorker: "",
 		testCaseExecutionUuid:    channelCommandTestCaseExecution[0].TestCaseExecutionUuid,
 		testCaseExecutionVersion: int(channelCommandTestCaseExecution[0].TestCaseExecutionVersion),
 		processTestInstructionExecutionRequest: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest{
 			ProtoFileVersionUsedByClient: 0,
 			TestInstruction: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage{
-				TestInstructionExecutionUuid: testInstructionExecutionResponseMessage.GetTestInstructionExecutionUuid(),
-				TestInstructionOriginalUuid:  "",
-				MatureTestInstructionUuid:    "",
-				TestInstructionName:          "",
-				MajorVersionNumber:           0,
-				MinorVersionNumber:           0,
-				TestInstructionAttributes:    nil,
+				TestInstructionExecutionUuid:    testInstructionExecutionResponseMessage.GetTestInstructionExecutionUuid(),
+				TestInstructionExecutionVersion: 1,
+				TestInstructionOriginalUuid:     "",
+				MatureTestInstructionUuid:       "",
+				TestInstructionName:             "",
+				MajorVersionNumber:              0,
+				MinorVersionNumber:              0,
+				TestInstructionAttributes:       nil,
 			},
 			TestData: &fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest_TestDataMessage{
 				TestDataSetUuid:           "",
@@ -118,6 +120,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 			ExpectedExecutionDuration:      testInstructionExecutionResponseMessage.GetExpectedExecutionDuration(),
 			TestInstructionCanBeReExecuted: testInstructionExecutionResponseMessage.GetTestInstructionCanBeReExecuted(),
 		},
+		messageInitiatedFromPubSubSend:                   false,
+		messageInitiatedTestInstructionExecutionResponse: true,
 	}
 
 	// Append the TestInstructionExecution-response to the slice
@@ -125,7 +129,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 		testInstructionsThatWasSentToWorkersAndTheResponse, testInstructionThatWasSentToWorkersAndTheResponse)
 
 	// Update TestInstructionExecution-status in database
-	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB(dbTransaction, testInstructionsThatWasSentToWorkersAndTheResponse)
+	err = executionEngine.updateStatusOnTestInstructionsExecutionInCloudDB(
+		dbTransaction,
+		testInstructionsThatWasSentToWorkersAndTheResponse)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -138,7 +144,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 	}
 
 	// Update status on TestCases that TestInstructions have been sent to workers
-	err = executionEngine.updateStatusOnTestCasesExecutionInCloudDB(dbTransaction, testInstructionsThatWasSentToWorkersAndTheResponse)
+	err = executionEngine.updateStatusOnTestCasesExecutionInCloudDB(
+		dbTransaction,
+		testInstructionsThatWasSentToWorkersAndTheResponse)
 	if err != nil {
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -229,7 +237,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 
 	}
 
-	// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as respons
+	//Remove Temporary TimeOut-timer because we got an AckNack=false as respons
+	err = executionEngine.removeTemporaryTimeOutTimerForTestInstructionExecutions(
+		testInstructionsThatWasSentToWorkersAndTheResponse)
+	if err != nil {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"id":    "60c2975c-c177-413b-a908-814fb2472f41",
+			"error": err,
+		}).Error("Couldn't Remove Temporary TimeOut-timer")
+
+		return
+
+	}
+
+	// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as response
 	err = executionEngine.setTimeOutTimersForTestInstructionExecutions(testInstructionsThatWasSentToWorkersAndTheResponse)
 	if err != nil {
 
@@ -237,19 +259,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareProcessTestI
 			"id":    "a2e710d6-c17b-4da2-8d53-f614cd9986fb",
 			"error": err,
 		}).Error("Problem when sending TestInstructionExecutions to TimeOutEngine")
-
-		return
-
-	}
-
-	//Remove Allocation for TimeOut-timer because we got an AckNack=false as respons
-	err = executionEngine.removeTimeOutTimerAllocationsForTestInstructionExecutions(testInstructionsThatWasSentToWorkersAndTheResponse)
-	if err != nil {
-
-		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "60c2975c-c177-413b-a908-814fb2472f41",
-			"error": err,
-		}).Error("Remove Allocation for TimeOut-timer")
 
 		return
 

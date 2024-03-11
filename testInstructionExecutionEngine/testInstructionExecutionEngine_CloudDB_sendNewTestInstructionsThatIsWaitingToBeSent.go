@@ -20,7 +20,7 @@ import (
 	"strconv"
 )
 
-func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
+func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallelSave(
 	executionTrackNumberReference *int,
 	dbTransactionReference *pgx.Tx,
 	doCommitNotRoleBackReference *bool,
@@ -128,7 +128,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 
 	// Standard is to do a Rollback
 	doCommitNotRoleBack = false
-	defer executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallellSave(
+	defer executionEngine.sendNewTestInstructionsThatIsWaitingToBeSentWorkerCommitOrRoleBackParallelSave(
 		&executionTrackNumber,
 		&txn,
 		&doCommitNotRoleBack,
@@ -282,6 +282,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 
 			tempTestInstructionExecutionStatus = fenixExecutionServerGrpcApi.
 				TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN
+
+			//Remove temporary for TimeOut-timer because we got an AckNack=false as response
+			err = executionEngine.removeTemporaryTimeOutTimerForTestInstructionExecutions(
+				testInstructionsToBeSentToExecutionWorkersAndTheResponse)
+			if err != nil {
+
+				executionEngine.logger.WithFields(logrus.Fields{
+					"id":    "640602b0-04be-4206-987b-4ccc1cb5d46c",
+					"error": err,
+				}).Error("Problem when sending TestInstructionExecutions to TimeOutEngine")
+
+				return
+
+			}
 		}
 
 		// Should the message be broadcasted
@@ -320,33 +334,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 
 	}
 
-	// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as respons
-	err = executionEngine.setTimeOutTimersForTestInstructionExecutions(
-		testInstructionsToBeSentToExecutionWorkersAndTheResponse,
-	)
-	if err != nil {
+	/*
+		// Set TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as respons
+		err = executionEngine.setTimeOutTimersForTestInstructionExecutions(
+			testInstructionsToBeSentToExecutionWorkersAndTheResponse,
+		)
+		if err != nil {
 
-		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "7d998314-1a9c-40bb-a7f2-9017b26db58f",
-			"error": err,
-		}).Error("Problem when sending TestInstructionExecutions to TimeOutEngine")
+			executionEngine.logger.WithFields(logrus.Fields{
+				"id":    "7d998314-1a9c-40bb-a7f2-9017b26db58f",
+				"error": err,
+			}).Error("Problem when sending TestInstructionExecutions to TimeOutEngine")
 
-		return
+			return
 
-	}
+		}
 
-	//Remove Allocation for TimeOut-timer because we got an AckNack=false as respons
-	err = executionEngine.removeTimeOutTimerAllocationsForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse)
-	if err != nil {
-
-		executionEngine.logger.WithFields(logrus.Fields{
-			"id":    "640602b0-04be-4206-987b-4ccc1cb5d46c",
-			"error": err,
-		}).Error("Problem when sending TestInstructionExecutions to TimeOutEngine")
-
-		return
-
-	}
+	*/
 
 	// Commit every database change
 	doCommitNotRoleBack = true
@@ -586,14 +590,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 
 // Holds address, to the execution worker, and a message that will be sent to worker
 type processTestInstructionExecutionRequestAndResponseMessageContainer struct {
-	domainUuid                              string
-	executionDomainUuid                     string
-	addressToExecutionWorker                string
-	testCaseExecutionUuid                   string
-	testCaseExecutionVersion                int
-	processTestInstructionExecutionRequest  *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest
-	processTestInstructionExecutionResponse *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse
-	messageInitiatedFromPubSubSend          bool
+	domainUuid                                       string
+	executionDomainUuid                              string
+	addressToExecutionWorker                         string
+	testCaseExecutionUuid                            string
+	testCaseExecutionVersion                         int
+	processTestInstructionExecutionRequest           *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionReveredRequest
+	processTestInstructionExecutionResponse          *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse
+	messageInitiatedFromPubSubSend                   bool
+	messageInitiatedTestInstructionExecutionResponse bool
 }
 
 // Transform Raw TestInstructions from DB into messages ready to be sent over gRPC to Execution Workers
@@ -735,33 +740,21 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 	var fenixExecutionWorkerObject *messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct
 	fenixExecutionWorkerObject = &messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct{Logger: executionEngine.logger}
 
+	// Set a Temporary TimeOut-timer for all TestInstructions
+	err = executionEngine.setTemporaryTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkers)
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "4db137ae-a1df-4248-af61-88b8b396f74e",
+			"testInstructionsToBeSentToExecutionWorkers": testInstructionsToBeSentToExecutionWorkers,
+			"err": err.Error(),
+		}).Error("Got some error when creating Temporary TimeOut-times")
+
+		return err
+	}
+
 	// Loop all TestInstructionExecutions and send them to correct Worker for executions
 	for _, testInstructionToBeSentToExecutionWorkers := range testInstructionsToBeSentToExecutionWorkers {
-
-		// Allocate TimeOut-timer
-		// Create a message with TestInstructionExecution to be sent to TimeOutEngine ta be able to allocate a TimeOutTimer
-		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
-		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
-			TestInstructionExecutionUuid: testInstructionToBeSentToExecutionWorkers.
-				processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-			TestInstructionExecutionVersion: 1,
-		}
-
-		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
-		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
-			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer,
-			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
-			SendID:                                  "6e7185e2-8b59-4bf0-aebb-96ab290a19ef",
-			MessageInitiatedFromPubSubSend:          false,
-		}
-
-		// Calculate Execution Track
-		var executionTrack int
-		executionTrack = common_config.CalculateExecutionTrackNumber(
-			testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
-
-		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
-		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
 
 		var responseFromWorker *fenixExecutionWorkerGrpcApi.ProcessTestInstructionExecutionResponse
 
@@ -892,7 +885,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 				testInstructionToBeSentToExecutionWorkers.domainUuid,
 				testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest)
 
-			testInstructionToBeSentToExecutionWorkers.messageInitiatedFromPubSubSend = true
+			testInstructionToBeSentToExecutionWorkers.messageInitiatedFromPubSubSend = false
 		}
 
 		executionEngine.logger.WithFields(logrus.Fields{
@@ -1287,7 +1280,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 				TestCaseExecutionUuid:                   testInstructionExecution.testCaseExecutionUuid,
 				TestCaseExecutionVersion:                int32(testInstructionExecution.testCaseExecutionVersion),
 				TestInstructionExecutionUuid:            testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-				TestInstructionExecutionVersion:         1,
+				TestInstructionExecutionVersion:         testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionVersion,
 				TestInstructionExecutionCanBeReExecuted: testInstructionExecution.processTestInstructionExecutionResponse.TestInstructionCanBeReExecuted,
 				TimeOutTime:                             testInstructionExecution.processTestInstructionExecutionResponse.ExpectedExecutionDuration.AsTime(),
 			}
@@ -1298,7 +1291,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-				SendID:                         "e5c5e57a-89fb-4204-9e70-0f6c0a12380f",
+				SendID:                         "be7a3abb-4eef-41b4-99be-80fc093bbee3",
 				MessageInitiatedFromPubSubSend: testInstructionExecution.messageInitiatedFromPubSubSend,
 			}
 			// Calculate Execution Track
@@ -1315,8 +1308,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) setTimeOutTimersFor
 	return err
 }
 
-// Remove Allocations for TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=false as respons
-func (executionEngine *TestInstructionExecutionEngineStruct) removeTimeOutTimerAllocationsForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+// Set Temporary TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=true as response
+// This is done before the Connector responded back with actual TimeOutTime
+func (executionEngine *TestInstructionExecutionEngineStruct) setTemporaryTimeOutTimersForTestInstructionExecutions(
+	testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (
+	err error) {
 
 	// If there are nothing to update then just exit
 	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {
@@ -1326,26 +1322,148 @@ func (executionEngine *TestInstructionExecutionEngineStruct) removeTimeOutTimerA
 	// Create TimeOut-message for all TestInstructionExecutions
 	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
 
-		// Process only TestInstructionExecutions if we got an AckNack=fasle as respons
+		// Create a message with TestInstructionExecution to be sent to TimeOutEngine
+		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+			TestCaseExecutionUuid:    testInstructionExecution.testCaseExecutionUuid,
+			TestCaseExecutionVersion: int32(testInstructionExecution.testCaseExecutionVersion),
+			TestInstructionExecutionUuid: testInstructionExecution.processTestInstructionExecutionRequest.
+				TestInstruction.TestInstructionExecutionUuid,
+			TestInstructionExecutionVersion: testInstructionExecution.processTestInstructionExecutionRequest.
+				TestInstruction.TestInstructionExecutionVersion,
+			TestInstructionExecutionCanBeReExecuted: true,
+			TimeOutTime:                             time.Now().Add(60 * time.Second), // Hard code 60 second timeout time
+		}
+
+		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandAddTemporaryTimeOutTimerBeforeCallToWorker,
+			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+			//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
+			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+			SendID:                         "fba445be-800d-4a93-895c-b57a956e76cc",
+			MessageInitiatedFromPubSubSend: testInstructionExecution.messageInitiatedFromPubSubSend,
+		}
+		// Calculate Execution Track
+		var executionTrack int
+		executionTrack = common_config.CalculateExecutionTrackNumber(
+			testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+
+		// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
+		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
+
+	}
+
+	return err
+}
+
+/*
+// Remove Allocations for TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=false as response
+func (executionEngine *TestInstructionExecutionEngineStruct) removeTimeOutTimerAllocationsForTestInstructionExecutions(
+	testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+
+	// If there are nothing to update then just exit
+	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {
+		return nil
+	}
+
+	// Create TimeOut-message for all TestInstructionExecutions
+	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
+
+		// Process only TestInstructionExecutions if we got an AckNack=false as response
 		if testInstructionExecution.processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
 			// Create a message with TestInstructionExecution to be sent to TimeOutEngine
 			var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
 			tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
-				TestCaseExecutionUuid:                   testInstructionExecution.testCaseExecutionUuid,
-				TestCaseExecutionVersion:                int32(testInstructionExecution.testCaseExecutionVersion),
-				TestInstructionExecutionUuid:            testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid,
-				TestInstructionExecutionVersion:         1,
-				TestInstructionExecutionCanBeReExecuted: testInstructionExecution.processTestInstructionExecutionResponse.TestInstructionCanBeReExecuted,
-				TimeOutTime:                             testInstructionExecution.processTestInstructionExecutionResponse.ExpectedExecutionDuration.AsTime(),
+				TestCaseExecutionUuid:    testInstructionExecution.testCaseExecutionUuid,
+				TestCaseExecutionVersion: int32(testInstructionExecution.testCaseExecutionVersion),
+				TestInstructionExecutionUuid: testInstructionExecution.processTestInstructionExecutionRequest.
+					TestInstruction.TestInstructionExecutionUuid,
+				TestInstructionExecutionVersion: testInstructionExecution.processTestInstructionExecutionRequest.
+					TestInstruction.TestInstructionExecutionVersion,
+				TestInstructionExecutionCanBeReExecuted: testInstructionExecution.processTestInstructionExecutionResponse.
+					TestInstructionCanBeReExecuted,
+				TimeOutTime: testInstructionExecution.processTestInstructionExecutionResponse.
+					ExpectedExecutionDuration.AsTime(),
 			}
 
 			var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
 			tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
-				TimeOutChannelCommand:                   common_config.TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer,
+				TimeOutChannelCommand: common_config.
+					TimeOutChannelCommandRemoveAllocationForTestInstructionExecutionToTimeOutTimer,
 				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
 				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
 				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
 				SendID:                         "3f5b5990-c7c6-4cba-9136-f90ba7530981",
+				MessageInitiatedFromPubSubSend: false,
+			}
+			// Calculate Execution Track
+			var executionTrack int
+			executionTrack = common_config.CalculateExecutionTrackNumber(
+				testInstructionExecution.processTestInstructionExecutionRequest.TestInstruction.TestInstructionExecutionUuid)
+
+			// Send message on TimeOutEngineChannel to Add TestInstructionExecution to Timer-queue
+			*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
+
+		}
+	}
+
+	return err
+}
+*/
+
+// Remove temporary TimeOut-timers for TestInstructionExecutions in TimerOutEngine if we got an AckNack=false as response
+func (executionEngine *TestInstructionExecutionEngineStruct) removeTemporaryTimeOutTimerForTestInstructionExecutions(
+	testInstructionsToBeSentToExecutionWorkersAndTheResponse []*processTestInstructionExecutionRequestAndResponseMessageContainer) (err error) {
+
+	// If there are nothing to update then just exit
+	if len(testInstructionsToBeSentToExecutionWorkersAndTheResponse) == 0 {
+		return nil
+	}
+
+	// Create TimeOut-message for all TestInstructionExecutions
+	for _, testInstructionExecution := range testInstructionsToBeSentToExecutionWorkersAndTheResponse {
+
+		// Decide which tempTimeOutChannelCommand should be used
+		var tempTimeOutChannelCommandType common_config.TimeOutChannelCommandType
+
+		// We are coming from when we tried to Send to Worker
+		if testInstructionExecution.processTestInstructionExecutionResponse.AckNackResponse.AckNack == false {
+			tempTimeOutChannelCommandType = common_config.
+				TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToProblemInCallToWorker
+		}
+
+		// We are coming from when we got response from Connector
+		if testInstructionExecution.messageInitiatedTestInstructionExecutionResponse == true {
+			tempTimeOutChannelCommandType = common_config.
+				TimeOutChannelCommandRemoveTemporaryTimeOutTimerDueToResponseFromConnector
+		}
+
+		// Process only TestInstructionExecutions if we got an AckNack=false as response
+		if testInstructionExecution.processTestInstructionExecutionResponse.AckNackResponse.AckNack == false ||
+			testInstructionExecution.messageInitiatedTestInstructionExecutionResponse == true {
+			// Create a message with TestInstructionExecution to be sent to TimeOutEngine
+			var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+			tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+				TestCaseExecutionUuid:    testInstructionExecution.testCaseExecutionUuid,
+				TestCaseExecutionVersion: int32(testInstructionExecution.testCaseExecutionVersion),
+				TestInstructionExecutionUuid: testInstructionExecution.processTestInstructionExecutionRequest.
+					TestInstruction.TestInstructionExecutionUuid,
+				TestInstructionExecutionVersion: testInstructionExecution.processTestInstructionExecutionRequest.
+					TestInstruction.TestInstructionExecutionVersion,
+				TestInstructionExecutionCanBeReExecuted: testInstructionExecution.processTestInstructionExecutionResponse.
+					TestInstructionCanBeReExecuted,
+				TimeOutTime: testInstructionExecution.processTestInstructionExecutionResponse.
+					ExpectedExecutionDuration.AsTime(),
+			}
+
+			var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+			tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+				TimeOutChannelCommand:                   tempTimeOutChannelCommandType,
+				TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutions,
+				//TimeOutReturnChannelForTimeOutHasOccurred:                           nil,
+				//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+				SendID:                         "4eb5a7d6-ccce-4755-8096-b58db24e0924",
 				MessageInitiatedFromPubSubSend: false,
 			}
 			// Calculate Execution Track

@@ -50,32 +50,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) reCreateTimeOutTime
 	// Loop all TestInstructionExecutions, with Zombie-TestInstructionExecutions, and trigger Create TimeOutTimer for the TestInstructionExecutions
 	for _, testInstructionExecutionToProcess := range testInstructionExecutionsToProcess {
 
-		// Allocate TimeOut-timer
-		// Create a message with TestInstructionExecution to be sent to TimeOutEngine ta be able to allocate a TimeOutTimer
-		var tempTimeOutChannelTestInstructionExecutionsAllocate common_config.TimeOutChannelCommandTestInstructionExecutionStruct
-		tempTimeOutChannelTestInstructionExecutionsAllocate = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
-			TestCaseExecutionUuid:                   testInstructionExecutionToProcess.TestCaseExecutionUuid,
-			TestCaseExecutionVersion:                testInstructionExecutionToProcess.TestInstructionExecutionVersion,
-			TestInstructionExecutionUuid:            testInstructionExecutionToProcess.TestInstructionExecutionUuid,
-			TestInstructionExecutionVersion:         1,
-			TimeOutTime:                             testInstructionExecutionToProcess.TestInstructionTimeOutTime,
-			TestInstructionExecutionCanBeReExecuted: testInstructionExecutionToProcess.TestInstructionExecutionCanBeReExecuted,
-		}
-
-		var tempTimeOutChannelCommandAllocate common_config.TimeOutChannelCommandStruct
-		tempTimeOutChannelCommandAllocate = common_config.TimeOutChannelCommandStruct{
-			TimeOutChannelCommand:                   common_config.TimeOutChannelCommandAllocateTestInstructionExecutionToTimeOutTimer,
-			TimeOutChannelTestInstructionExecutions: tempTimeOutChannelTestInstructionExecutionsAllocate,
-			SendID:                                  "8a70b3d7-bbf6-458a-90bb-553e7d181834",
-		}
-
 		// Calculate Execution Track
 		var executionTrack int
 		executionTrack = common_config.CalculateExecutionTrackNumber(
 			testInstructionExecutionToProcess.TestInstructionExecutionUuid)
-
-		// Send message on TimeOutEngineChannel to Allocate the TestInstructionExecution to Timer-queue
-		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommandAllocate
 
 		// Add a TimeOut-timer
 		// Create a message with TestInstructionExecution to be sent to TimeOutEngine ta be able to Add a TimeOutTimer
@@ -84,7 +62,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) reCreateTimeOutTime
 			TestCaseExecutionUuid:                   testInstructionExecutionToProcess.TestCaseExecutionUuid,
 			TestCaseExecutionVersion:                testInstructionExecutionToProcess.TestInstructionExecutionVersion,
 			TestInstructionExecutionUuid:            testInstructionExecutionToProcess.TestInstructionExecutionUuid,
-			TestInstructionExecutionVersion:         1,
+			TestInstructionExecutionVersion:         testInstructionExecutionToProcess.TestInstructionExecutionVersion,
 			TimeOutTime:                             testInstructionExecutionToProcess.TestInstructionTimeOutTime,
 			TestInstructionExecutionCanBeReExecuted: testInstructionExecutionToProcess.TestInstructionExecutionCanBeReExecuted,
 		}
