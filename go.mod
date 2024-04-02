@@ -11,7 +11,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v4 v4.18.2
-	github.com/jlambert68/FenixGrpcApi v0.0.0-20240306175605-aff905beac2d
+	github.com/jlambert68/FenixGrpcApi v0.0.0-20240318074111-dcf318ea9642
 	github.com/jlambert68/FenixSyncShared v0.0.0-20240215140904-db0840b5d70a
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/net v0.22.0
