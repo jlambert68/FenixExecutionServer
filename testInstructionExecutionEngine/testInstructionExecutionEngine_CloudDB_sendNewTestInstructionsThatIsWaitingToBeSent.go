@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/broadcastingEngine_ExecutionStatusUpdate"
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
+	"errors"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixTestCaseBuilderServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixTestCaseBuilderServer/fenixTestCaseBuilderServerGrpcApi/go_grpc_api"
 	"sort"
@@ -740,18 +741,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 	var fenixExecutionWorkerObject *messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct
 	fenixExecutionWorkerObject = &messagesToExecutionWorker.MessagesToExecutionWorkerServerObjectStruct{Logger: executionEngine.logger}
 
-	// Set a Temporary TimeOut-timer for all TestInstructions
-	err = executionEngine.setTemporaryTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkers)
-	if err != nil {
+	// Refactoring  - removed for now
+	/*
 
-		common_config.Logger.WithFields(logrus.Fields{
-			"Id": "4db137ae-a1df-4248-af61-88b8b396f74e",
-			"testInstructionsToBeSentToExecutionWorkers": testInstructionsToBeSentToExecutionWorkers,
-			"err": err.Error(),
-		}).Error("Got some error when creating Temporary TimeOut-times")
+		// Set a Temporary TimeOut-timer for all TestInstructions
+		err = executionEngine.setTemporaryTimeOutTimersForTestInstructionExecutions(testInstructionsToBeSentToExecutionWorkers)
+		if err != nil {
 
-		return err
-	}
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id": "4db137ae-a1df-4248-af61-88b8b396f74e",
+				"testInstructionsToBeSentToExecutionWorkers": testInstructionsToBeSentToExecutionWorkers,
+				"err": err.Error(),
+			}).Error("Got some error when creating Temporary TimeOut-times")
+
+			return err
+		}
+
+	*/
 
 	// Loop all TestInstructionExecutions and send them to correct Worker for executions
 	for _, testInstructionToBeSentToExecutionWorkers := range testInstructionsToBeSentToExecutionWorkers {
@@ -837,6 +843,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 							"TestInstruction": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction,
 							"err":             err.Error(),
 						}).Error("Got some error when reading response variables from database")
+
+						return err
 					}
 
 					// Add the response value to the attribute
@@ -1007,6 +1015,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 			"potentialMatureTestInstructionUuidList": potentialMatureTestInstructionUuidList,
 			"sqlToExecute":                           sqlToExecute,
 		}).Error("Couldn't find any ResponseVariable row in database, should never happen")
+
+		err = errors.New("couldn't find any ResponseVariable row in database, should never happen")
 
 		return "", err
 	}
