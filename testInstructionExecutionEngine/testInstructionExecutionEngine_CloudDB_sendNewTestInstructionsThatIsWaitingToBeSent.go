@@ -996,42 +996,65 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 
 	// Extract data from DB result set
 	var foundRow bool
-	for rows.Next() {
 
-		err = rows.Scan(
-			&responseValueFromPreviousTestInstructionExecution,
-		)
+	// Set the number of retries to find a ResponseVariable. Need more than one due fast execution speed
+	var foundRowRetry int
+	var foundRowRetries int
+	foundRowRetry = 1
+	foundRowRetries = 5
 
-		if err != nil {
+	for {
+		for rows.Next() {
 
-			executionEngine.logger.WithFields(logrus.Fields{
-				"Id":           "78fdc874-d376-4726-a75f-e801e65cd950",
-				"Error":        err,
-				"sqlToExecute": sqlToExecute,
-			}).Error("Something went wrong when processing result from database")
+			err = rows.Scan(
+				&responseValueFromPreviousTestInstructionExecution,
+			)
 
-			return "", err
+			if err != nil {
+
+				executionEngine.logger.WithFields(logrus.Fields{
+					"Id":           "78fdc874-d376-4726-a75f-e801e65cd950",
+					"Error":        err,
+					"sqlToExecute": sqlToExecute,
+				}).Error("Something went wrong when processing result from database")
+
+				return "", err
+			}
+
+			foundRow = true
+
 		}
 
-		foundRow = true
+		// If there were no ResponseVariable then there some that is wrong(should never happen), so exit
+		if foundRow == false {
 
-	}
+			executionEngine.logger.WithFields(logrus.Fields{
+				"Id":                                     "2b1cef21-1cb3-441a-ae23-2f8fb2f21762",
+				"Error":                                  err,
+				"tempTestCaseExecutionUuid":              tempTestCaseExecutionUuid,
+				"tempTestCaseExecutionVersion":           tempTestCaseExecutionVersion,
+				"potentialMatureTestInstructionUuidList": potentialMatureTestInstructionUuidList,
+				"sqlToExecute":                           sqlToExecute,
+				"foundRowRetry":                          foundRowRetry,
+			}).Error("Couldn't find any ResponseVariable row in database, should never happen")
 
-	// If there were no ResponseVariabel then there some that is wrong(should never happen), so exit
-	if foundRow == false {
+			// Check if max number of retries was achieved
+			if foundRowRetry == foundRowRetries {
+				err = errors.New("couldn't find any ResponseVariable row in database, should never happen")
 
-		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":                                     "2b1cef21-1cb3-441a-ae23-2f8fb2f21762",
-			"Error":                                  err,
-			"tempTestCaseExecutionUuid":              tempTestCaseExecutionUuid,
-			"tempTestCaseExecutionVersion":           tempTestCaseExecutionVersion,
-			"potentialMatureTestInstructionUuidList": potentialMatureTestInstructionUuidList,
-			"sqlToExecute":                           sqlToExecute,
-		}).Error("Couldn't find any ResponseVariable row in database, should never happen")
+				return "", err
+			}
+		}
 
-		err = errors.New("couldn't find any ResponseVariable row in database, should never happen")
+		if foundRowRetry != foundRowRetries {
+			// Sleep for a short while and then continue look for ResponseVariable
+			time.Sleep(500 * time.Millisecond)
+			foundRowRetry = foundRowRetry + 1
+		} else {
 
-		return "", err
+			break
+		}
+
 	}
 
 	return responseValueFromPreviousTestInstructionExecution, err
