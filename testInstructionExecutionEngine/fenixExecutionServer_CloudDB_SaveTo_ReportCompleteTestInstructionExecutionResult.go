@@ -989,7 +989,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveResponseVariabl
 	defer func() {
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id": "54fde4c3-c8e0-4d25-9b12-201aa1c32b7e",
-		}).Debug("Exiting: saveExecutionLogInCloudDB()")
+		}).Debug("Exiting: saveResponseVariablesInCloudDB()")
 	}()
 
 	var dataRowToBeInsertedMultiType []interface{}

@@ -918,6 +918,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	responseValueFromPreviousTestInstructionExecution string,
 	err error) {
 
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":              "150fd4eb-0b1c-413e-a1b2-b1bb12ad10cc",
+		"testInstruction": testInstruction,
+		"testInstructionToBeSentToExecutionWorkers":         testInstructionToBeSentToExecutionWorkers,
+		"responseValueFromPreviousTestInstructionExecution": responseValueFromPreviousTestInstructionExecution,
+	}).Debug("Entering: loadResponseVariableToUseForAttribute()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "1e6c0ab2-98e0-4cde-ae48-ce8a4949e6f1",
+		}).Debug("Exiting: loadResponseVariableToUseForAttribute()")
+	}()
+
 	// Variables used in SQL
 	var tempTestCaseExecutionUuid string
 	var tempTestCaseExecutionVersion int
