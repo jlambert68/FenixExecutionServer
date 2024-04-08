@@ -75,7 +75,7 @@ func BroadcastListener() error {
 			"accepted message from pid": notification.PID,
 			"channel":                   notification.Channel,
 			"payload":                   notification.Payload,
-		}).Debug("Got Broadcast message from Postgres Databas")
+		}).Debug("Got Broadcast message from Postgres Database")
 
 		err = json.Unmarshal([]byte(notification.Payload), &broadcastingMessageForExecutions)
 		if err != nil {
@@ -86,7 +86,9 @@ func BroadcastListener() error {
 		} else {
 
 			// Break down 'broadcastingMessageForExecutions' and send correct content to correct sSubscribers.
-			convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions)
+
+			// Refactoring  - removed for now
+			//convertToChannelMessageAndPutOnChannels(broadcastingMessageForExecutions)
 
 		}
 	}

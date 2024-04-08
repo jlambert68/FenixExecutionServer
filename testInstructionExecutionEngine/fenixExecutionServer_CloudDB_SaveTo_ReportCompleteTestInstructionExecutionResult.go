@@ -229,57 +229,64 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportComple
 		"id": "4601d6d7-f7b7-428e-957b-eeec12debf74",
 	}).Debug("Outgoing 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
 
-	// Create Response channel from TimeOutEngine to get answer if TestInstructionExecution Already has been TimedOut
-	var timeOutResponseChannelForTimeOutHasOccurred common_config.TimeOutResponseChannelForTimeOutHasOccurredType
-	timeOutResponseChannelForTimeOutHasOccurred = make(chan common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct)
+	// Refactoring  - removed for now
+	/*
 
-	// Create a message with TestInstructionExecution to be sent to TimeOutEngine for check if it has TimedOut
-	var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
-	tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
-		TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
-		TestInstructionExecutionVersion: finalTestInstructionExecutionResultMessage.TestInstructionExecutionVersion,
-	}
+		// Create Response channel from TimeOutEngine to get answer if TestInstructionExecution Already has been TimedOut
+		var timeOutResponseChannelForTimeOutHasOccurred common_config.TimeOutResponseChannelForTimeOutHasOccurredType
+		timeOutResponseChannelForTimeOutHasOccurred = make(chan common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct)
 
-	var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
-	tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
-		TimeOutChannelCommand:                     common_config.TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut,
-		TimeOutChannelTestInstructionExecutions:   tempTimeOutChannelTestInstructionExecutions,
-		TimeOutReturnChannelForTimeOutHasOccurred: &timeOutResponseChannelForTimeOutHasOccurred,
-		//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
-		SendID:                         "7a1aab65-93ab-4f59-b341-3b8fe16f6631",
-		MessageInitiatedFromPubSubSend: false,
-	}
-
-	// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
-	*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
-
-	// Response from TimeOutEngine
-	var timeOutReturnChannelForTimeOutHasOccurredValue common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
-
-	// Wait for response from TimeOutEngine
-	timeOutReturnChannelForTimeOutHasOccurredValue = <-timeOutResponseChannelForTimeOutHasOccurred
-
-	// Verify that TestInstructionExecution hasn't TimedOut yet
-	if timeOutReturnChannelForTimeOutHasOccurredValue.TimeOutWasTriggered == true {
-		// TestInstructionExecution had already TimedOut
-
-		// Set Error codes to return message
-		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
-
-		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
-		errorCodes = append(errorCodes, errorCode)
-
-		// Create Return message
-		ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
-			AckNack:                      false,
-			Comments:                     fmt.Sprintf("TestInstructionExecution, '%s' had already TimedOut", finalTestInstructionExecutionResultMessage),
-			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		// Create a message with TestInstructionExecution to be sent to TimeOutEngine for check if it has TimedOut
+		var tempTimeOutChannelTestInstructionExecutions common_config.TimeOutChannelCommandTestInstructionExecutionStruct
+		tempTimeOutChannelTestInstructionExecutions = common_config.TimeOutChannelCommandTestInstructionExecutionStruct{
+			TestInstructionExecutionUuid:    finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
+			TestInstructionExecutionVersion: finalTestInstructionExecutionResultMessage.TestInstructionExecutionVersion,
 		}
 
-		return ackNackResponse
-	}
+
+		var tempTimeOutChannelCommand common_config.TimeOutChannelCommandStruct
+		tempTimeOutChannelCommand = common_config.TimeOutChannelCommandStruct{
+			TimeOutChannelCommand:                     common_config.TimeOutChannelCommandHasTestInstructionExecutionAlreadyTimedOut,
+			TimeOutChannelTestInstructionExecutions:   tempTimeOutChannelTestInstructionExecutions,
+			TimeOutReturnChannelForTimeOutHasOccurred: &timeOutResponseChannelForTimeOutHasOccurred,
+			//TimeOutReturnChannelForExistsTestInstructionExecutionInTimeOutTimer: nil,
+			SendID:                         "7a1aab65-93ab-4f59-b341-3b8fe16f6631",
+			MessageInitiatedFromPubSubSend: false,
+		}
+
+		// Send message on TimeOutEngineChannel to get information about if TestInstructionExecution already has TimedOut
+		*common_config.TimeOutChannelEngineCommandChannelReferenceSlice[executionTrack] <- tempTimeOutChannelCommand
+
+
+
+		// Response from TimeOutEngine
+		var timeOutReturnChannelForTimeOutHasOccurredValue common_config.TimeOutResponseChannelForTimeOutHasOccurredStruct
+
+		// Wait for response from TimeOutEngine
+		timeOutReturnChannelForTimeOutHasOccurredValue = <-timeOutResponseChannelForTimeOutHasOccurred
+
+		// Verify that TestInstructionExecution hasn't TimedOut yet
+		if timeOutReturnChannelForTimeOutHasOccurredValue.TimeOutWasTriggered == true {
+			// TestInstructionExecution had already TimedOut
+
+			// Set Error codes to return message
+			var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+			var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+			errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_UNSPECIFIED
+			errorCodes = append(errorCodes, errorCode)
+
+			// Create Return message
+			ackNackResponse = &fenixExecutionServerGrpcApi.AckNackResponse{
+				AckNack:                      false,
+				Comments:                     fmt.Sprintf("TestInstructionExecution, '%s' had already TimedOut", finalTestInstructionExecutionResultMessage),
+				ErrorCodes:                   errorCodes,
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			}
+
+			return ackNackResponse
+		}
+	*/
 
 	// Verify that the Status is a final ExecutionStatus
 	if finalTestInstructionExecutionResultMessage.TestInstructionExecutionStatus < fenixExecutionServerGrpcApi.

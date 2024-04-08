@@ -121,9 +121,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	executionTrack int,
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
 
-	testInstructionExecutionTimeOutEngineObject.processAddTestInstructionExecutionToTimeOutTimer(
-		executionTrack,
-		&incomingTimeOutChannelCommand)
+	// Refactoring  - removed for now
+	//testInstructionExecutionTimeOutEngineObject.processAddTestInstructionExecutionToTimeOutTimer(
+	//	executionTrack,
+	//	&incomingTimeOutChannelCommand)
 }
 
 // Remove TestInstructionExecution from TimeOut-timer
@@ -132,10 +133,11 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct,
 	timeOutChannelCommand common_config.TimeOutChannelCommandType) {
 
-	testInstructionExecutionTimeOutEngineObject.processRemoveTestInstructionExecutionFromTimeOutTimer(
-		executionTrack,
-		&incomingTimeOutChannelCommand,
-		timeOutChannelCommand)
+	// Refactoring  - removed for now
+	//testInstructionExecutionTimeOutEngineObject.processRemoveTestInstructionExecutionFromTimeOutTimer(
+	//	executionTrack,
+	//	&incomingTimeOutChannelCommand,
+	//	timeOutChannelCommand)
 }
 
 // Check if TestInstructionExecution already had TimedOut
@@ -143,9 +145,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	executionTrack int,
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
 
-	testInstructionExecutionTimeOutEngineObject.processHasTestInstructionExecutionAlreadyTimedOut(
-		executionTrack,
-		&incomingTimeOutChannelCommand)
+	// Refactoring  - removed for now
+	//testInstructionExecutionTimeOutEngineObject.processHasTestInstructionExecutionAlreadyTimedOut(
+	//	executionTrack,
+	//	&incomingTimeOutChannelCommand)
 
 }
 
@@ -180,9 +183,10 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	executionTrack int,
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
 
-	testInstructionExecutionTimeOutEngineObject.processRemoveAllocationForTestInstructionExecutionToTimeOutTimer(
-		executionTrack,
-		&incomingTimeOutChannelCommand)
+	// Refactoring  - removed for now
+	//testInstructionExecutionTimeOutEngineObject.processRemoveAllocationForTestInstructionExecutionToTimeOutTimer(
+	//	executionTrack,
+	//	&incomingTimeOutChannelCommand)
 
 }
 
@@ -191,8 +195,9 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 	executionTrack int,
 	incomingTimeOutChannelCommand common_config.TimeOutChannelCommandStruct) {
 
-	testInstructionExecutionTimeOutEngineObject.processVerifyIfTestInstructionIsHandledByThisExecutionInstance(
-		executionTrack,
-		&incomingTimeOutChannelCommand)
+	// Refactoring  - removed for now
+	//testInstructionExecutionTimeOutEngineObject.processVerifyIfTestInstructionIsHandledByThisExecutionInstance(
+	//	executionTrack,
+	//	&incomingTimeOutChannelCommand)
 
 }
