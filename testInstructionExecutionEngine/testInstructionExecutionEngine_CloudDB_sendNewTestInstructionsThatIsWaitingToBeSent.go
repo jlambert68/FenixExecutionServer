@@ -981,7 +981,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer timeOutCancel()
 
-	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	rows, err := fenixSyncShared.DbPool.Query(ctx, sqlToExecute)
 	defer rows.Close()
 
 	if err != nil {
@@ -1001,7 +1001,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	var foundRowRetry int
 	var foundRowRetries int
 	foundRowRetry = 1
-	foundRowRetries = 5
+	foundRowRetries = 10
 
 	for {
 		for rows.Next() {
@@ -1029,7 +1029,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 		if foundRow == false {
 
 			executionEngine.logger.WithFields(logrus.Fields{
-				"Id":                                     "2b1cef21-1cb3-441a-ae23-2f8fb2f21762",
+				"Id":                                     "e456ec99-baef-42f4-a0a7-a88b3b696373",
 				"Error":                                  err,
 				"tempTestCaseExecutionUuid":              tempTestCaseExecutionUuid,
 				"tempTestCaseExecutionVersion":           tempTestCaseExecutionVersion,
@@ -1048,7 +1048,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 
 		if foundRowRetry != foundRowRetries {
 			// Sleep for a short while and then continue look for ResponseVariable
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(1000 * time.Millisecond)
 			foundRowRetry = foundRowRetry + 1
 		} else {
 
