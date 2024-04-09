@@ -53,6 +53,7 @@ const (
 	ChannelCommandReCreateTimeOutTimersAtApplicationStartUp
 	ChannelCommandFinalTestInstructionExecutionResultIsNotHandledByThisExecutionInstance
 	ChannelCommandProcessTestInstructionExecutionResponseStatusIsNotHandledByThisExecutionInstance
+	ChannelCommandProblemWhenSendingToWorker
 	//	ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse // Not used as of now
 )
 

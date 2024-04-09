@@ -5,12 +5,13 @@ import (
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
 	"errors"
+	"github.com/google/uuid"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixTestCaseBuilderServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixTestCaseBuilderServer/fenixTestCaseBuilderServerGrpcApi/go_grpc_api"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"sort"
 	"strings"
 	"time"
-
 	//"FenixExecutionServer/testInstructionTimeOutEngine"
 	"context"
 	"fmt"
@@ -205,6 +206,52 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 			"id":    "ef815265-3b67-4b59-862f-26d352795c95",
 			"error": err,
 		}).Error("Got some problem when sending sending TestInstructionExecutions to Worker")
+
+		// Generate new LogPostUuid
+		var logPostUuid uuid.UUID
+		logPostUuid, err = uuid.NewRandom()
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"id": "799d8348-582b-4699-ba97-f4290446fdf2",
+			}).Error("Failed to generate UUID")
+
+		}
+
+		// Create the log post row
+		var errLogPostsToAdd []*fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage_LogPostMessage
+		var errLogPostToAdd *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage_LogPostMessage
+		errLogPostToAdd = &fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage_LogPostMessage{
+			LogPostUuid:                         logPostUuid.String(),
+			LogPostTimeStamp:                    timestamppb.Now(),
+			LogPostStatus:                       fenixExecutionServerGrpcApi.LogPostStatusEnum_EXECUTION_ERROR,
+			LogPostText:                         err.Error(),
+			FoundVersusExpectedValueForVariable: nil,
+		}
+
+		errLogPostsToAdd = append(errLogPostsToAdd, errLogPostToAdd)
+
+		// Create "finalTestInstructionExecutionResultMessage" to be used when processing message
+		var finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
+		finalTestInstructionExecutionResultMessage = &fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage{
+			ClientSystemIdentification:             nil,
+			TestInstructionExecutionUuid:           testInstructionsToBeSentToExecutionWorkersAndTheResponse[0].processTestInstructionExecutionRequest.GetTestInstruction().GetTestInstructionExecutionUuid(),
+			TestInstructionExecutionVersion:        testInstructionsToBeSentToExecutionWorkersAndTheResponse[0].processTestInstructionExecutionRequest.GetTestInstruction().GetTestInstructionExecutionVersion(),
+			MatureTestInstructionUuid:              testInstructionsToBeSentToExecutionWorkersAndTheResponse[0].processTestInstructionExecutionRequest.GetTestInstruction().GetMatureTestInstructionUuid(),
+			TestInstructionExecutionStatus:         fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN,
+			TestInstructionExecutionStartTimeStamp: timestamppb.Now(),
+			TestInstructionExecutionEndTimeStamp:   timestamppb.Now(),
+			ResponseVariables:                      nil,
+			LogPosts:                               errLogPostsToAdd,
+		}
+
+		// Create Message to be sent to TestInstructionExecutionEngine
+		channelCommandMessage := ChannelCommandStruct{
+			ChannelCommand: ChannelCommandProblemWhenSendingToWorker,
+			FinalTestInstructionExecutionResultMessage: finalTestInstructionExecutionResultMessage,
+		}
+
+		// Send Message to TestInstructionExecutionEngine via channel
+		*executionEngine.CommandChannelReferenceSlice[executionTrackNumber] <- channelCommandMessage
 
 		return
 

@@ -103,10 +103,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 				executionTrackNumber,
 				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
 
-			//		case ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse:
-			//			executionEngine.triggerUpdateTimeOutTimerBasedOnConnectorResponse(
-			//				executionTrackNumber,
-			//				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
+		//		case ChannelCommandUpdateTimeOutTimerBasedOnConnectorResponse:
+		//			executionEngine.triggerUpdateTimeOutTimerBasedOnConnectorResponse(
+		//				executionTrackNumber,
+		//				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
+
+		case ChannelCommandProblemWhenSendingToWorker:
+			executionEngine.triggerTestInstructionIsNotHandledByThisExecutionInstanceSaveFinalTestInstructionExecutionResultToCloudDB(
+				executionTrackNumber,
+				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
 		// No other command is supported
 		default:
