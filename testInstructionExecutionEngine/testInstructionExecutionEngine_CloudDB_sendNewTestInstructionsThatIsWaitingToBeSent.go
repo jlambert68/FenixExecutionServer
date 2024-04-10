@@ -9,6 +9,7 @@ import (
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixTestCaseBuilderServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixTestCaseBuilderServer/fenixTestCaseBuilderServerGrpcApi/go_grpc_api"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -209,8 +210,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 
 		// Generate new LogPostUuid
 		var logPostUuid uuid.UUID
-		logPostUuid, err = uuid.NewRandom()
-		if err != nil {
+		logPostUuid, err2 := uuid.NewRandom()
+		if err2 != nil {
 			common_config.Logger.WithFields(logrus.Fields{
 				"id": "799d8348-582b-4699-ba97-f4290446fdf2",
 			}).Error("Failed to generate UUID")
@@ -233,7 +234,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendNewTestInstruct
 		// Create "finalTestInstructionExecutionResultMessage" to be used when processing message
 		var finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage
 		finalTestInstructionExecutionResultMessage = &fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage{
-			ClientSystemIdentification:             nil,
+			ClientSystemIdentification: &fenixExecutionServerGrpcApi.ClientSystemIdentificationMessage{
+				DomainUuid:                   testInstructionsToBeSentToExecutionWorkersAndTheResponse[0].domainUuid,
+				ProtoFileVersionUsedByClient: 0,
+			},
 			TestInstructionExecutionUuid:           testInstructionsToBeSentToExecutionWorkersAndTheResponse[0].processTestInstructionExecutionRequest.GetTestInstruction().GetTestInstructionExecutionUuid(),
 			TestInstructionExecutionVersion:        testInstructionsToBeSentToExecutionWorkersAndTheResponse[0].processTestInstructionExecutionRequest.GetTestInstruction().GetTestInstructionExecutionVersion(),
 			MatureTestInstructionUuid:              testInstructionsToBeSentToExecutionWorkersAndTheResponse[0].processTestInstructionExecutionRequest.GetTestInstruction().GetMatureTestInstructionUuid(),
@@ -1028,12 +1032,58 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer timeOutCancel()
 
-	rows, err := fenixSyncShared.DbPool.Query(ctx, sqlToExecute)
+	var dbURI string
+
+	var (
+		dbUser    = fenixSyncShared.MustGetEnvironmentVariable("DB_USER") // e.g. 'my-db-user'
+		dbPwd     = fenixSyncShared.MustGetEnvironmentVariable("DB_PASS") // e.g. 'my-db-password'
+		dbTCPHost = fenixSyncShared.MustGetEnvironmentVariable("DB_HOST") // e.g. '127.0.0.1' ('172.17.0.1' if deployed to GAE Flex)
+		dbPort    = fenixSyncShared.MustGetEnvironmentVariable("DB_PORT") // e.g. '5432'
+		dbName    = fenixSyncShared.MustGetEnvironmentVariable("DB_NAME") // e.g. 'my-database'
+		//dbPoolMaxConnections = fenixSyncShared.MustGetEnvironmentVariable("DB_POOL_MAX_CONNECTIONS") // e.g. '10'
+	)
+
+	// If the optional DB_HOST environment variable is set, it contains
+	// the IP address and port number of a TCP connection pool to be created,
+	// such as "127.0.0.1:5432". If DB_HOST is not set, a Unix socket
+	// connection pool will be created instead.
+	if dbTCPHost != "GCP" {
+		dbURI = fmt.Sprintf("host=%s user=%s password=%s port=%s database=%s", dbTCPHost, dbUser, dbPwd, dbPort, dbName)
+
+	} else {
+
+		var dbInstanceConnectionName = fenixSyncShared.MustGetEnvironmentVariable("DB_INSTANCE_CONNECTION_NAME")
+
+		socketDir, isSet := os.LookupEnv("DB_SOCKET_DIR")
+		if !isSet {
+			socketDir = "/cloudsql"
+		}
+
+		dbURI = fmt.Sprintf("user=%s password=%s database=%s host=%s/%s", dbUser, dbPwd, dbName, socketDir, dbInstanceConnectionName)
+
+	}
+
+	// Connect to the database
+	conn, err := pgx.Connect(ctx, dbURI)
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":  "5a262705-3d3f-42d5-baec-137ccdef14fa",
+			"err": err,
+		}).Error("Unable to connect to database")
+
+		return "", err
+
+	} else {
+
+		defer conn.Close(context.Background())
+	}
+
+	rows, err := conn.Query(ctx, sqlToExecute)
 	defer rows.Close()
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":           "ac262275-5f05-48c8-982a-46ff2392d3f2",
+			"Id":           "02481f29-792a-4baf-bf91-155e13d75517",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")

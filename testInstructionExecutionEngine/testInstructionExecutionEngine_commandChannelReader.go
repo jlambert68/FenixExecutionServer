@@ -109,7 +109,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) startCommandChannel
 		//				incomingChannelCommand.ProcessTestInstructionExecutionResponseStatus)
 
 		case ChannelCommandProblemWhenSendingToWorker:
-			executionEngine.triggerTestInstructionIsNotHandledByThisExecutionInstanceSaveFinalTestInstructionExecutionResultToCloudDB(
+			executionEngine.triggerProcessReportCompleteTestInstructionExecutionResultSaveToCloudDB(
 				executionTrackNumber,
 				incomingChannelCommand.FinalTestInstructionExecutionResultMessage)
 
