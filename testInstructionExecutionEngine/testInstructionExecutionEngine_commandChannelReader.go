@@ -270,11 +270,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) triggerProcessTestI
 	executionTrackNumber int,
 	testInstructionExecutionResponseMessage *fenixExecutionServerGrpcApi.ProcessTestInstructionExecutionResponseStatus) {
 
-	//go func() {
-	executionEngine.prepareProcessTestInstructionExecutionResponseStatusSaveToCloudDB(
-		executionTrackNumber,
-		testInstructionExecutionResponseMessage)
-	//}()
+	go func() {
+		executionEngine.prepareProcessTestInstructionExecutionResponseStatusSaveToCloudDB(
+			executionTrackNumber,
+			testInstructionExecutionResponseMessage)
+	}()
 
 }
 
