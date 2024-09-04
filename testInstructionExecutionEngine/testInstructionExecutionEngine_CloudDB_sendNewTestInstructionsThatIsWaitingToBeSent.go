@@ -874,7 +874,55 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
 						fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_TEXTBOX):
 
-					// Do nothing 'AttributeValueAsString' has the value
+					// If this is a TestInstruction, by Fenix, that should send TestData to user decided DomainUuid
+					// Check if this attribute used for DomainUuid, then set the value for DomainUuid in the TestInstruction
+					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
+						TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisDomainTextBox) {
+
+						// Set the value in the Attribute itself
+						processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
+							DomainUuid = tempTestInstructionAttribute.GetAttributeValueAsString()
+
+					}
+
+					// If this is a TestInstruction, by Fenix, that should send TestData to user decided ExecutionDomain
+					// Check if this attribute used for ExecutionDomainUuid, then set the value for ExecutionDomainUuid in the TestInstruction
+					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
+						TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisExecutionDomainTextBox) {
+
+						processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
+							ExecutionDomainUuid = tempTestInstructionAttribute.GetAttributeValueAsString()
+
+					}
+
+					// If this is a TestInstruction, by Fenix, that should send TestData to user decided ExecutionDomain
+					// Load the TestData from Database to be sent with the TestInstruction
+					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
+						TestInstructionAttributeUUID_SendTestDataToThisDomain_ChosenTestDataAsJsonString) {
+
+						// Load the TestData from the DataData
+						var responseValueFromPreviousTestInstructionExecution string
+						responseValueFromPreviousTestInstructionExecution, err = executionEngine.
+							loadTestDataToBeSentWithTestInstruction(
+								//dbTransaction,
+								testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
+									TestInstruction,
+								testInstructionToBeSentToExecutionWorkers)
+
+						if err != nil {
+							common_config.Logger.WithFields(logrus.Fields{
+								"Id":              "a1bd7b94-418d-4ff5-a590-269916ace40f",
+								"TestInstruction": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction,
+								"err":             err.Error(),
+							}).Error("Got some error when reading TestData for TestCase from database")
+
+							return err
+						}
+
+						// Add the response value to the attribute
+						tempTestInstructionAttribute.AttributeValueAsString = responseValueFromPreviousTestInstructionExecution
+
+					}
 
 				case fenixExecutionWorkerGrpcApi.
 					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
@@ -917,27 +965,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 				// Append to slice of attributes
 				tempTestInstructionAttributes = append(tempTestInstructionAttributes, tempTestInstructionAttribute)
-
-				// If this is a TestInstruction, by Fenix, that should send TestData to user decided DomainUuid
-				// Check if this attribute used for DomainUuid, then set the value for DomainUuid in the TestInstruction
-				if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
-					TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisDomainTextBox) {
-
-					// Set the value in the Attribute itself
-					processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
-						DomainUuid = tempTestInstructionAttribute.GetAttributeValueAsString()
-
-				}
-
-				// If this is a TestInstruction, by Fenix, that should send TestData to user decided ExecutionDomain
-				// Check if this attribute used for ExecutionDomainUuid, then set the value for ExecutionDomainUuid in the TestInstruction
-				if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
-					TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisExecutionDomainTextBox) {
-
-					processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
-						ExecutionDomainUuid = tempTestInstructionAttribute.GetAttributeValueAsString()
-
-				}
 
 			}
 
@@ -1183,6 +1210,154 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	}
 
 	return responseValueFromPreviousTestInstructionExecution, err
+
+}
+
+// Load the TestData that should be sent to the Connector in a separate TestInstruction
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestDataToBeSentWithTestInstruction(
+	//dbTransaction pgx.Tx,
+	testInstruction *fenixExecutionWorkerGrpcApi.
+		ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage,
+	testInstructionToBeSentToExecutionWorkers *processTestInstructionExecutionRequestAndResponseMessageContainer) (
+	testDataForTestCaseExecutionAsJson string,
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":              "c45cda82-1eca-45f5-b6c8-a39ffaf26119",
+		"testInstruction": testInstruction,
+		"testInstructionToBeSentToExecutionWorkers": testInstructionToBeSentToExecutionWorkers,
+	}).Debug("Entering: loadTestDataToBeSentWithTestInstruction()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "523f4243-905d-4d60-9c42-556e8e42601c",
+		}).Debug("Exiting: loadTestDataToBeSentWithTestInstruction()")
+	}()
+
+	// Variables used in SQL
+	var tempTestCaseExecutionUuid string
+	var tempTestCaseExecutionVersion int
+	tempTestCaseExecutionUuid = testInstructionToBeSentToExecutionWorkers.testCaseExecutionUuid
+	tempTestCaseExecutionVersion = testInstructionToBeSentToExecutionWorkers.testCaseExecutionVersion
+
+	// *** Process TestData ***
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT \"TestDataForTestCaseExecutionAsJsonb\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestDataForTestCaseExecution\" tdftce "
+	sqlToExecute = sqlToExecute + "WHERE tdftce.\"TestCaseExecutionUuid\" = '" + tempTestCaseExecutionUuid + "' AND " +
+		"tdftce.\"TestCaseExecutionVersion\" = " + strconv.Itoa(tempTestCaseExecutionVersion)
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "b96a74b6-bdd6-40e0-8be1-1fb84f0050ed",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadTestDataToBeSentWithTestInstruction'")
+	}
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	var dbURI string
+
+	var (
+		dbUser    = fenixSyncShared.MustGetEnvironmentVariable("DB_USER") // e.g. 'my-db-user'
+		dbPwd     = fenixSyncShared.MustGetEnvironmentVariable("DB_PASS") // e.g. 'my-db-password'
+		dbTCPHost = fenixSyncShared.MustGetEnvironmentVariable("DB_HOST") // e.g. '127.0.0.1' ('172.17.0.1' if deployed to GAE Flex)
+		dbPort    = fenixSyncShared.MustGetEnvironmentVariable("DB_PORT") // e.g. '5432'
+		dbName    = fenixSyncShared.MustGetEnvironmentVariable("DB_NAME") // e.g. 'my-database'
+		//dbPoolMaxConnections = fenixSyncShared.MustGetEnvironmentVariable("DB_POOL_MAX_CONNECTIONS") // e.g. '10'
+	)
+
+	// If the optional DB_HOST environment variable is set, it contains
+	// the IP address and port number of a TCP connection pool to be created,
+	// such as "127.0.0.1:5432". If DB_HOST is not set, a Unix socket
+	// connection pool will be created instead.
+	if dbTCPHost != "GCP" {
+		dbURI = fmt.Sprintf("host=%s user=%s password=%s port=%s database=%s", dbTCPHost, dbUser, dbPwd, dbPort, dbName)
+
+	} else {
+
+		var dbInstanceConnectionName = fenixSyncShared.MustGetEnvironmentVariable("DB_INSTANCE_CONNECTION_NAME")
+
+		socketDir, isSet := os.LookupEnv("DB_SOCKET_DIR")
+		if !isSet {
+			socketDir = "/cloudsql"
+		}
+
+		dbURI = fmt.Sprintf("user=%s password=%s database=%s host=%s/%s", dbUser, dbPwd, dbName, socketDir, dbInstanceConnectionName)
+
+	}
+
+	// Connect to the database
+	conn, err := pgx.Connect(ctx, dbURI)
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":  "dd2d9a41-895d-40e7-8038-4e23e5821243",
+			"err": err,
+		}).Error("Unable to connect to database")
+
+		return "", err
+
+	} else {
+
+		defer conn.Close(context.Background())
+	}
+
+	rows, err := conn.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "faf4f03f-78a0-47b3-9239-5f0519d3b82c",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return "", err
+	}
+
+	var rowCounter int
+
+	for rows.Next() {
+
+		err = rows.Scan(
+			&testDataForTestCaseExecutionAsJson,
+		)
+
+		rowCounter = rowCounter + 1
+
+		if err != nil {
+
+			executionEngine.logger.WithFields(logrus.Fields{
+				"Id":           "78fdc874-d376-4726-a75f-e801e65cd950",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return "", err
+		}
+	}
+
+	// There can't be more than 1 row
+	if rowCounter > 1 {
+
+		err = errors.New("more then one row was found in database, regarding TestData for a TestCase")
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "b6b1363f-69f4-46a4-b3d5-16d76a660677",
+			"rowCounter":   rowCounter,
+			"sqlToExecute": sqlToExecute,
+			"err":          err,
+		}).Error("Something went wrong when processing result from database")
+
+		return "", err
+	}
+
+	return testDataForTestCaseExecutionAsJson, err
 
 }
 
