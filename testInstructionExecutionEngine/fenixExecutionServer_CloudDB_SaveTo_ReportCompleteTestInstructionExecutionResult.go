@@ -955,6 +955,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInC
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
 
+		for _, x := range dataRowsToBeInsertedMultiType {
+			fmt.Println(x)
+		}
+
 		return err
 	}
 
