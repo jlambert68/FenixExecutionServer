@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
+	testInstruction_SendTestDataToThisDomain_version_1_0 "github.com/jlambert68/FenixStandardTestInstructionAdmin/TestInstructionsAndTesInstructionContainersAndAllowedUsers/TestInstructions/TestInstruction_SendTestDataToThisDomain/version_1_0"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
@@ -873,12 +874,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
 						fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_TEXTBOX):
 
-					// Do nothing 'AttributeValueAsString' with response data from previous TestInstructionExecution
+					// Do nothing 'AttributeValueAsString' has the value
+
+				case fenixExecutionWorkerGrpcApi.
+					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
+						fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_COMBOBOX):
+
+					// Do nothing 'AttributeValueAsString' has the value
 
 				case fenixExecutionWorkerGrpcApi.
 					ProcessTestInstructionExecutionPubSubRequest_TestInstructionAttributeTypeEnum(
 						fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX):
-					// Replace
+					// Replace value in 'AttributeValueAsString' with values from Database
 
 					var responseValueFromPreviousTestInstructionExecution string
 					responseValueFromPreviousTestInstructionExecution, err = executionEngine.
@@ -910,6 +917,27 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 				// Append to slice of attributes
 				tempTestInstructionAttributes = append(tempTestInstructionAttributes, tempTestInstructionAttribute)
+
+				// If this is a TestInstruction, by Fenix, that should send TestData to user decided DomainUuid
+				// Check if this attribute used for DomainUuid, then set the value for DomainUuid in the TestInstruction
+				if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
+					TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisDomainTextBox) {
+
+					// Set the value in the Attribute itself
+					processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
+						DomainUuid = tempTestInstructionAttribute.GetAttributeValueAsString()
+
+				}
+
+				// If this is a TestInstruction, by Fenix, that should send TestData to user decided ExecutionDomain
+				// Check if this attribute used for ExecutionDomainUuid, then set the value for ExecutionDomainUuid in the TestInstruction
+				if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
+					TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisExecutionDomainTextBox) {
+
+					processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
+						ExecutionDomainUuid = tempTestInstructionAttribute.GetAttributeValueAsString()
+
+				}
 
 			}
 
