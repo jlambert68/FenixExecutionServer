@@ -930,6 +930,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInC
 
 	}
 
+	// Check if there are any log posts
+	if dataRowsToBeInsertedMultiType == nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "ada3686e-72ed-44c5-8e0c-bd4f0e12ed1f",
+		}).Error("No log posts were received, exiting 'saveExecutionLogInCloudDB'")
+
+		return nil
+
+	}
+
 	sqlToExecute = sqlToExecute + "INSERT INTO " + "\"FenixExecution\".\"ExecutionLogPosts\" "
 	sqlToExecute = sqlToExecute + "(\"DomainUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", " +
 		"\"TestInstructionExecutionUuid\", \"TestInstructionExecutionVersion\", \"TestInstructionExecutionStatus\", " +
@@ -954,10 +964,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveExecutionLogInC
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
-
-		for _, x := range dataRowsToBeInsertedMultiType {
-			fmt.Println(x)
-		}
 
 		return err
 	}

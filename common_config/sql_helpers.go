@@ -3,6 +3,7 @@ package common_config
 import (
 	"fmt"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"log"
 	"time"
@@ -10,6 +11,14 @@ import (
 
 // Generates all "VALUES('xxx', 'yyy')..." for insert statements
 func GenerateSQLInsertValues(testdata [][]interface{}) (sqlInsertValuesString string) {
+
+	// There should be values in testData
+	if testdata == nil {
+		Logger.WithFields(logrus.Fields{
+			"Id":       "0ddd8f48-12f8-4b7c-a90e-4ec69e74d1f1",
+			"testdata": testdata,
+		}).Error("No value in variable 'testdata' was received in 'GenerateSQLInsertValues'")
+	}
 
 	sqlInsertValuesString = ""
 
