@@ -51,3 +51,5 @@ const DeadlineForOutgoingGrpc = 10000
 
 // Max number of Resent to Worker before error
 const MaxResendToWorkerWhenNoAnswer = 10
+
+const ZeroUuid = "00000000-0000-0000-0000-000000000000"

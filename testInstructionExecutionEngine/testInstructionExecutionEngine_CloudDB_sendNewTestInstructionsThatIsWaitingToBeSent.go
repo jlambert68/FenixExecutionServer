@@ -901,8 +901,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 						TestInstructionAttributeUUID_SendTestDataToThisDomain_ChosenTestDataAsJsonString) {
 
 						// Load the TestData from the DataData
-						var responseValueFromPreviousTestInstructionExecution string
-						responseValueFromPreviousTestInstructionExecution, err = executionEngine.
+						var testDataRowAsJsonStringToBeSentToConnector string
+						testDataRowAsJsonStringToBeSentToConnector, err = executionEngine.
 							loadTestDataToBeSentWithTestInstruction(
 								//dbTransaction,
 								testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
@@ -920,7 +920,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 						}
 
 						// Add the response value to the attribute
-						tempTestInstructionAttribute.AttributeValueAsString = responseValueFromPreviousTestInstructionExecution
+						tempTestInstructionAttribute.AttributeValueAsString = testDataRowAsJsonStringToBeSentToConnector
 
 					}
 

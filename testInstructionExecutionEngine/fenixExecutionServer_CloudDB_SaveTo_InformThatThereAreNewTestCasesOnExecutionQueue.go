@@ -293,10 +293,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 
 		// Create Return message
 		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
-			AckNack:                      false,
-			Comments:                     "Problem when saving to database",
-			ErrorCodes:                   errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			AckNack:    false,
+			Comments:   "Problem when saving to database",
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(
+				common_config.GetHighestFenixExecutionServerProtoFileVersion()),
 		}
 
 		return ackNackResponse
@@ -857,7 +858,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 		// Generate TestCaseTestInstruction-map
 		testInstructionContainerMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainersMessage_MatureTestInstructionContainerMessage)
 		for _, testInstructionContainer := range testInstructionContainers.MatureTestInstructionContainers {
-			testInstructionContainerMap[testInstructionContainer.MatureTestInstructionContainerInformation.MatureTestInstructionContainerInformation.TestInstructionContainerMatureUuid] = testInstructionContainer
+			testInstructionContainerMap[testInstructionContainer.MatureTestInstructionContainerInformation.
+				MatureTestInstructionContainerInformation.TestInstructionContainerMatureUuid] = testInstructionContainer
 		}
 
 		// Initiate map for TestInstructionExecution Order
@@ -905,7 +907,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 						TestInstructionAttributeUuid:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
 						TestInstructionAttributeName:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoxName,
 						AttributeValueAsString:           attribute.AttributeInformation.InputTextBoxProperty.TextBoxAttributeValue,
-						AttributeValueUuid:               attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
+						AttributeValueUuid:               common_config.ZeroUuid,
 						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
 						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
 					}
@@ -914,8 +916,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 					attributeToStoreInDB = tempAttributeStruct{
 						testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
 						testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
-						TestInstructionAttributeUuid:     attribute.AttributeInformation.InputComboBoxProperty.TestInstructionAttributeComboBoxUuid,
-						TestInstructionAttributeName:     attribute.AttributeInformation.InputComboBoxProperty.TestInstructionAttributeComboBoxName,
+						TestInstructionAttributeUuid:     attribute.BaseAttributeInformation.TestInstructionAttributeUuid,
+						TestInstructionAttributeName:     attribute.BaseAttributeInformation.TestInstructionAttributeName,
 						AttributeValueAsString:           attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValue,
 						AttributeValueUuid:               attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValueUuid,
 						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
@@ -1021,7 +1023,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 }
 
 // Save the attributes for the TestInstructions waiting on Execution queue
-func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstructionAttributesUnderExecutionSaveToCloudDB(dbTransaction pgx.Tx, testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType) (err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstructionAttributesUnderExecutionSaveToCloudDB(
+	dbTransaction pgx.Tx,
+	testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType) (
+	err error) {
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"Id": "23993342-01dc-40b5-b3c0-b83d1d0b2eb7",
