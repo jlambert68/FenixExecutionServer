@@ -8,6 +8,7 @@ import (
 	"FenixExecutionServer/testInstructionTimeOutEngine"
 	"cloud.google.com/go/firestore"
 	"fmt"
+	"github.com/jlambert68/FenixScriptEngine/luaEngine"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -44,6 +45,9 @@ func fenixExecutionServerMain() {
 
 	// Connect to CloudDB
 	fenixSyncShared.ConnectToDB()
+
+	// Initiate Lua-script-Engine. TODO For now only Fenix-Placeholders are supported
+	luaEngine.InitiateLuaScriptEngine([][]byte{})
 
 	// Start cleaner for ExecutionStatus-message on 'DeadLettering', when it should be used
 	if common_config.UsePubSubWhenSendingExecutionStatusToGuiExecutionServer == true {

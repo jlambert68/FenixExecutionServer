@@ -4,9 +4,11 @@ import (
 	"FenixExecutionServer/broadcastingEngine_ExecutionStatusUpdate"
 	"FenixExecutionServer/common_config"
 	"FenixExecutionServer/messagesToExecutionWorker"
+	"encoding/json"
 	"errors"
 	"github.com/google/uuid"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
+	fenixExecutionServerGuiGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGuiGrpcApi/go_grpc_api"
 	fenixTestCaseBuilderServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixTestCaseBuilderServer/fenixTestCaseBuilderServerGrpcApi/go_grpc_api"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"os"
@@ -18,6 +20,8 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	fenixExecutionWorkerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionWorkerGrpcApi/go_grpc_api"
+	"github.com/jlambert68/FenixScriptEngine/placeholderReplacementEngine"
+	testInstruction_SendTemplateToThisDomain_version_1_0 "github.com/jlambert68/FenixStandardTestInstructionAdmin/TestInstructionsAndTesInstructionContainersAndAllowedUsers/TestInstructions/TestInstruction_SendTemplateToThisDomain/version_1_0"
 	testInstruction_SendTestDataToThisDomain_version_1_0 "github.com/jlambert68/FenixStandardTestInstructionAdmin/TestInstructionsAndTesInstructionContainersAndAllowedUsers/TestInstructions/TestInstruction_SendTestDataToThisDomain/version_1_0"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
@@ -876,8 +880,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 					// If this is a TestInstruction, by Fenix, that should send TestData to user decided DomainUuid
 					// Check if this attribute used for DomainUuid, then set the value for DomainUuid in the TestInstruction
-					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
-						TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisDomainTextBox) {
+					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+						testInstruction_SendTestDataToThisDomain_version_1_0.
+							TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisDomainTextBox) ||
+						tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+							testInstruction_SendTemplateToThisDomain_version_1_0.
+								TestInstructionAttributeUUID_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateToThisDomainTextBox) {
 
 						// Set the value in the Attribute itself
 						processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
@@ -887,8 +895,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 					// If this is a TestInstruction, by Fenix, that should send TestData to user decided ExecutionDomain
 					// Check if this attribute used for ExecutionDomainUuid, then set the value for ExecutionDomainUuid in the TestInstruction
-					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
-						TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisExecutionDomainTextBox) {
+					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+						testInstruction_SendTestDataToThisDomain_version_1_0.
+							TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisExecutionDomainTextBox) ||
+						tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+							testInstruction_SendTemplateToThisDomain_version_1_0.
+								TestInstructionAttributeUUID_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateToThisDomainTextBox) {
 
 						processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
 							ExecutionDomainUuid = tempTestInstructionAttribute.GetAttributeValueAsString()
@@ -897,8 +909,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 					// If this is a TestInstruction, by Fenix, that should send TestData to user decided ExecutionDomain
 					// Load the TestData from Database to be sent with the TestInstruction
-					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(testInstruction_SendTestDataToThisDomain_version_1_0.
-						TestInstructionAttributeUUID_SendTestDataToThisDomain_ChosenTestDataAsJsonString) {
+					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+						testInstruction_SendTestDataToThisDomain_version_1_0.
+							TestInstructionAttributeUUID_SendTestDataToThisDomain_ChosenTestDataAsJsonString) {
 
 						// Load the TestData from the DataData
 						var testDataRowAsJsonStringToBeSentToConnector string
@@ -922,6 +935,136 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 						// Add the response value to the attribute
 						tempTestInstructionAttribute.AttributeValueAsString = testDataRowAsJsonStringToBeSentToConnector
 
+					}
+
+					// If this is a TestInstruction, by Fenix, that should send a Template to user decided ExecutionDomain
+					// Change Placeholder in Template IF they should be changed
+					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+						testInstruction_SendTemplateToThisDomain_version_1_0.
+							TestInstructionAttributeUUID_FenixOwnedSendTemplateToThisDomain_FenixOwnedTemplateAsString) {
+
+						// Find Attribute 'FenixOwnedSendTemplateReplacePlaceholersComboBox' for if Placeholder should be changed into values
+						var shouldPlaceholdersBeReplaced bool
+						for _, tempAttribute := range testInstructionToBeSentToExecutionWorkers.
+							processTestInstructionExecutionRequest.TestInstruction.TestInstructionAttributes {
+
+							// Attribute 'FenixOwnedSendTemplateReplacePlaceholersComboBox'
+							if tempAttribute.TestInstructionAttributeUuid == string(
+								testInstruction_SendTemplateToThisDomain_version_1_0.
+									TestInstructionAttributeUUID_FenixSentToUsersDomain_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateReplacePlaceholersComboBox) {
+
+								shouldPlaceholdersBeReplaced, err = strconv.ParseBool(tempAttribute.AttributeValueAsString)
+								if err != nil {
+									common_config.Logger.WithFields(logrus.Fields{
+										"ID":                                   "bea06ea2-d101-49ac-a1cc-e831870b9147",
+										"tempAttribute.AttributeValueAsString": tempAttribute.AttributeValueAsString,
+									}).Error("Couldn't parse attribute 'FenixOwnedSendTemplateReplacePlaceholersComboBox' (true/false). Seems not to be a boolean ")
+
+									return err
+								}
+
+								break
+
+							}
+
+						}
+
+						// Should the Placeholders be replaced in the Template
+						if shouldPlaceholdersBeReplaced == true && len(tempTestInstructionAttribute.GetAttributeValueAsString()) > 0 {
+							common_config.Logger.WithFields(logrus.Fields{
+								"Id":       "7623c2af-288b-4f14-99e2-c77cd5f3dd4c",
+								"Template": tempTestInstructionAttribute.AttributeValueAsString,
+							}).Debug("Will do a replacement of Placeholders in Template")
+
+							// Load TestData, from the DataData, to be used when replacing Placeholders for TestData
+							var testDataRowAsJsonString string
+							testDataRowAsJsonString, err = executionEngine.
+								loadTestDataToBeSentWithTestInstruction(
+									//dbTransaction,
+									testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
+										TestInstruction,
+									testInstructionToBeSentToExecutionWorkers)
+
+							if err != nil {
+								common_config.Logger.WithFields(logrus.Fields{
+									"Id":              "5efc2fd8-69c8-497a-9f8a-6f0571ae8e6b",
+									"TestInstruction": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction,
+									"err":             err.Error(),
+								}).Error("Got some error when reading TestData for TestCase from database")
+
+								return err
+							}
+
+							// Create object to store TestData in
+							var testDataForTestCaseExecution fenixExecutionServerGuiGrpcApi.TestDataForTestCaseExecutionMessage
+							err = json.Unmarshal([]byte(testDataRowAsJsonString), &testDataForTestCaseExecution)
+							if err != nil {
+
+								common_config.Logger.WithFields(logrus.Fields{
+									"Id":                      "15dcd7fb-1eba-4b1e-b6f1-3efd55799dd3",
+									"testDataRowAsJsonString": testDataRowAsJsonString,
+									"err":                     err.Error(),
+								}).Error("Could Unmarshal TestData-object into struct")
+
+								return err
+
+							}
+
+							// Create map-object to be used in the 'PlaceholderReplacementEngine'
+							var testDataPointValuesMap map[string]string
+							testDataPointValuesMap = make(map[string]string)
+
+							// Loop over TestData and repackage to be used in the 'PlaceholderReplacementEngine'
+							for testDataValueDataName, testDataValueObject := range testDataForTestCaseExecution.TestDataValueMap {
+
+								// Store in map
+								testDataPointValuesMap[testDataValueDataName] = testDataValueObject.GetTestDataValue()
+
+							}
+
+							// Replace the placeholders with values and TestData
+							var templateWithReplacedPlaceHolders string
+							_, _, templateWithReplacedPlaceHolders = placeholderReplacementEngine.ParseAndFormatPlaceholders(
+								tempTestInstructionAttribute.GetAttributeValueAsString(),
+								&testDataPointValuesMap,
+								testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
+									TestInstruction.GetTestInstructionExecutionUuid())
+
+							// Save back the Template to the Attribute
+							tempTestInstructionAttribute.AttributeValueAsString = templateWithReplacedPlaceHolders
+
+							// Save The Attribute back to the Database
+							err = executionEngine.makeAttributeExecutionCopyAndUpdateAttributeValueForTemplateInCloudDB(
+								dbTransaction,
+								testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
+									TestInstruction.GetTestInstructionExecutionUuid(),
+								int(testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
+									TestInstruction.GetTestInstructionExecutionVersion()),
+								tempTestInstructionAttribute.GetTestInstructionAttributeUuid(),
+								tempTestInstructionAttribute.AttributeValueAsString)
+
+							if err != nil {
+								common_config.Logger.WithFields(logrus.Fields{
+									"Id":              "4e01e72a-26a9-4da7-a0a5-528b1d16dce1",
+									"TestInstruction": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction,
+								}).Error("Couldn't save the Template back to the Attribute in the Database ")
+
+								return err
+							}
+
+						} else {
+
+							if shouldPlaceholdersBeReplaced == false && len(tempTestInstructionAttribute.GetAttributeValueAsString()) == 0 {
+
+								common_config.Logger.WithFields(logrus.Fields{
+									"Id":              "9cfa30e8-9593-4964-bf3b-971e2d4a460d",
+									"TestInstruction": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction,
+								}).Error("Attribute for Template is empty which never should happen")
+
+								return err
+
+							}
+						}
 					}
 
 				case fenixExecutionWorkerGrpcApi.
@@ -1602,6 +1745,162 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	// No errors occurred
 	return nil
+
+}
+
+// Copy Attribute to 'TestInstructionAttributesUnderExecutionChangeHistory' table and add new version of Attribute that has attribute value change
+func (executionEngine *TestInstructionExecutionEngineStruct) makeAttributeExecutionCopyAndUpdateAttributeValueForTemplateInCloudDB(
+	dbTransaction pgx.Tx,
+	tempTestInstructionExecutionUuid string,
+	tempTestInstructionExecutionVersion int,
+	tempTestInstructionAttributeUuid string,
+	tempAttributeValueAsString string) (
+	err error) {
+
+	// Get a common dateTimeStamp to use
+	//currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "INSERT INTO \"FenixExecution\".\"TestInstructionAttributesUnderExecutionChangeHistory\" "
+
+	sqlToExecute = sqlToExecute + "SELECT * "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionAttributesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionUuid\" = '%s' AND ", tempTestInstructionExecutionUuid)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = %d AND ", tempTestInstructionExecutionVersion)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionAttributeUuid\" = '%s' ", tempTestInstructionAttributeUuid)
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "5b45572d-4389-46e0-a93b-81fa2bdd51da",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'updateAttributeValueForTemplateInCloudDB'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "55446ee2-5b61-4a97-85cd-b351cb927ceb",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	executionEngine.logger.WithFields(logrus.Fields{
+		"Id":                       "99f4dba4-65de-4339-8328-2ff0c53e4e64",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// Secure that exact one row was affected
+	if comandTag.RowsAffected() == 1 {
+
+		// Update the Attribute value
+		err = executionEngine.updateAttributeValueForTemplateInCloudDB(
+			dbTransaction,
+			tempTestInstructionExecutionUuid,
+			tempTestInstructionExecutionVersion,
+			tempTestInstructionAttributeUuid,
+			tempAttributeValueAsString)
+
+	} else {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "a33637e5-5565-4794-b1f3-b43789213d76",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Expected to have exact one row effected")
+
+		err = errors.New("expected to have exact one row effected")
+
+	}
+
+	return err
+
+}
+
+// Update AttributeValue of Attribute in ExecutionTable for Attributes
+func (executionEngine *TestInstructionExecutionEngineStruct) updateAttributeValueForTemplateInCloudDB(
+	dbTransaction pgx.Tx,
+	tempTestInstructionExecutionUuid string,
+	tempTestInstructionExecutionVersion int,
+	tempTestInstructionAttributeUuid string,
+	tempAttributeValueAsString string) (
+	err error) {
+
+	// Get a common dateTimeStamp to use
+	//currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	sqlToExecute := ""
+
+	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestInstructionAttributesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "SET \"AttributeValueAsString\" = $1 "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionUuid\" = '%s' AND ", tempTestInstructionExecutionUuid)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = %d AND ", tempTestInstructionExecutionVersion)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionAttributeUuid\" = '%s' ", tempTestInstructionAttributeUuid)
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "91506858-9ce9-4c37-b230-b602f67d6d4f",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'updateAttributeValueForTemplateInCloudDB'")
+	}
+
+	//var updateArg []interface{}
+	//updateArg = append(updateArg, tempAttributeValueAsString)
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute, tempAttributeValueAsString) //, updateArg)
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "ace63a67-74fd-4b89-a2c7-34b9cbddedcc",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	executionEngine.logger.WithFields(logrus.Fields{
+		"Id":                       "2469c4e0-f13a-4112-be53-d4f9aa9c1474",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// Secure that exact one row was affected
+	if comandTag.RowsAffected() != 1 {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "a33637e5-5565-4794-b1f3-b43789213d76",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Expected to have exact one row effected")
+
+		err = errors.New("expected to have exact one row effected")
+	}
+
+	// No errors occurred
+	return err
 
 }
 

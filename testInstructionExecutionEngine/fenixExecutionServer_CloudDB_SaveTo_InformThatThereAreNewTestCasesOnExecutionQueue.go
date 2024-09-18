@@ -402,6 +402,7 @@ type tempAttributeStruct struct {
 	AttributeValueUuid               string
 	testInstructionAttributeTypeUuid string
 	testInstructionAttributeTypeName string
+	testInstructionExecutionVersion  int
 }
 
 // Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
@@ -910,6 +911,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 						AttributeValueUuid:               common_config.ZeroUuid,
 						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
 						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
+						testInstructionExecutionVersion:  1,
 					}
 
 				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_COMBOBOX:
@@ -922,6 +924,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 						AttributeValueUuid:               attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValueUuid,
 						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
 						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
+						testInstructionExecutionVersion:  1,
 					}
 
 				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX:
@@ -936,6 +939,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 						AttributeValueUuid:               attribute.AttributeInformation.ResponseVariableComboBoxProperty.ChosenResponseVariableTypeUuid,
 						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
 						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
+						testInstructionExecutionVersion:  1,
 					}
 
 				default:
@@ -1067,6 +1071,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueUuid)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeUuid)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeName)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionExecutionVersion)
 
 			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
@@ -1076,7 +1081,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionAttributesUnderExecution\" "
 	sqlToExecute = sqlToExecute + "(\"TestInstructionExecutionUuid\", \"TestInstructionAttributeType\", \"TestInstructionAttributeUuid\", " +
 		"\"TestInstructionAttributeName\", \"AttributeValueAsString\", \"AttributeValueUuid\", " +
-		"\"TestInstructionAttributeTypeUuid\", \"TestInstructionAttributeTypeName\") "
+		"\"TestInstructionAttributeTypeUuid\", \"TestInstructionAttributeTypeName\", \"TestInstructionExecutionVersion\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
