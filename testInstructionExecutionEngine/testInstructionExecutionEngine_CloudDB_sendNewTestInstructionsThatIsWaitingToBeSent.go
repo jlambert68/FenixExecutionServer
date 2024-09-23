@@ -883,9 +883,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
 						testInstruction_SendTestDataToThisDomain_version_1_0.
 							TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisDomainTextBox) ||
-						tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+						tempTestInstructionAttribute.TestInstructionAttributeName == string(
 							testInstruction_SendTemplateToThisDomain_version_1_0.
-								TestInstructionAttributeUUID_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateToThisDomainTextBox) {
+								TestInstructionAttributeName_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateToThisDomainTextBox) {
 
 						// Set the value in the Attribute itself
 						processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
@@ -898,9 +898,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
 						testInstruction_SendTestDataToThisDomain_version_1_0.
 							TestInstructionAttributeUUID_SendTestDataToThisDomain_SendTestDataToThisExecutionDomainTextBox) ||
-						tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+						tempTestInstructionAttribute.TestInstructionAttributeName == string(
 							testInstruction_SendTemplateToThisDomain_version_1_0.
-								TestInstructionAttributeUUID_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateToThisDomainTextBox) {
+								TestInstructionAttributeName_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateToThisDomainTextBox) {
 
 						processTestInstructionExecutionPubSubRequest.DomainIdentificationAnfProtoFileVersionUsedByClient.
 							ExecutionDomainUuid = tempTestInstructionAttribute.GetAttributeValueAsString()
@@ -939,9 +939,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 					// If this is a TestInstruction, by Fenix, that should send a Template to user decided ExecutionDomain
 					// Change Placeholder in Template IF they should be changed
-					if tempTestInstructionAttribute.TestInstructionAttributeUuid == string(
+					if tempTestInstructionAttribute.TestInstructionAttributeName == string(
 						testInstruction_SendTemplateToThisDomain_version_1_0.
-							TestInstructionAttributeUUID_FenixOwnedSendTemplateToThisDomain_FenixOwnedTemplateAsString) {
+							TestInstructionAttributeName_FenixOwnedSendTemplateToThisDomain_FenixOwnedTemplateAsString) {
 
 						// Find Attribute 'FenixOwnedSendTemplateReplacePlaceholersComboBox' for if Placeholder should be changed into values
 						var shouldPlaceholdersBeReplaced bool
@@ -949,9 +949,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 							processTestInstructionExecutionRequest.TestInstruction.TestInstructionAttributes {
 
 							// Attribute 'FenixOwnedSendTemplateReplacePlaceholersComboBox'
-							if tempAttribute.TestInstructionAttributeUuid == string(
+							if tempAttribute.TestInstructionAttributeName == string(
 								testInstruction_SendTemplateToThisDomain_version_1_0.
-									TestInstructionAttributeUUID_FenixSentToUsersDomain_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateReplacePlaceholersComboBox) {
+									TestInstructionAttributeName_FenixSentToUsersDomain_FenixOwnedSendTemplateToThisDomain_FenixOwnedSendTemplateReplacePlaceholersComboBox) {
 
 								shouldPlaceholdersBeReplaced, err = strconv.ParseBool(tempAttribute.AttributeValueAsString)
 								if err != nil {
