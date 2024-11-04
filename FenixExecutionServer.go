@@ -47,7 +47,7 @@ func fenixExecutionServerMain() {
 	fenixSyncShared.ConnectToDB()
 
 	// Initiate Lua-script-Engine. TODO For now only Fenix-Placeholders are supported
-	luaEngine.InitiateLuaScriptEngine([][]byte{})
+	luaEngine.InitiateLuaScriptEngine([]luaEngine.LuaScriptsStruct{})
 
 	// Start cleaner for ExecutionStatus-message on 'DeadLettering', when it should be used
 	if common_config.UsePubSubWhenSendingExecutionStatusToGuiExecutionServer == true {
