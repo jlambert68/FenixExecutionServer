@@ -12,7 +12,7 @@ func main() {
 	/*
 		config := metrics.DefaultConfig
 		config.Username = "jlambert"
-		config.Password = "jonasaradmin"
+		config.Password = "password"
 		config.Database = "stats"
 
 		err := metrics.RunCollector(config)
