@@ -1027,8 +1027,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 							_, _, templateWithReplacedPlaceHolders = placeholderReplacementEngine.ParseAndFormatPlaceholders(
 								tempTestInstructionAttribute.GetAttributeValueAsString(),
 								&testDataPointValuesMap,
-								testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
-									TestInstruction.GetTestInstructionExecutionUuid())
+								testInstructionToBeSentToExecutionWorkers.testCaseExecutionUuid)
 
 							// Save back the Template to the Attribute
 							tempTestInstructionAttribute.AttributeValueAsString = templateWithReplacedPlaceHolders
