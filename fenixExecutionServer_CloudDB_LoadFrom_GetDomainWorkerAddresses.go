@@ -4,7 +4,6 @@ import (
 	"FenixExecutionServer/common_config"
 	"context"
 	"github.com/jackc/pgx/v4"
-	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"strconv"
 	"time"
@@ -13,26 +12,41 @@ import (
 // Prepare for Saving the ongoing Execution of a new TestCaseExecutionUuid in the CloudDB
 func (fenixExecutionServerObject *fenixExecutionServerObjectStruct) prepareGetDomainWorkerAddresses() (err error) {
 
-	// Begin SQL Transaction
-	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
-	if err != nil {
-		common_config.Logger.WithFields(logrus.Fields{
-			"id":    "6aa288c4-1774-4336-8d9c-b2504f4e5225",
-			"error": err,
-		}).Error("Problem to do 'DbPool.Begin' in 'prepareGetDomainWorkerAddresses'")
+	var domainWorkersParameters []domainWorkerParametersStruct
 
-		return err
+	var domainWorkersParameter domainWorkerParametersStruct
+	domainWorkersParameter = domainWorkerParametersStruct{
+		domainUuid:             "Fenix General Worker",
+		domainName:             "Fenix General Worker",
+		executionWorkerAddress: common_config.FenixExecutionWorkerAddress,
 	}
 
-	// Close db-transaction when leaving this function
-	defer txn.Commit(context.Background())
+	// Append to slice (based on an older solution with one worker per system
+	domainWorkersParameters = append(domainWorkersParameters, domainWorkersParameter)
 
-	// Load all Domain Worker addresses from Cloud-DB
-	domainWorkersParameters, err := fenixExecutionServerObject.loadDomainWorkerAddresses(txn)
-	if err != nil {
+	/*
+		// Begin SQL Transaction
+		txn, err := fenixSyncShared.DbPool.Begin(context.Background())
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":    "6aa288c4-1774-4336-8d9c-b2504f4e5225",
+				"error": err,
+			}).Error("Problem to do 'DbPool.Begin' in 'prepareGetDomainWorkerAddresses'")
 
-		return err
-	}
+			return err
+		}
+
+		// Close db-transaction when leaving this function
+		defer txn.Commit(context.Background())
+
+		// Load all Domain Worker addresses from Cloud-DB
+		domainWorkersParameters, err := fenixExecutionServerObject.loadDomainWorkerAddresses(txn)
+		if err != nil {
+
+			return err
+		}
+
+	*/
 
 	// Store Domain Workers in DomainWorker-map
 	fenixExecutionServerObject.storeDomainWorkers(domainWorkersParameters)

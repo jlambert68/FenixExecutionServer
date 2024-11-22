@@ -77,7 +77,7 @@ func init() {
 
 	}
 
-	// Address to Worker, when not run in cloud because then the address is coming from DB
+	// Address to Worker
 	common_config.FenixExecutionWorkerAddress = mustGetenv("FenixExecutionWorkerServerAddress")
 
 	// Port for Fenix Execution Worker Server
