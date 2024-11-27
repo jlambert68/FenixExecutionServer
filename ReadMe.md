@@ -17,28 +17,28 @@ ExecutionWorker has the responsibility to break down a TestCaseExecution into it
 
 ![Fenix Inception - ExecutionServer](./Documentation/FenixInception-Overview-NonDetailed-ExecutionServer.png "Fenix Inception - ExecutionServer")
 
-The following environment variable is needed for ExecutionServer to be able to run.
+The following environment variable is needed for ExecutionServer to be able to run locally.
 
-| Environment variable                                                 | Example value                                                        | comment                                                                        |
-|----------------------------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| DB_HOST                                                              | 127.0.0.1                                                            |                                                                                |
-| DB_NAME                                                              | fenix_gcp_database                                                   |                                                                                |
-| DB_PASS                                                              | database password                                                    |                                                                                |
-| DB_POOL_MAX_CONNECTIONS                                              | 4                                                                    | The number of connections towards the database that the ExectionServer can use |
-| DB_PORT                                                              | 5432                                                                 |                                                                                |
-| DB_SCHEMA                                                            | Not used                                                             |                                                                                |
-| DB_USER                                                              | postgres                                                             |                                                                                |
-| ExecutionLocationForFenixTestExecutionServer                         | GCP                                                                  |                                                                                |
-| ExecutionLocationForWorker                                           | GCP                                                                  |                                                                                |
-| ExecutionStatusPubSubTopic                                           | notUsed                                                              |                                                                                |
-| FenixExecutionExecutionServerPort                                    | 6672                                                                 |                                                                                |
-| FenixExecutionWorkerServerAddress                                    | fenixexecutionworkerserver-must-be-logged-in-ffafweeerg-lz.a.run.app |                                                                                |
-| FenixExecutionWorkerServerPort                                       | 443                                                                  |                                                                                |
-| LocalServiceAccountPath                                              | #                                                                    |                                                                                |
-| LogAllSQLs                                                           | true                                                                 | Used when debugging to log all full SQLs                                       |
-| LoggingLevel                                                         | DebugLevel                                                           |                                                                                |
-| ProjectId                                                            | mycloud-run-project                                                  |                                                                                |
-| SleepTimeInSecondsBeforeClaimingTestInstructionExecutionFromDatabase | 15                                                                   |                                                                                |
-| UsePubSubWhenSendingExecutionStatusToGuiExecutionServer              | false                                                                |                                                                                |
-| WorkerIsUsingPubSubWhenSendingTestInstructionExecutions              | true                                                                 |                                                                                |
+| Environment variable                                                 | Example value       | comment                                                                        |
+|----------------------------------------------------------------------|---------------------|--------------------------------------------------------------------------------|
+| DB_HOST                                                              | 127.0.0.1           |                                                                                |
+| DB_NAME                                                              | fenix_gcp_database  |                                                                                |
+| DB_PASS                                                              | database password   |                                                                                |
+| DB_POOL_MAX_CONNECTIONS                                              | 4                   | The number of connections towards the database that the ExectionServer can use |
+| DB_PORT                                                              | 5432                |                                                                                |
+| DB_SCHEMA                                                            | Not used            |                                                                                |
+| DB_USER                                                              | postgres            |                                                                                |
+| ExecutionLocationForFenixTestExecutionServer                         | LOCALHOST_NODOCKER  |                                                                                |
+| ExecutionLocationForWorker                                           | LOCALHOST_NODOCKER  |                                                                                |
+| ExecutionStatusPubSubTopic                                           | notUsed             |                                                                                |
+| FenixExecutionExecutionServerPort                                    | 6672                |                                                                                |
+| FenixExecutionWorkerServerAddress                                    | 127.0.0.1           |                                                                                |
+| FenixExecutionWorkerServerPort                                       | 6671                |                                                                                |
+| LocalServiceAccountPath                                              | #                   |                                                                                |
+| LogAllSQLs                                                           | true                | Used when debugging to log all full SQLs                                       |
+| LoggingLevel                                                         | DebugLevel          |                                                                                |
+| ProjectId                                                            | mycloud-run-project |                                                                                |
+| SleepTimeInSecondsBeforeClaimingTestInstructionExecutionFromDatabase | 15                  |                                                                                |
+| UsePubSubWhenSendingExecutionStatusToGuiExecutionServer              | false               |                                                                                |
+| WorkerIsUsingPubSubWhenSendingTestInstructionExecutions              | true                |                                                                                |
 
