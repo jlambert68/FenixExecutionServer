@@ -195,6 +195,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	}
 
+	// Update status used in table 'TestCasesExecutionsForListings'
+	x
+
 	// No errors occurred so secure that commit is done
 	doCommitNotRoleBack = true
 

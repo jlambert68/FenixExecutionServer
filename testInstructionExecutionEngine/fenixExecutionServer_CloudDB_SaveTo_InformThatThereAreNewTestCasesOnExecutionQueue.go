@@ -230,6 +230,76 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 
 	}
 
+	// Save a 'copy' of TestCaseExecution in Table 'TestCasesExecutionsForListings'
+	err = executionEngine.saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB(
+		txn,
+		testCaseExecutionQueueMessages)
+
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "d51b884f-9c0d-4712-8687-b7d8be8d90c5",
+			"error": err,
+		}).Error("Couldn't Save to 'TestCasesExecutionsForListings' in CloudDB")
+
+		// Rollback any SQL transactions
+		txn.Rollback(context.Background())
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   "Problem when saving to database",
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
+				CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+
+	}
+
+	// Add "TestCasePreview" and "ExecutionStatusPreviewValue" to 'TestCasesExecutionsForListings'
+	err = executionEngine.addTestCasePreviewAndExecutionStatusPreviewValue(
+		txn,
+		testCaseExecutionQueueMessages)
+
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "345f02ce-7a72-48cd-8e93-5345f9c5cb56",
+			"error": err,
+		}).Error("Couldn't Add 'TestCasePreview' and 'ExecutionStatusPreviewValue' to 'TestCasesExecutionsForListings' in CloudDB")
+
+		// Rollback any SQL transactions
+		txn.Rollback(context.Background())
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   "Problem when saving to database",
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
+				CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+
+	}
+
 	//Load all data around TestCase to be used for putting TestInstructions on the TestInstructionExecutionQueue
 	var allDataAroundAllTestCase []*tempTestInstructionInTestCaseStruct
 	allDataAroundAllTestCase, err = executionEngine.
@@ -634,6 +704,98 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesOnOngo
 	// Log response from CloudDB
 	common_config.Logger.WithFields(logrus.Fields{
 		"Id":                       "dcb110c2-822a-4dde-8bc6-9ebbe9fcbdb0",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return nil
+
+}
+
+// Save a 'copy' of TestCaseExecution in Table 'TestCasesExecutionsForListings'
+func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB(
+	dbTransaction pgx.Tx,
+	testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id": "761b3aec-23c4-4a12-9a4b-0aa55b33362b",
+	}).Debug("Entering: saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "5392ea69-7cc6-4fa5-8a22-8ed476101093",
+		}).Debug("Exiting: saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB()")
+	}()
+
+	sqlToExecute := ""
+	var testCaseExecutions string
+
+	// No Message should give an error
+	if len(testCaseExecutionQueueMessages) == 0 {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "86d63010-7b02-47b1-a3f0-7846894395f6",
+		}).Debug("No transactions to process in 'saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB'. Shouldn't be like that!")
+
+		err = errors.New("no transactions to process in 'saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB'. Shouldn't be like that")
+
+		return err
+	}
+
+	for _, testCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
+
+		if len(testCaseExecutions) == 0 {
+			// First TestCaseExecution
+			testCaseExecutions = fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = &d",
+				testCaseExecutionQueueMessage.testCaseExecutionUuid,
+				testCaseExecutionQueueMessage.testCaseExecutionVersion)
+
+		} else {
+			// There are already TestCaseExecutions
+			testCaseExecutions = testCaseExecutions + " OR "
+
+			testCaseExecutions = testCaseExecutions + fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = %d",
+				testCaseExecutionQueueMessage.testCaseExecutionUuid,
+				testCaseExecutionQueueMessage.testCaseExecutionVersion)
+
+		}
+		testCaseExecutions = testCaseExecutions + " OR "
+	}
+
+	sqlToExecute = sqlToExecute + "INSERT INTO \"FenixExecution\".\"TestCasesExecutionsForListings\" "
+	sqlToExecute = sqlToExecute + "SELECT * FROM \"FenixExecution\".\"TestCasesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "WHERE " + testCaseExecutions
+	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "00701aa2-1617-47fe-8749-5ba1779b8d34",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "e734c819-b953-4ba6-aecb-ec38a4d0a7fb",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":                       "3beacafe-90e7-4588-a22a-e27190964a6b",
 		"comandTag.Insert()":       comandTag.Insert(),
 		"comandTag.Delete()":       comandTag.Delete(),
 		"comandTag.Select()":       comandTag.Select(),
