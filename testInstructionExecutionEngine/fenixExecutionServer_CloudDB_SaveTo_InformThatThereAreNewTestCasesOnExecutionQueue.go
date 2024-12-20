@@ -265,39 +265,79 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 
 	}
 
-	// Add "TestCasePreview" and "ExecutionStatusPreviewValue" to 'TestCasesExecutionsForListings'
-	err = executionEngine.addTestCasePreviewAndExecutionStatusPreviewValue(
-		txn,
-		testCaseExecutionQueueMessages)
+	// Retrieve "TestCasePreview" and add to database row
+	for _, tempTestCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
 
-	if err != nil {
+		var testCasePreview *fenixTestCaseBuilderServerGrpcApi.TestCasePreviewMessage
+		testCasePreview, err = executionEngine.loadTestCasePreview(
+			txn,
+			tempTestCaseExecutionQueueMessage)
 
-		common_config.Logger.WithFields(logrus.Fields{
-			"id":    "345f02ce-7a72-48cd-8e93-5345f9c5cb56",
-			"error": err,
-		}).Error("Couldn't Add 'TestCasePreview' and 'ExecutionStatusPreviewValue' to 'TestCasesExecutionsForListings' in CloudDB")
+		if err != nil {
 
-		// Rollback any SQL transactions
-		txn.Rollback(context.Background())
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":    "cea6f97f-da6a-4eee-9d2e-eeb85d3d5e20",
+				"error": err,
+			}).Error("Couldn't Load 'TestCasePreview'from CloudDB")
 
-		// Set Error codes to return message
-		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
-		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+			// Rollback any SQL transactions
+			txn.Rollback(context.Background())
 
-		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
-		errorCodes = append(errorCodes, errorCode)
+			// Set Error codes to return message
+			var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+			var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
 
-		// Create Return message
-		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
-			AckNack:    false,
-			Comments:   "Problem when saving to database",
-			ErrorCodes: errorCodes,
-			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
-				CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+			errorCodes = append(errorCodes, errorCode)
+
+			// Create Return message
+			ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
+				AckNack:    false,
+				Comments:   "Problem when saving to database",
+				ErrorCodes: errorCodes,
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
+					CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			}
+
+			return ackNackResponse
+
 		}
 
-		return ackNackResponse
+		// Add "TestCasePreview" to 'TestCasesExecutionsForListings'
+		err = executionEngine.addTestCasePreviewIntoDatabase(
+			txn,
+			tempTestCaseExecutionQueueMessage,
+			testCasePreview)
 
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":    "cea6f97f-da6a-4eee-9d2e-eeb85d3d5e20",
+				"error": err,
+			}).Error("Couldn't Add 'TestCasePreview' and 'ExecutionStatusPreviewValue' to 'TestCasesExecutionsForListings' in CloudDB")
+
+			// Rollback any SQL transactions
+			txn.Rollback(context.Background())
+
+			// Set Error codes to return message
+			var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+			var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+			errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+			errorCodes = append(errorCodes, errorCode)
+
+			// Create Return message
+			ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
+				AckNack:    false,
+				Comments:   "Problem when saving to database",
+				ErrorCodes: errorCodes,
+				ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
+					CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+			}
+
+			return ackNackResponse
+
+		}
 	}
 
 	//Load all data around TestCase to be used for putting TestInstructions on the TestInstructionExecutionQueue
@@ -764,12 +804,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesExecut
 				testCaseExecutionQueueMessage.testCaseExecutionVersion)
 
 		}
-		testCaseExecutions = testCaseExecutions + " OR "
 	}
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"FenixExecution\".\"TestCasesExecutionsForListings\" "
 	sqlToExecute = sqlToExecute + "SELECT * FROM \"FenixExecution\".\"TestCasesUnderExecution\" "
 	sqlToExecute = sqlToExecute + "WHERE " + testCaseExecutions
+	sqlToExecute = sqlToExecute + " "
 	sqlToExecute = sqlToExecute + ";"
 
 	// Log SQL to be executed if Environment variable is true
@@ -806,6 +846,181 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesExecut
 
 	// No errors occurred
 	return nil
+
+}
+
+// Retrieve "TestCasePreview"
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCasePreview(
+	dbTransaction pgx.Tx,
+	tempTestCaseExecutionQueueMessage *tempTestCaseExecutionQueueInformationStruct) (
+	tempTestCasePreview *fenixTestCaseBuilderServerGrpcApi.TestCasePreviewMessage,
+	err error) {
+
+	// Load 'TestCasePreview'
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT TC.TestCasePreview "
+	sqlToExecute = sqlToExecute + "FROM \"FenixBuilder\".\"TestCases\" TC "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseUuid\" = '%s' AND \"TestCaseVersion\" = &d ",
+		tempTestCaseExecutionQueueMessage.testCaseUuid,
+		tempTestCaseExecutionQueueMessage.testCaseVersion)
+	sqlToExecute = sqlToExecute + ";"
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "5334c148-7d63-4333-b6b5-eeb403ae0e2d",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	// USed to secure that exactly one row was found
+	numberOfRowFromDB := 0
+
+	var testCasePreviewAsString string
+	var testCasePreviewAsByteArray []byte
+
+	// Extract data from DB result set
+	for rows.Next() {
+
+		numberOfRowFromDB = numberOfRowFromDB + 1
+
+		err := rows.Scan(
+			&testCasePreviewAsString,
+		)
+
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "7cbefcf9-b8ce-403f-b340-bbf8112cc646",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+	}
+
+	// There should always be exact one row
+	if numberOfRowFromDB != 1 {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":                "b0887097-44ab-4132-9049-04dd2c566890",
+			"numberOfRowFromDB": numberOfRowFromDB,
+			"sqlToExecute":      sqlToExecute,
+		}).Error("There should always be exact one rows")
+
+		err = errors.New("there should always be exact one rows")
+
+		return nil, err
+
+	}
+
+	// Convert json-string into byte-array
+	testCasePreviewAsByteArray = []byte(testCasePreviewAsString)
+
+	// Convert json-byte-arrays into proto-messages
+	var testCasePreview fenixTestCaseBuilderServerGrpcApi.TestCasePreviewMessage
+	err = protojson.Unmarshal(testCasePreviewAsByteArray, &testCasePreview)
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":    "84ceea8b-b24d-42c6-a45f-9fa9128a54b3",
+			"Error": err,
+		}).Error("Something went wrong when converting 'testCasePreviewAsByteArray' into proto-message")
+
+		return nil, err
+	}
+
+	return &testCasePreview, err
+}
+
+// Add "TestCasePreview" and "ExecutionStatusPreviewValues" to 'TestCasesExecutionsForListings'
+func (executionEngine *TestInstructionExecutionEngineStruct) addTestCasePreviewIntoDatabase(
+	dbTransaction pgx.Tx,
+	testCaseExecutionQueueMessage *tempTestCaseExecutionQueueInformationStruct,
+	testCasePreview *fenixTestCaseBuilderServerGrpcApi.TestCasePreviewMessage) (
+	err error) {
+
+	// If there are nothing to update then just exit
+	if testCasePreview == nil {
+		return nil
+	}
+
+	testCasePreviewAsJsonb := protojson.Format(testCasePreview)
+
+	// Create Update Statement  TestCasesExecutionsForListings
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestCasesExecutionsForListings\" "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCasePreview\" = '%s', ",
+		testCasePreviewAsJsonb)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ",
+		testCaseExecutionQueueMessage.testCaseExecutionUuid)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("(\"TestInstructionExecutionVersion\" = %d ",
+		testCaseExecutionQueueMessage.testCaseExecutionVersion)
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "97ec8cb4-4ce8-40dc-873e-4c506f01f2a4",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'addTestCasePreviewIntoDatabase'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "fa9cadc9-d801-4383-b1b9-e42e4637b961",
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":                       "3497a29b-852d-4477-9e07-aed1ddd13a9e",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
+	if comandTag.RowsAffected() != 1 {
+		errorId := "b465295f-ebff-479f-8a13-42994212be7d"
+		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' with TestInstructionExecutionVersion '%d' is missing in Table: 'TestCasesExecutionsForListings' [ErroId: %s]",
+			testCaseExecutionQueueMessage.testCaseExecutionUuid,
+			testCaseExecutionQueueMessage.testCaseExecutionVersion,
+			errorId))
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":                       "d2e72a4a-abd6-4123-9d24-2c95847d149d",
+			"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		}).Error(err.Error())
+
+		return err
+	}
+
+	// No errors occurred
+	return err
 
 }
 

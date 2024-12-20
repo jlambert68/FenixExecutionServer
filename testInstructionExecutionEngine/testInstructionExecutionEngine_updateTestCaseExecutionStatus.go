@@ -195,14 +195,60 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 	}
 
-	// Update status used in table 'TestCasesExecutionsForListings'
-	x
+	// Loop all 'testCaseExecutionStatusMessages' and check for "End status"
+	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
+
+		// If TestCaseExecutionStatus is an "End status" then add all TestInstructionExecutions to table 'TestCasesExecutionsForListings'
+		if hasTestCaseAnEndStatus(int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus)) == true {
+
+			var testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessage
+
+			// Load all TestInstructionExecutions for TestCase
+			testInstructionsExecutionStatusPreviewValuesMessage, err = executionEngine.
+				loadTestInstructionsExecutionStatusPreviewValues(txn, testCaseExecutionStatusMessage)
+
+			// Exit when there was a problem updating the database
+			if err != nil {
+				return err
+			}
+
+			// Update status for TestInstructions in table 'TestCasesExecutionsForListings'
+
+		}
+
+	}
 
 	// No errors occurred so secure that commit is done
 	doCommitNotRoleBack = true
 
 	return err
 
+}
+
+func hasTestCaseAnEndStatus(testCaseExecutionStatus int32) (isTestCaseEndStatus bool) {
+
+	var testCaseExecutionStatusProto fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum
+	testCaseExecutionStatusProto = fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum(testCaseExecutionStatus)
+
+	switch testCaseExecutionStatusProto {
+
+	case fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_INITIATED,
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_CONTROLLED_INTERRUPTION,
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_CONTROLLED_INTERRUPTION_CAN_BE_RERUN,
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_FINISHED_OK,
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_FINISHED_OK_CAN_BE_RERUN,
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_FINISHED_NOT_OK,
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_FINISHED_NOT_OK_CAN_BE_RERUN,
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_UNEXPECTED_INTERRUPTION,
+		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_UNEXPECTED_INTERRUPTION_CAN_BE_RERUN:
+
+		isTestCaseEndStatus = true
+
+	default:
+		isTestCaseEndStatus = false
+	}
+
+	return isTestCaseEndStatus
 }
 
 // Used as type for respons object when calling 'loadTestInstructionExecutionStatusMessages'
@@ -862,5 +908,104 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 
 	// No errors occurred
 	return err
+
+}
+
+// Retrieve "ExecutionStatusPreviewValues" for all TestInstructions for one TestCaseExecution
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionsExecutionStatusPreviewValues(
+	dbTransaction pgx.Tx,
+	testCaseExecutionStatusMessages *testCaseExecutionStatusStruct) (
+	testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessage,
+	err error) {
+
+	// Load 'ExecutionStatusPreviewValues'
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionInstructionExecutionVersion\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"MatureTestInstructionUuid\", TIUE.\"TestInstructionName\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"SentTimeStamp\", TIUE.\"TestInstructionExecutionEndTimeStamp\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"ExecutionDomainUuid\", TIUE.\"ExecutionDomainName\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = &d ",
+		testCaseExecutionStatusMessages.TestCaseExecutionUuid,
+		testCaseExecutionStatusMessages.TestCaseExecutionVersion)
+	sqlToExecute = sqlToExecute + "ORDER BY TIUE.\"SentTimeStamp\" ASC"
+	sqlToExecute = sqlToExecute + ";"
+
+	// Query DB
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "0e402c36-1468-459a-b11d-1c43e6995304",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	// Number of rows
+	var numberOfRowFromDB int32
+	numberOfRowFromDB = 0
+
+	var testCasePreviewAndExecutionStatusPreviewValues []*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage
+	var sentTimeStampAsTimeStamp time.Time
+	var testInstructionExecutionEndTimeStampAsTimeStamp time.Time
+
+	// Extract data from DB result set
+	for rows.Next() {
+
+		var testCasePreviewAndExecutionStatusPreviewValue fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage
+		numberOfRowFromDB = numberOfRowFromDB + 1
+
+		err := rows.Scan(
+			&testCasePreviewAndExecutionStatusPreviewValue.TestCaseExecutionUuid,
+			&testCasePreviewAndExecutionStatusPreviewValue.TestCaseExecutionVersion,
+			&testCasePreviewAndExecutionStatusPreviewValue.TestInstructionExecutionUuid,
+			&testCasePreviewAndExecutionStatusPreviewValue.TestInstructionInstructionExecutionVersion,
+			&testCasePreviewAndExecutionStatusPreviewValue.MatureTestInstructionUuid,
+			&testCasePreviewAndExecutionStatusPreviewValue.TestInstructionName,
+			&sentTimeStampAsTimeStamp,
+			&testInstructionExecutionEndTimeStampAsTimeStamp,
+			&testCasePreviewAndExecutionStatusPreviewValue.ExecutionDomainUuid,
+			&testCasePreviewAndExecutionStatusPreviewValue.ExecutionDomainName,
+			&testCasePreviewAndExecutionStatusPreviewValue.ExecutionDomainName,
+		)
+
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                "e841fb7e-3d00-4a49-829c-391ee7ec7411",
+				"Error":             err,
+				"sqlToExecute":      sqlToExecute,
+				"numberOfRowFromDB": numberOfRowFromDB,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+
+		// Convert DataTime into gRPC-version
+		testCasePreviewAndExecutionStatusPreviewValue.SentTimeStamp = timestamppb.New(sentTimeStampAsTimeStamp)
+		testCasePreviewAndExecutionStatusPreviewValue.TestInstructionExecutionEndTimeStamp = timestamppb.
+			New(testInstructionExecutionEndTimeStampAsTimeStamp)
+
+		// Add value to slice of values
+		testCasePreviewAndExecutionStatusPreviewValues = append(testCasePreviewAndExecutionStatusPreviewValues,
+			&testCasePreviewAndExecutionStatusPreviewValue)
+
+	}
+
+	testInstructionsExecutionStatusPreviewValuesMessage.
+		TestInstructionExecutionStatusPreviewValues = testCasePreviewAndExecutionStatusPreviewValues
+
+	return testInstructionsExecutionStatusPreviewValuesMessage, err
 
 }
