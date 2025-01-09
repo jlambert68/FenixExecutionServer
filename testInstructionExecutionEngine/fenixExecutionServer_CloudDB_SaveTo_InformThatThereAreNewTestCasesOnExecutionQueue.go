@@ -859,7 +859,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCasePreview
 	// Load 'TestCasePreview'
 
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT TC.TestCasePreview "
+	sqlToExecute = sqlToExecute + "SELECT TC.\"TestCasePreview\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixBuilder\".\"TestCases\" TC "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseUuid\" = '%s' AND \"TestCaseVersion\" = %d ",
