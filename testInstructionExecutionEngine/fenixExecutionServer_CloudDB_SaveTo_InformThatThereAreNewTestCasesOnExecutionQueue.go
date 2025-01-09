@@ -791,7 +791,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesExecut
 
 		if len(testCaseExecutions) == 0 {
 			// First TestCaseExecution
-			testCaseExecutions = fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = &d",
+			testCaseExecutions = fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = %d",
 				testCaseExecutionQueueMessage.testCaseExecutionUuid,
 				testCaseExecutionQueueMessage.testCaseExecutionVersion)
 
