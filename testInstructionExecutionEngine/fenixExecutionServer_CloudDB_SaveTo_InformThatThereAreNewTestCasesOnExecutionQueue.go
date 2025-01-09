@@ -965,10 +965,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestCasePreviewI
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCasePreview\" = '%s' ",
 		testCasePreviewAsJsonb)
-	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' ",
 		testCaseExecutionQueueMessage.testCaseExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = %d ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionVersion\" = %d ",
 		testCaseExecutionQueueMessage.testCaseExecutionVersion)
 	sqlToExecute = sqlToExecute + "; "
 
