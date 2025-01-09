@@ -963,7 +963,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestCasePreviewI
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestCasesExecutionsForListings\" "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCasePreview\" = '%s', ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCasePreview\" = '%s' ",
 		testCasePreviewAsJsonb)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ",
 		testCaseExecutionQueueMessage.testCaseExecutionUuid)
