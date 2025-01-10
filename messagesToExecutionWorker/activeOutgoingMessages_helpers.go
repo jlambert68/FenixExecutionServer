@@ -24,10 +24,18 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) g
 
 	executionWorkerVariablesReference, existInMap := common_config.ExecutionWorkerVariablesMap[domainUuid]
 	if existInMap == false {
-		fenixExecutionWorkerObject.Logger.WithFields(logrus.Fields{
-			"ID":         "bb2d7e51-83dc-4027-9c6a-ee8b4677699f",
-			"domainUuid": domainUuid,
-		}).Fatalln(fmt.Sprintf("Couldn't find DomainUuid: %s. This shouldn't happend", domainUuid))
+
+		// Try with the new general Worker
+		executionWorkerVariablesReference, existInMap = common_config.ExecutionWorkerVariablesMap["Fenix General Worker"]
+
+		if existInMap == false {
+			fenixExecutionWorkerObject.Logger.WithFields(logrus.Fields{
+				"ID":         "bb2d7e51-83dc-4027-9c6a-ee8b4677699f",
+				"domainUuid": domainUuid,
+			}).Fatalln(fmt.Sprintf("Couldn't find DomainUuid = '%s' or DomainUuid = '%s' : . This shouldn't happend",
+				domainUuid,
+				"Fenix General Worker"))
+		}
 	}
 
 	return executionWorkerVariablesReference
