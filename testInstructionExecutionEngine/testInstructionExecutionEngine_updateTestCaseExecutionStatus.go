@@ -4,6 +4,7 @@ import (
 	"FenixExecutionServer/broadcastingEngine_ExecutionStatusUpdate"
 	"FenixExecutionServer/common_config"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4"
@@ -974,6 +975,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	var testCasePreviewAndExecutionStatusPreviewValues []*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage
 	var sentTimeStampAsTimeStamp time.Time
 	var testInstructionExecutionEndTimeStampAsTimeStamp time.Time
+	var nullableTestInstructionExecutionEndTimeStampAsTimeStamp sql.NullTime
 
 	// Extract data from DB result set
 	for rows.Next() {
@@ -989,9 +991,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			&testCasePreviewAndExecutionStatusPreviewValue.MatureTestInstructionUuid,
 			&testCasePreviewAndExecutionStatusPreviewValue.TestInstructionName,
 			&sentTimeStampAsTimeStamp,
-			&testInstructionExecutionEndTimeStampAsTimeStamp,
+			&nullableTestInstructionExecutionEndTimeStampAsTimeStamp,
+			&testCasePreviewAndExecutionStatusPreviewValue.TestInstructionExecutionStatus,
 			&testCasePreviewAndExecutionStatusPreviewValue.ExecutionDomainUuid,
-			&testCasePreviewAndExecutionStatusPreviewValue.ExecutionDomainName,
 			&testCasePreviewAndExecutionStatusPreviewValue.ExecutionDomainName,
 		)
 
@@ -1007,6 +1009,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			return nil, err
 		}
 
+		// Check if the timestamp is valid or NULL
+		if nullableTestInstructionExecutionEndTimeStampAsTimeStamp.Valid {
+			// Timestamp is not NULL
+			testInstructionExecutionEndTimeStampAsTimeStamp = nullableTestInstructionExecutionEndTimeStampAsTimeStamp.Time
+		} else {
+			// TimeStamp is NULL
+			testInstructionExecutionEndTimeStampAsTimeStamp = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+
+		}
+
 		// Convert DataTime into gRPC-version
 		testCasePreviewAndExecutionStatusPreviewValue.SentTimeStamp = timestamppb.New(sentTimeStampAsTimeStamp)
 		testCasePreviewAndExecutionStatusPreviewValue.TestInstructionExecutionEndTimeStamp = timestamppb.
@@ -1018,8 +1030,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	}
 
-	testInstructionsExecutionStatusPreviewValuesMessage.
-		TestInstructionExecutionStatusPreviewValues = testCasePreviewAndExecutionStatusPreviewValues
+	testInstructionsExecutionStatusPreviewValuesMessage = &fenixExecutionServerGrpcApi.
+		TestInstructionsExecutionStatusPreviewValuesMessage{
+		TestInstructionExecutionStatusPreviewValues: testCasePreviewAndExecutionStatusPreviewValues}
 
 	return testInstructionsExecutionStatusPreviewValuesMessage, err
 
@@ -1044,12 +1057,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addExecutionStatusP
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestCasesExecutionsForListings\" "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionsExecutionStatusPreviewValues\" = '%s', ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionsExecutionStatusPreviewValues\" = '%s' ",
 		testInstructionsExecutionStatusPreviewValuesMessageAsJsonb)
-	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestInstructionExecutionUuid\" = '%s' ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' ",
 		testCaseExecutionStatusMessages.TestCaseExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("(\"TestInstructionExecutionVersion\" = %d ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionVersion\" = %d ",
 		testCaseExecutionStatusMessages.TestCaseExecutionVersion)
 	sqlToExecute = sqlToExecute + "; "
 
