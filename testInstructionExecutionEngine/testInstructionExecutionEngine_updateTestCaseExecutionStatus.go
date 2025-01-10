@@ -944,7 +944,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	sqlToExecute = sqlToExecute + "TIUE.\"ExecutionDomainUuid\", TIUE.\"ExecutionDomainName\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE "
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = &d ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = %d ",
 		testCaseExecutionStatusMessages.TestCaseExecutionUuid,
 		testCaseExecutionStatusMessages.TestCaseExecutionVersion)
 	sqlToExecute = sqlToExecute + "ORDER BY TIUE.\"SentTimeStamp\" ASC"
