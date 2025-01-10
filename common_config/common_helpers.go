@@ -91,8 +91,16 @@ func getWorkerVariablesReference(domainUuid string) (executionWorkerVariablesRef
 
 	executionWorkerVariablesReference, existInMap := ExecutionWorkerVariablesMap[domainUuid]
 	if existInMap == false {
-		errorID := "ab3986b4-e61d-4792-bf68-133a6c057c19"
-		log.Fatalln(fmt.Sprintf("Couldn't find DomainUuid %s, [ErrorId: %s"), domainUuid, errorID)
+
+		// Try with the new general Worker
+		executionWorkerVariablesReference, existInMap = ExecutionWorkerVariablesMap["Fenix General Worker"]
+
+		if existInMap == false {
+
+			errorID := "ab3986b4-e61d-4792-bf68-133a6c057c19"
+			log.Fatalln(fmt.Sprintf("Couldn't find DomainUuid = '%s' or DomainUuid = '%s, [ErrorId: %s"),
+				domainUuid, "Fenix General Worker", errorID)
+		}
 	}
 
 	return executionWorkerVariablesReference
