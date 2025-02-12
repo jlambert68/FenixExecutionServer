@@ -209,7 +209,17 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 			testInstructionsExecutionStatusPreviewValuesMessage, err = executionEngine.
 				loadTestInstructionsExecutionStatusPreviewValues(txn, testCaseExecutionStatusMessage)
 
-			// Exit when there was a problem updating the database
+			// Exit when there was a problem reading the database
+			if err != nil {
+				return err
+			}
+
+			// Load TestCaseExecution-status
+			var testCaseExecutionStatus int32
+			testCaseExecutionStatus, err = executionEngine.
+				loadTestCaseExecutionStatus(txn, testCaseExecutionStatusMessage)
+
+			// Exit when there was a problem reading the database
 			if err != nil {
 				return err
 			}
@@ -220,7 +230,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 			err = executionEngine.addExecutionStatusPreviewValuesIntoDatabase(
 				txn,
 				testCaseExecutionStatusMessage,
-				testInstructionsExecutionStatusPreviewValuesMessage)
+				testInstructionsExecutionStatusPreviewValuesMessage,
+				testCaseExecutionStatus)
 
 			// Exit when there was a problem updating the database
 			if err != nil {
@@ -1038,12 +1049,94 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 }
 
+// Retrieve "TestCaseExecutionStatus" for one TestCaseExecution
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionStatus(
+	dbTransaction pgx.Tx,
+	testCaseExecutionStatusMessages *testCaseExecutionStatusStruct) (
+	testCaseExecutionStatus int32,
+	err error) {
+
+	// Load 'ExecutionStatusPreviewValues'
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionStatus\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = %d ",
+		testCaseExecutionStatusMessages.TestCaseExecutionUuid,
+		testCaseExecutionStatusMessages.TestCaseExecutionVersion)
+	sqlToExecute = sqlToExecute + ";"
+
+	// Query DB
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "9656c7db-1219-4e3e-b1ca-47e785e669b4",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return 0, err
+	}
+
+	// Number of rows
+	var numberOfRowFromDB int32
+	numberOfRowFromDB = 0
+
+	// Extract data from DB result set
+	for rows.Next() {
+
+		numberOfRowFromDB = numberOfRowFromDB + 1
+
+		err := rows.Scan(
+			&testCaseExecutionStatus,
+		)
+
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                "e841fb7e-3d00-4a49-829c-391ee7ec7411",
+				"Error":             err,
+				"sqlToExecute":      sqlToExecute,
+				"numberOfRowFromDB": numberOfRowFromDB,
+			}).Error("Something went wrong when processing result from database")
+
+			return 0, err
+		}
+
+	}
+
+	// If number of rows <> 1 then there is a problem
+	if numberOfRowFromDB != 1 {
+
+		err = errors.New("number of rows in database response was not exact 1 row")
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":                "0bf8a0ed-d9c8-4137-97da-6d16e12502d5",
+			"Error":             err,
+			"sqlToExecute":      sqlToExecute,
+			"numberOfRowFromDB": numberOfRowFromDB,
+		}).Error("Something went wrong when processing result from database")
+
+		return 0, err
+	}
+
+	return testCaseExecutionStatus, err
+
+}
+
 // Add "ExecutionStatusPreviewValues" to 'TestCasesExecutionsForListings'
 func (executionEngine *TestInstructionExecutionEngineStruct) addExecutionStatusPreviewValuesIntoDatabase(
 	dbTransaction pgx.Tx,
 	testCaseExecutionStatusMessages *testCaseExecutionStatusStruct,
 	testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.
-		TestInstructionsExecutionStatusPreviewValuesMessage) (
+		TestInstructionsExecutionStatusPreviewValuesMessage,
+	testCaseExecutionStatus int32) (
 	err error) {
 
 	// If there are nothing to update then just exit
@@ -1057,8 +1150,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addExecutionStatusP
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestCasesExecutionsForListings\" "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionsExecutionStatusPreviewValues\" = '%s' ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionsExecutionStatusPreviewValues\" = '%s', ",
 		testInstructionsExecutionStatusPreviewValuesMessageAsJsonb)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionStatus\" = '%d' ",
+		testCaseExecutionStatus)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' ",
 		testCaseExecutionStatusMessages.TestCaseExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
