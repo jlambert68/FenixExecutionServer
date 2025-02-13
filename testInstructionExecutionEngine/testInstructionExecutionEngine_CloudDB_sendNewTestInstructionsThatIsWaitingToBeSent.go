@@ -577,7 +577,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 		"TIAUE.\"TestInstructionAttributeName\", TIAUE.\"AttributeValueAsString\", TIAUE.\"AttributeValueUuid\", " +
 		"TIAUE.\"TestInstructionAttributeTypeUuid\", TIAUE.\"TestInstructionAttributeTypeName\" "
 
-	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionAttributesUnderExecution\" TIAUE "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionAttributesUnderExecution\" TIAUE "
 	sqlToExecute = sqlToExecute + "WHERE TIAUE.\"TestInstructionExecutionUuid\" IN " + common_config.GenerateSQLINArray(testInstructionExecutionUuids)
 
 	sqlToExecute = sqlToExecute + "ORDER BY TIAUE.\"TestInstructionExecutionUuid\" ASC, TIAUE.\"TestInstructionAttributeUuid\" ASC "
