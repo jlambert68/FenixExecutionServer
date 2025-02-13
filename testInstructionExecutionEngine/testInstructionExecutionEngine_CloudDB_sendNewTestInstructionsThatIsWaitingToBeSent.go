@@ -454,8 +454,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	rawTestInstructionAttributesToBeSentToExecutionWorkers []newTestInstructionAttributeToBeSentToExecutionWorkersStruct,
 	err error) {
 
-	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
-
 	var testInstructionExecutionUuids []string
 
 	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
@@ -485,19 +483,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 
 	// *** Process TestInstructions ***
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT DP.\"DomainUuid\", DP.\"DomainName\", DP.\"ExecutionWorker Address\", " +
+	sqlToExecute = sqlToExecute + "SELECT FD.\"domain_uuid\", FD.\"domain_name\", FD.\"workeraddress\", " +
 		"TIUE.\"TestInstructionExecutionUuid\", TIUE.\"TestInstructionOriginalUuid\", TIUE.\"TestInstructionName\", " +
 		"TIUE.\"TestInstructionMajorVersionNumber\", TIUE.\"TestInstructionMinorVersionNumber\", " +
 		"TIUE.\"TestDataSetUuid\", TIUE.\"TestCaseExecutionUuid\", TIUE.\"TestCaseExecutionVersion\"," +
 		" \"ExecutionDomainUuid\", \"ExecutionDomainName\", \"MatureTestInstructionUuid\", " +
 		"\"TestInstructionInstructionExecutionVersion\" "
-	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionsUnderExecution\" TIUE, " +
-		"\"" + usedDBSchema + "\".\"DomainParameters\" DP "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE, " +
+		"\"FenixDomainAdministration\".\"domains\" FD "
 	sqlToExecute = sqlToExecute + "WHERE TIUE.\"TestInstructionExecutionStatus\" = " +
 		strconv.Itoa(int(fenixExecutionServerGrpcApi.TestInstructionExecutionStatusEnum_TIE_INITIATED)) + " AND "
-	sqlToExecute = sqlToExecute + "DP.\"DomainUuid\" = TIUE.\"DomainUuid\" "
+	sqlToExecute = sqlToExecute + "FD.\"domain_uuid\" = TIUE.\"DomainUuid\" "
 	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
-	sqlToExecute = sqlToExecute + "ORDER BY DP.\"DomainUuid\" ASC, TIUE.\"TestInstructionExecutionUuid\" ASC "
+	sqlToExecute = sqlToExecute + "ORDER BY FD.\"domain_uuid\" ASC, TIUE.\"TestInstructionExecutionUuid\" ASC "
 	sqlToExecute = sqlToExecute + "; "
 
 	// Log SQL to be executed if Environment variable is true
