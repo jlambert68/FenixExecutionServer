@@ -257,8 +257,7 @@ func hasTestCaseAnEndStatus(testCaseExecutionStatus int32) (isTestCaseEndStatus 
 	switch testCaseExecutionStatusProto {
 
 	// Is an End status
-	case fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_INITIATED,
-		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_CONTROLLED_INTERRUPTION,
+	case fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_CONTROLLED_INTERRUPTION,
 		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_CONTROLLED_INTERRUPTION_CAN_BE_RERUN,
 		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_FINISHED_OK,
 		fenixExecutionServerGrpcApi.TestCaseExecutionStatusEnum_TCE_FINISHED_OK_CAN_BE_RERUN,
