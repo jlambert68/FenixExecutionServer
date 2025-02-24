@@ -1026,15 +1026,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveResponseVariabl
 				"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
 				"firstElement": firstElement,
 			}).Debug("No Response variables to store in database, within 'saveResponseVariablesInCloudDB'")
-		} else {
+
+			return err
+
+		} else if len(firstElement.GetResponseVariableUuid()) == 0 {
 			common_config.Logger.WithFields(logrus.Fields{
 				"Id": "3ce897cb-be7d-40e3-b99c-8c29179c67bd",
 				"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
 				"firstElement": firstElement,
 			}).Debug("No Response variables to store in database, within 'saveResponseVariablesInCloudDB'")
-		}
 
-		return err
+			return err
+		}
 
 	}
 
