@@ -1015,6 +1015,29 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveResponseVariabl
 		return err
 	}
 
+	// Check if empty structure as first element
+	if len(finalTestInstructionExecutionResultMessage.GetResponseVariables()) == 1 {
+
+		firstElement := finalTestInstructionExecutionResultMessage.GetResponseVariables()[0]
+
+		if firstElement == nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id": "73162064-2429-4a0f-8bd3-6fd9b8a517c6",
+				"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+				"firstElement": firstElement,
+			}).Debug("No Response variables to store in database, within 'saveResponseVariablesInCloudDB'")
+		} else {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id": "3ce897cb-be7d-40e3-b99c-8c29179c67bd",
+				"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+				"firstElement": firstElement,
+			}).Debug("No Response variables to store in database, within 'saveResponseVariablesInCloudDB'")
+		}
+
+		return err
+
+	}
+
 	var dataRowToBeInsertedMultiType []interface{}
 	var dataRowsToBeInsertedMultiType [][]interface{}
 	var sqlToExecute string
