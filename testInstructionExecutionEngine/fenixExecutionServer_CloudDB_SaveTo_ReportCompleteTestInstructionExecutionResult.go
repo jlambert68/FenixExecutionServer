@@ -993,7 +993,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveResponseVariabl
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"Id": "0cd14e8f-2459-4094-88f2-3fdc5df9c75c",
-		"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
+		"finalTestInstructionExecutionResultMessage":                             finalTestInstructionExecutionResultMessage,
+		"finalTestInstructionExecutionResultMessage.GetResponseVariables()":      finalTestInstructionExecutionResultMessage.GetResponseVariables(),
+		"len(finalTestInstructionExecutionResultMessage.GetResponseVariables())": len(finalTestInstructionExecutionResultMessage.GetResponseVariables()),
 	}).Debug("Entering: saveResponseVariablesInCloudDB()")
 
 	defer func() {
