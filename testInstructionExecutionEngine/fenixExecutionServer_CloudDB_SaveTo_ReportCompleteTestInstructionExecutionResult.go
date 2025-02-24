@@ -1003,7 +1003,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveResponseVariabl
 	}()
 
 	// Check if there are any response variables to store in Database
-	if len(finalTestInstructionExecutionResultMessage.GetResponseVariables()) == 0 {
+	if finalTestInstructionExecutionResultMessage.GetResponseVariables() == nil ||
+		len(finalTestInstructionExecutionResultMessage.GetResponseVariables()) == 0 {
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id": "7f909376-4aa6-4299-b656-bad52fe249ec",
 			"finalTestInstructionExecutionResultMessage": finalTestInstructionExecutionResultMessage,
