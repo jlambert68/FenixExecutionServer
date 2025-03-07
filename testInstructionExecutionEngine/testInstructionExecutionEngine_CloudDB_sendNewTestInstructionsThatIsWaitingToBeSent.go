@@ -1880,7 +1880,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateAttributeValu
 
 	sqlToExecute := ""
 
-	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestInstructionAttributesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestInstructionAttributesUnderExecutionChangeHistory\" "
 	sqlToExecute = sqlToExecute + "SET \"AttributeValueAsString\" = $1, "
 	sqlToExecute = sqlToExecute + "\"UpdateTimeStamp\" = $2 "
 	sqlToExecute = sqlToExecute + "WHERE "
