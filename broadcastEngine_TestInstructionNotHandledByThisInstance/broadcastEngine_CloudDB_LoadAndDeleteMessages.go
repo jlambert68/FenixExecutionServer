@@ -398,7 +398,9 @@ func deleteTestInstructionMessagesReceivedByWrongInstanceFromDatabaseInCloudDB(
 			"comandTag.RowsAffected()":     comandTag.RowsAffected(),
 		}).Error("Deleted number of rows is not the same as expected number of rows")
 
-		return errors.New("deleted number of rows is not the same as expected number of rows")
+		errorId := "48366730-ff00-4948-bc49-66ef48d4ead8"
+
+		return errors.New(fmt.Sprintf("deleted number of rows is not the same as expected number of rows [ErrorId: %s", errorId))
 
 	}
 
@@ -499,12 +501,15 @@ func prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstanc
 			"error":                        err,
 		}).Error("More than one instance found in database in 'prepareCountTestInstructionExecutionMessagesReceivedByWrongExecutionInstance'.")
 
+		errorId := "0fb8757a-7639-46f7-b522-548e1b2fe365"
+
 		foundInDatabase = false
 		err = errors.New(fmt.Sprintf("More than one instance found in database. ApplicationRuntimeUuid=%s; "+
-			"TestInstructionExecutionUuid=%s; TestInstructionVersion=%d",
+			"TestInstructionExecutionUuid=%s; TestInstructionVersion=%d [ErrorId: %s, errorId]",
 			common_config.ApplicationRuntimeUuid,
 			testInstructionExecutionUuid,
-			testInstructionVersion))
+			testInstructionVersion,
+			errorId))
 
 		return false, err
 

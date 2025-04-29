@@ -127,7 +127,11 @@ func GenerateTimeStampParserLayout(timeStampAsString string) (parserLayout strin
 			"timeStampParts[0]": timeStampParts[0],
 		}).Error("Date part has not the correct form, '2006-01-02'")
 
-		err = errors.New(fmt.Sprintf("Date part, '%s' has not the correct form, '2006-01-02'", timeStampParts[0]))
+		errorId := "4d331999-02e3-4cc2-b5a0-d2a2680f7d89"
+
+		err = errors.New(fmt.Sprintf("Date part, '%s' has not the correct form, '2006-01-02' [ErrorId: %s]",
+			timeStampParts[0],
+			errorId))
 
 		return "", err
 

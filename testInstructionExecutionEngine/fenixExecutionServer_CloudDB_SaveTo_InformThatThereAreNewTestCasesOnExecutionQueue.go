@@ -782,7 +782,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesExecut
 			"Id": "86d63010-7b02-47b1-a3f0-7846894395f6",
 		}).Debug("No transactions to process in 'saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB'. Shouldn't be like that!")
 
-		err = errors.New("no transactions to process in 'saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB'. Shouldn't be like that")
+		errorId := "d91ea8e0-973c-42d8-9446-a9ddbf8024ef"
+
+		err = errors.New(fmt.Sprintf("no transactions to process in 'saveTestCasesExecutionToTestCasesExecutionsForListingsSaveToCloudDB'. Shouldn't be like that. [ErrorId: %s]", errorId))
 
 		return err
 	}
@@ -921,7 +923,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCasePreview
 			"sqlToExecute":      sqlToExecute,
 		}).Error("There should always be exact one rows")
 
-		err = errors.New("there should always be exact one rows")
+		errorId := "24dd7924-0ff2-4899-b1b6-8e92ec5eb903"
+
+		err = errors.New(fmt.Sprintf("there should always be exact one rows. [ErrorId: %s]", errorId))
 
 		return nil, err
 
@@ -1570,7 +1574,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) testInstructionExec
 		// Extract the TestInstruction and add Execution OrderNumber
 		testInstructionSorted, existsInMap := testInstructionExecutionOrderMap[testInstruction.testInstructionUuid]
 		if existsInMap == false {
-			err = errors.New(fmt.Sprintf("couldn't find TestInstruction %s in 'testInstructionExecutionOrderMap'", testInstruction.testInstructionUuid))
+
+			errorId := "9c574bd3-5494-477f-aaf1-26ede3f281ce"
+
+			err = errors.New(fmt.Sprintf("couldn't find TestInstruction %s in 'testInstructionExecutionOrderMap' [ErrorId: %s]",
+				testInstruction.testInstructionUuid,
+				errorId))
 			return err
 		}
 		// Add order number to TestInstruction
@@ -1625,7 +1634,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstru
 			"elementsUuid": elementsUuid,
 		}).Error(elementsUuid + " could not be found in in map 'testCaseElementModelMap'")
 
-		err = errors.New(elementsUuid + " could not be found in in map 'testCaseElementModelMap'")
+		errorId := "1839091b-d76c-4b3c-819e-9c3d517e9698"
+
+		err = errors.New(fmt.Sprintf("%s could not be found in in map 'testCaseElementModelMap' [ErrorId: %s]",
+			elementsUuid,
+			errorId))
 
 		return err
 	}
@@ -1645,7 +1658,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstru
 				"elementsUuid": elementsUuid,
 			}).Error(elementsUuid + " testInstruction already exits in could not be found in in map 'testCaseElementModelMap'")
 
-			err = errors.New(elementsUuid + " testInstruction can already be found in in map 'testCaseElementModelMap'")
+			errorId := "ea7dcef1-659c-414e-9793-6f99152ae2f8"
+
+			err = errors.New(fmt.Sprintf("%s testInstruction can already be found in in map 'testCaseElementModelMap' [ErrorId: %s]",
+				elementsUuid,
+				errorId))
 
 			return err
 		}
@@ -1683,7 +1700,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstru
 				"currentElement.ParentElementUuid": currentElement.ParentElementUuid,
 			}).Error("parent element with uuid: " + currentElement.ParentElementUuid + " could not be found in in map 'testCaseElementModelMap'")
 
-			err = errors.New(elementsUuid + "parent element with uuid: " + currentElement.ParentElementUuid + " could not be found in in map 'testCaseElementModelMap'")
+			errorId := "6d133f40-0313-4ceb-9771-580d6d293406"
+
+			err = errors.New(fmt.Sprintf("%s parent element with uuid: %s could not be found in in map 'testCaseElementModelMap' [ErrorId: %s]",
+				elementsUuid,
+				currentElement.ParentElementUuid,
+				errorId))
 
 			return err
 		}
@@ -1700,7 +1722,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) recursiveTestInstru
 				"TestInstructionUUid": parentElement.MatureElementUuid,
 			}).Error("TestInstructionContainer: " + parentElement.MatureElementUuid + " could not be found in in map 'testInstructionContainerMap'")
 
-			err = errors.New("testInstructionContainer: " + parentElement.MatureElementUuid + " could not be found in in map 'testInstructionContainerMap'")
+			errorId := "d0757934-9c2a-488f-9dde-5362f408a9f4"
+
+			err = errors.New(fmt.Sprintf("testInstructionContainer: %s could not be found in in map 'testInstructionContainerMap' [ErrorId: %s]",
+				parentElement.MatureElementUuid,
+				errorId))
 
 			return err
 		}
@@ -1797,7 +1823,10 @@ func (a myAttrStruct) Value() (driver.Value, error) {
 func (a *myAttrStruct) Scan(value interface{}) error {
 	b, ok := value.([]byte)
 	if !ok {
-		return errors.New("type assertion to []byte failed")
+
+		errorId := "5ee90fed-02fc-4f9e-9927-dd0498ae3e6c"
+
+		return errors.New(fmt.Sprintf("type assertion to []byte failed [ErrorId: %s]", errorId))
 	}
 
 	return json.Unmarshal(b, &a)

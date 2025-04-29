@@ -346,7 +346,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 			}).Error("'*timeOutMapSlice[executionTrack]' does already contain an object for for the 'currentTimeOutMapKey'")
 
 			errorId := "af257654-4034-451d-9d1e-8385e2497264"
-			err = errors.New(fmt.Sprintf("'*timeOutMapSlice[executionTrack]' does already contain an object for for the 'currentTimeOutMapKey': '%s' [ErroId: %s]", currentTimeOutMapKey, errorId))
+			err = errors.New(fmt.Sprintf("'*timeOutMapSlice[executionTrack]' does already contain an object for for the 'currentTimeOutMapKey': '%s' [ErroId: %s]",
+				currentTimeOutMapKey, errorId))
 
 			return nil, err
 
@@ -396,7 +397,8 @@ func (testInstructionExecutionTimeOutEngineObject *TestInstructionTimeOutEngineO
 		}).Error("'*timeOutMapSlice[executionTrack]' doesn't have any object for 'currentTimeOutMapKey'")
 
 		errorId := "cc40f9db-fd3f-4963-af85-c6d3a63da58a"
-		err = errors.New(fmt.Sprintf("'*timeOutMapSlice[executionTrack]'doesn't have any object for 'currentTimeOutMapKey': '%s' [ErroId: %s]", currentTimeOutMapKey, errorId))
+		err = errors.New(fmt.Sprintf("'*timeOutMapSlice[executionTrack]'doesn't have any object for 'currentTimeOutMapKey': '%s' [ErroId: %s]",
+			currentTimeOutMapKey, errorId))
 
 		return err
 

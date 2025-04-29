@@ -481,7 +481,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 			}).Error(fmt.Sprintf("Couldn't find TestInstructionExecutionStatus in 'statusOrderDecisionMap'"))
 
 			errorId := "859de457-d6d8-4e23-8691-7581adfb7738"
-			err = errors.New(fmt.Sprintf("Couldn't find TestInstructionExecutionStatus, '%s', in 'statusOrderDecisionMap'. [ErrorID='%s']", currentStatus, errorId))
+			err = errors.New(fmt.Sprintf("Couldn't find TestInstructionExecutionStatus, '%s', in 'statusOrderDecisionMap'. [ErrorID='%s']",
+				currentStatus, errorId))
 
 			return nil, err
 		}
@@ -553,6 +554,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 		default:
 			// Unhandled ruleResult
 			errorId := "d3ce2635-cb4e-4574-a4ce-a791bac049ed"
+
 			err = errors.New(fmt.Sprintf("Unhandled ruleResult: '%s'. [ErrorID='%s']", ruleResult, errorId))
 
 			return nil, err
@@ -836,7 +838,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		if len(testCasesUnderExecution) != 1 {
 			errorId := "cc47776a-959f-496a-821b-8a6e6e711549"
 
-			err = errors.New(fmt.Sprintf("TestICaseExecutionUuid '%s' with Execution Version Number '%s' is missing in Table [ErroId: %s]", testCaseExecutionStatusMessage.TestCaseExecutionUuid, testCaseExecutionStatusMessage.TestCaseExecutionVersion, errorId))
+			err = errors.New(fmt.Sprintf("TestICaseExecutionUuid '%s' with Execution Version Number '%s' is missing in Table [ErroId: %s]",
+				testCaseExecutionStatusMessage.TestCaseExecutionUuid, testCaseExecutionStatusMessage.TestCaseExecutionVersion, errorId))
 
 			common_config.Logger.WithFields(logrus.Fields{
 				"Id": "99420b20-0bbc-420d-8123-b7b7e5f8eac7",
@@ -907,7 +910,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateTestCaseExecu
 		if comandTag.RowsAffected() != 1 {
 			errorId := "e3df8260-d463-4644-b999-6e6e94b54956"
 
-			err = errors.New(fmt.Sprintf("TestICaseExecutionUuid '%s' with Execution Version Number '%s' is missing in Table [ErroId: %s]", testCaseExecutionStatusMessage.TestCaseExecutionUuid, testCaseExecutionStatusMessage.TestCaseExecutionVersion, errorId))
+			err = errors.New(fmt.Sprintf("TestICaseExecutionUuid '%s' with Execution Version Number '%s' is missing in Table [ErroId: %s]",
+				testCaseExecutionStatusMessage.TestCaseExecutionUuid, testCaseExecutionStatusMessage.TestCaseExecutionVersion, errorId))
 
 			common_config.Logger.WithFields(logrus.Fields{
 				"Id": "76be13be-8649-41e2-b7f2-3b5e54e26192",
@@ -1059,7 +1063,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionStatus\" "
-	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestCasesUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = %d ",
 		testCaseExecutionStatusMessages.TestCaseExecutionUuid,
@@ -1113,7 +1117,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	// If number of rows <> 1 then there is a problem
 	if numberOfRowFromDB != 1 {
 
-		err = errors.New("number of rows in database response was not exact 1 row")
+		errorId := "537693e3-7b8e-464e-b272-f3482b315284"
+
+		err = errors.New(fmt.Sprintf("number of rows in database response was not exact 1 row, found %d rows. [ErrorId: %s]",
+			numberOfRowFromDB, errorId))
 
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id":                "0bf8a0ed-d9c8-4137-97da-6d16e12502d5",

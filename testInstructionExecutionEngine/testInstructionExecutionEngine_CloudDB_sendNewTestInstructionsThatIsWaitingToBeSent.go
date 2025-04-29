@@ -501,7 +501,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	// Log SQL to be executed if Environment variable is true
 	if common_config.LogAllSQLs == true {
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "eb59969b-d76c-46fd-9d54-f6fa53c28113",
+			"Id":           "41300f84-7814-4a14-9e80-f515028fbadc",
 			"sqlToExecute": sqlToExecute,
 		}).Debug("SQL to be executed within 'loadNewTestInstructionToBeSentToExecutionWorkers'")
 	}
@@ -1099,8 +1099,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 						return err
 					}
 
-					// Store the updated Attribute in 'TestInstructionAttributesUnderExecutionChangeHistory'
-					err = executionEngine.updateAttributeValueForTemplateValueOrResponseValueInCloudDB(
+					// Make a copy
+					err = executionEngine.makeAttributeExecutionCopyAndUpdateAttributeValueForTemplateInCloudDB(
 						dbTransaction,
 						tempTestInstructionExecutionUuid,
 						tempTestInstructionExecutionVersion,
@@ -1109,14 +1109,34 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 					if err != nil {
 						common_config.Logger.WithFields(logrus.Fields{
-							"Id":              "1dc8591b-fa9e-45df-a0a1-1f4999f5421f",
+							"Id":              "bbef22bd-51f1-485d-b6fc-c4b14a1accc8",
 							"TestInstruction": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction,
-							"err":             err.Error(),
-						}).Error("Got some error when processing 'updateAttributeValueForTemplateValueOrResponseValueInCloudDB' towards database")
+						}).Error("Couldn't save the Template back to the Attribute in the Database ")
 
 						return err
 					}
 
+					/*
+						// Store the updated Attribute in 'TestInstructionAttributesUnderExecutionChangeHistory'
+						err = executionEngine.updateAttributeValueForTemplateValueOrResponseValueInCloudDB(
+							dbTransaction,
+							tempTestInstructionExecutionUuid,
+							tempTestInstructionExecutionVersion,
+							tempTestInstructionAttributeUuid,
+							responseValueFromPreviousTestInstructionExecution)
+
+						if err != nil {
+							common_config.Logger.WithFields(logrus.Fields{
+								"Id":              "1dc8591b-fa9e-45df-a0a1-1f4999f5421f",
+								"TestInstruction": testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.TestInstruction,
+								"err":             err.Error(),
+							}).Error("Got some error when processing 'updateAttributeValueForTemplateValueOrResponseValueInCloudDB' towards database")
+
+							return err
+						}
+
+
+					*/
 					// Add the response value to the attribute
 					tempTestInstructionAttribute.AttributeValueAsString = responseValueFromPreviousTestInstructionExecution
 
@@ -1235,11 +1255,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT rvue.\"ResponseVariableValueAsString\", " +
 		"rvue.\"TestInstructionExecutionUuid\", rvue.\"TestInstructionExecutionVersion\", " +
-		"rvue.\"TestInstructionAttributeUuid\" "
-	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"ResponseVariablesUnderExecution\" rvue "
+		"tiaue.\"TestInstructionAttributeUuid\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"ResponseVariablesUnderExecution\" rvue, " +
+		"\"FenixExecution\".\"TestInstructionAttributesUnderExecution\" tiaue "
 	sqlToExecute = sqlToExecute + "WHERE rvue.\"TestCaseExecutionUuid\" = '" + tempTestCaseExecutionUuid + "' AND " +
 		"rvue.\"TestCaseExecutionVersion\" = " + strconv.Itoa(tempTestCaseExecutionVersion) + " AND " +
-		"rvue.\"MatureTestInstructionUuid\" IN (" + potentialMatureTestInstructionUuidList + ") "
+		"rvue.\"MatureTestInstructionUuid\" IN (" + potentialMatureTestInstructionUuidList + ") AND " +
+		"rvue.\"TestInstructionExecutionUuid\" = tiaue.\"TestInstructionExecutionUuid\" "
 	sqlToExecute = sqlToExecute + "ORDER BY rvue.\"InsertedTimeStamp\" DESC "
 	sqlToExecute = sqlToExecute + "LIMIT 1; "
 
@@ -1302,22 +1324,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 		defer conn.Close(context.Background())
 	}
 
-	rows, err := conn.Query(ctx, sqlToExecute)
-	defer rows.Close()
-
-	if err != nil {
-		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":           "02481f29-792a-4baf-bf91-155e13d75517",
-			"Error":        err,
-			"sqlToExecute": sqlToExecute,
-		}).Error("Something went wrong when executing SQL")
-
-		return "", 0, "", "", err
-	}
-
-	// Extract data from DB result set
-	var foundRow bool
-
 	// Set the number of retries to find a ResponseVariable. Need more than one due fast execution speed
 	var foundRowRetry int
 	var foundRowRetries int
@@ -1325,6 +1331,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	foundRowRetries = 10
 
 	for {
+
+		rows, err := conn.Query(ctx, sqlToExecute)
+		defer rows.Close()
+
+		if err != nil {
+			executionEngine.logger.WithFields(logrus.Fields{
+				"Id":           "02481f29-792a-4baf-bf91-155e13d75517",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when executing SQL")
+
+			return "", 0, "", "", err
+		}
+
+		// Extract data from DB result set
+		var foundRow bool
+
 		for rows.Next() {
 
 			err = rows.Scan(
@@ -1360,21 +1383,44 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 				"potentialMatureTestInstructionUuidList": potentialMatureTestInstructionUuidList,
 				"sqlToExecute":                           sqlToExecute,
 				"foundRowRetry":                          foundRowRetry,
-			}).Error("Couldn't find any ResponseVariable row in database, should never happen")
+			}).Warning("Couldn't find any ResponseVariable row in database")
 
 			// Check if max number of retries was achieved
 			if foundRowRetry == foundRowRetries {
-				err = errors.New("couldn't find any ResponseVariable row in database, should never happen")
+
+				errorId := "cd4c1cac-30cb-442d-8711-9f47d015e06e"
+
+				err = errors.New(fmt.Sprintf("couldn't find any ResponseVariable row in database, should never happen [ErrorId: %s]",
+					errorId))
+
+				executionEngine.logger.WithFields(logrus.Fields{
+					"Id":                                     "e456ec99-baef-42f4-a0a7-a88b3b696373",
+					"Error":                                  err,
+					"tempTestCaseExecutionUuid":              tempTestCaseExecutionUuid,
+					"tempTestCaseExecutionVersion":           tempTestCaseExecutionVersion,
+					"potentialMatureTestInstructionUuidList": potentialMatureTestInstructionUuidList,
+					"sqlToExecute":                           sqlToExecute,
+					"foundRowRetry":                          foundRowRetry,
+				}).Error("Couldn't find any ResponseVariable row in database. Should never happen")
 
 				return "", 0, "", "", err
 			}
-		}
 
-		if foundRowRetry != foundRowRetries {
 			// Sleep for a short while and then continue look for ResponseVariable
 			time.Sleep(1000 * time.Millisecond)
 			foundRowRetry = foundRowRetry + 1
+
 		} else {
+
+			executionEngine.logger.WithFields(logrus.Fields{
+				"Id":                                     "e456ec99-baef-42f4-a0a7-a88b3b696373",
+				"Error":                                  err,
+				"tempTestCaseExecutionUuid":              tempTestCaseExecutionUuid,
+				"tempTestCaseExecutionVersion":           tempTestCaseExecutionVersion,
+				"potentialMatureTestInstructionUuidList": potentialMatureTestInstructionUuidList,
+				"sqlToExecute":                           sqlToExecute,
+				"foundRowRetry":                          foundRowRetry,
+			}).Debug("Found ResponseVariable row in database.")
 
 			break
 		}
@@ -1521,7 +1567,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestDataToBeSen
 	// There can't be more than 1 row
 	if rowCounter > 1 {
 
-		err = errors.New("more then one row was found in database, regarding TestData for a TestCase")
+		errorId := "f7c183ef-d9bf-493e-9154-8735780c53a6"
+
+		err = errors.New(fmt.Sprintf("more then one row was found in database, regarding TestData for a TestCase [ErrorId: %s]",
+			errorId))
 
 		executionEngine.logger.WithFields(logrus.Fields{
 			"Id":           "b6b1363f-69f4-46a4-b3d5-16d76a660677",
@@ -1790,6 +1839,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) makeAttributeExecut
 	tempAttributeValueAsString string) (
 	err error) {
 
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                                  "434b8652-a5e5-4dee-b327-e36e77ce0b09",
+		"tempTestInstructionExecutionUuid":    tempTestInstructionExecutionUuid,
+		"tempTestInstructionExecutionVersion": tempTestInstructionExecutionVersion,
+		"tempTestInstructionAttributeUuid":    tempTestInstructionAttributeUuid,
+		"tempAttributeValueAsString":          tempAttributeValueAsString,
+	}).Debug("Incoming 'makeAttributeExecutionCopyAndUpdateAttributeValueForTemplateInCloudDB'")
+
+	defer common_config.Logger.WithFields(logrus.Fields{
+		"id": "45d4ae25-51a8-4728-9577-343b9232c826",
+	}).Debug("Outgoing 'makeAttributeExecutionCopyAndUpdateAttributeValueForTemplateInCloudDB'")
+
 	// Get a common dateTimeStamp to use
 	//currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
 
@@ -1809,7 +1870,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) makeAttributeExecut
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "5b45572d-4389-46e0-a93b-81fa2bdd51da",
 			"sqlToExecute": sqlToExecute,
-		}).Debug("SQL to be executed within 'updateAttributeValueForTemplateValueOrResponseValueInCloudDB'")
+		}).Debug("SQL to be executed within 'makeAttributeExecutionCopyAndUpdateAttributeValueForTemplateInCloudDB'")
 	}
 
 	// Execute Query CloudDB
@@ -1850,12 +1911,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) makeAttributeExecut
 	} else {
 
 		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":           "a33637e5-5565-4794-b1f3-b43789213d76",
+			"Id":           "fe8fd77d-26ff-4b94-bfee-f1abbc1159d5",
 			"Error":        err,
 			"sqlToExecute": sqlToExecute,
 		}).Error("Expected to have exact one row effected")
 
-		err = errors.New("expected to have exact one row effected")
+		errorId := "213e5da6-827e-4613-acc6-6521e183c2e3"
+
+		err = errors.New(fmt.Sprintf("expected to have exact one row effected [%s]", errorId))
 
 	}
 
@@ -1872,6 +1935,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateAttributeValu
 	tempAttributeValueAsString string) (
 	err error) {
 
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                                  "0de6aeb3-baac-4e75-b4f4-88a9f47a7a80",
+		"tempTestInstructionExecutionUuid":    tempTestInstructionExecutionUuid,
+		"tempTestInstructionExecutionVersion": tempTestInstructionExecutionVersion,
+		"tempTestInstructionAttributeUuid":    tempTestInstructionAttributeUuid,
+		"tempAttributeValueAsString":          tempAttributeValueAsString,
+	}).Debug("Incoming 'updateAttributeValueForTemplateValueOrResponseValueInCloudDB'")
+
+	defer common_config.Logger.WithFields(logrus.Fields{
+		"id": "5f7b95d6-43cb-4a71-8522-a23b35af0925",
+	}).Debug("Outgoing 'updateAttributeValueForTemplateValueOrResponseValueInCloudDB'")
+
 	// Get a common dateTimeStamp to use
 	//currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
 
@@ -1880,14 +1955,36 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateAttributeValu
 
 	sqlToExecute := ""
 
-	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestInstructionAttributesUnderExecutionChangeHistory\" "
-	sqlToExecute = sqlToExecute + "SET \"AttributeValueAsString\" = $1, "
-	sqlToExecute = sqlToExecute + "\"UpdateTimeStamp\" = $2 "
+	/*
+		sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestInstructionAttributesUnderExecutionChangeHistory\" "
+		sqlToExecute = sqlToExecute + "SET \"AttributeValueAsString\" = $1, "
+		sqlToExecute = sqlToExecute + "\"UpdateTimeStamp\" = $2 "
+		sqlToExecute = sqlToExecute + "WHERE "
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionUuid\" = '%s' AND ", tempTestInstructionExecutionUuid)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = %d AND ", tempTestInstructionExecutionVersion)
+		sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionAttributeUuid\" = '%s' ", tempTestInstructionAttributeUuid)
+		sqlToExecute = sqlToExecute + "ORDER BY \"UpdateTimeStamp\" DESC "
+		sqlToExecute = sqlToExecute + "LIMIT 1 "
+		sqlToExecute = sqlToExecute + "; "
+
+
+	*/
+	sqlToExecute = sqlToExecute + "WITH row AS ( "
+	sqlToExecute = sqlToExecute + "SELECT \"UniqueId_New\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionAttributesUnderExecutionChangeHistory\" "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionUuid\" = '%s' AND ", tempTestInstructionExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = %d AND ", tempTestInstructionExecutionVersion)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionAttributeUuid\" = '%s' ", tempTestInstructionAttributeUuid)
-	sqlToExecute = sqlToExecute + "; "
+	sqlToExecute = sqlToExecute + "ORDER BY \"UpdateTimeStamp\" DESC "
+	sqlToExecute = sqlToExecute + "LIMIT 1) "
+
+	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestInstructionAttributesUnderExecutionChangeHistory\" "
+	sqlToExecute = sqlToExecute + "SET \"AttributeValueAsString\" = $1, "
+	sqlToExecute = sqlToExecute + "\"UpdateTimeStamp\" = $2 "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + "\"UniqueId_New\" IN (SELECT \"UniqueId_New\" FROM row) "
+	sqlToExecute = sqlToExecute + ";"
 
 	// Log SQL to be executed if Environment variable is true
 	if common_config.LogAllSQLs == true {
@@ -1909,9 +2006,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateAttributeValu
 
 	if err != nil {
 		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":           "ace63a67-74fd-4b89-a2c7-34b9cbddedcc",
-			"Error":        err,
-			"sqlToExecute": sqlToExecute,
+			"Id":                         "ace63a67-74fd-4b89-a2c7-34b9cbddedcc",
+			"Error":                      err,
+			"sqlToExecute":               sqlToExecute,
+			"tempAttributeValueAsString": tempAttributeValueAsString,
+			"updateTimeStamp":            updateTimeStamp,
 		}).Error("Something went wrong when executing SQL")
 
 		return err
@@ -1932,12 +2031,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateAttributeValu
 	if comandTag.RowsAffected() != 1 {
 
 		executionEngine.logger.WithFields(logrus.Fields{
-			"Id":           "a33637e5-5565-4794-b1f3-b43789213d76",
-			"Error":        err,
-			"sqlToExecute": sqlToExecute,
+			"Id":                         "a33637e5-5565-4794-b1f3-b43789213d76",
+			"Error":                      err,
+			"sqlToExecute":               sqlToExecute,
+			"tempAttributeValueAsString": tempAttributeValueAsString,
+			"updateTimeStamp":            updateTimeStamp,
+			"comandTag.RowsAffected()":   comandTag.RowsAffected(),
 		}).Error("Expected to have exact one row effected")
 
-		err = errors.New("expected to have exact one row effected")
+		errorId := "28ce490e-34dd-4548-83b3-59828acf7bbe"
+
+		err = errors.New(fmt.Sprintf("expected to have exact one row effected, found %d rows [ErrorId %s]",
+			comandTag.RowsAffected(),
+			errorId))
 	}
 
 	// No errors occurred

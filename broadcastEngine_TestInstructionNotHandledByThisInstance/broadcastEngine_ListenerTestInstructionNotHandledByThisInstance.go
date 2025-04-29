@@ -41,7 +41,10 @@ func BroadcastListener() error {
 	var broadcastingMessageForExecutions common_config.BroadcastingMessageForTestInstructionExecutionsStruct
 
 	if fenixSyncShared.DbPool == nil {
-		return errors.New("empty pool reference")
+
+		errorId := "727d6953-0ecb-4384-b55a-a9d29fcc0e1a"
+
+		return errors.New("empty pool reference ErrorId: " + errorId)
 	}
 
 	conn, err := fenixSyncShared.DbPool.Acquire(context.Background())

@@ -16,7 +16,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 		"id": "230ffb54-d8b4-453b-80d8-2b626e1e4f8a",
 	}).Debug("Incoming 'SendAreYouAliveToExecutionWorkerServer'")
 
-	common_config.Logger.WithFields(logrus.Fields{
+	defer common_config.Logger.WithFields(logrus.Fields{
 		"id": "fa125592-f4a9-4f45-a412-a3fa9ac1c7c3",
 	}).Debug("Outgoing 'SendAreYouAliveToExecutionWorkerServer'")
 

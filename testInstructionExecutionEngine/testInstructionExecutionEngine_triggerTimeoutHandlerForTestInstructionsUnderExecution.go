@@ -215,8 +215,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTimed
 
 	// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
 	if comandTag.RowsAffected() != 1 {
+
 		errorId := "189d8c7f-6d35-42e4-8f89-f41a8a3f2128"
-		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' with TestInstructionExecutionVersion '%s' is missing in Table: 'TestInstructionsUnderExecution' [ErroId: %s]", testInstructionExecutionUuid, testInstructionExecutionVersion, errorId))
+
+		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' with TestInstructionExecutionVersion '%s' is missing in Table: 'TestInstructionsUnderExecution' [ErroId: %s]",
+			testInstructionExecutionUuid, testInstructionExecutionVersion, errorId))
 
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id":                           "9b4fc6ed-8083-443a-a523-660df7b94ae5",

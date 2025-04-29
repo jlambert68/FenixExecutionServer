@@ -37,6 +37,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 	if doCommitNotRoleBack == true {
 		dbTransaction.Commit(context.Background())
 
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":                       "7376250d-1fe2-4d44-a465-cf8adb0c6227",
+			"testInstructionExecution": testInstructionExecution,
+		}).Debug("Performing a Commit in 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
+
 		// Only broadcast message if it should be broadcasted
 		if messageShallBeBroadcasted == true {
 
@@ -198,6 +203,16 @@ func (executionEngine *TestInstructionExecutionEngineStruct) commitOrRoleBackRep
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB(
 	executionTrackNumber int,
 	finalTestInstructionExecutionResultMessage *fenixExecutionServerGrpcApi.FinalTestInstructionExecutionResultMessage) (ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                           "fd991d5e-a1b2-4005-9342-c17bf64e9a93",
+		"TestInstructionExecutionUuid": finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
+	}).Debug("Entering 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                           "c471da25-22ca-4a38-be2a-6fb0f020d43e",
+		"TestInstructionExecutionUuid": finalTestInstructionExecutionResultMessage.TestInstructionExecutionUuid,
+	}).Debug("Exiting 'prepareReportCompleteTestInstructionExecutionResultSaveToCloudDB'")
 
 	// Verify that the ExecutionStatus is a final status
 	// (0, 'TestCaseExecutionStatusEnum_DEFAULT_NOT_SET' -> NOT OK
@@ -691,8 +706,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestI
 
 	// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
 	if comandTag.RowsAffected() != 1 {
+
 		errorId := "89e28340-64cd-40f3-921f-caa7729c5d0b"
-		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' is missing in Table [ErroId: %s]", testInstructionExecutionUuid, errorId))
+
+		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' is missing in Table [ErroId: %s]",
+			testInstructionExecutionUuid,
+			errorId))
 
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id":                           "e2a88e5e-a3b0-47d4-b867-93324126fbe7",
@@ -1239,7 +1258,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) areAllOngoingTestIn
 			"currentTestCaseExecutions": currentTestCaseExecutions,
 		}).Error("Did not found exact one TestCaseExecutionUuid")
 
-		err = errors.New("Did not found exact one TestCaseExecutionUuid")
+		errorId := "9ffa3ddd-c748-41b2-8746-8ab88afcf35b"
+
+		err = errors.New(fmt.Sprintf("Did not found exact one TestCaseExecutionUuid [ErrorId: %s]", errorId))
 
 		return nil, err
 	}
@@ -1451,7 +1472,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			"Number of Rows": len(testInstructionExecutionBroadcastMessages),
 		}).Error("The result gave not exactly ONE row from database")
 
-		return nil, errors.New("the result gave not exactly ONE row from database")
+		errorId := "c3fa8483-6b14-4db2-b013-c22353a905fc"
+
+		return nil, errors.New(fmt.Sprintf("the result gave not exactly ONE row from database. Found %d rows. [ErrorId: %s]",
+			len(testInstructionExecutionBroadcastMessages),
+			errorId))
 
 	}
 
