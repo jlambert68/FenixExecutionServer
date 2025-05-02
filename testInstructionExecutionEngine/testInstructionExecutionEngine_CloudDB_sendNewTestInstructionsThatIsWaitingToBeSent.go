@@ -1079,12 +1079,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 					var tempTestInstructionExecutionVersion int
 					var tempTestInstructionAttributeUuid string
 					var responseValueFromPreviousTestInstructionExecution string
+
+					tempTestInstructionAttributeUuid = tempTestInstructionAttribute.GetTestInstructionAttributeUuid()
+
 					tempTestInstructionExecutionUuid,
 						tempTestInstructionExecutionVersion,
-						tempTestInstructionAttributeUuid,
-						responseValueFromPreviousTestInstructionExecution, err = executionEngine.
+						responseValueFromPreviousTestInstructionExecution,
+						err = executionEngine.
 						loadResponseVariableToUseForAttribute(
-							dbTransaction,
 							testInstructionToBeSentToExecutionWorkers.processTestInstructionExecutionRequest.
 								TestInstruction,
 							testInstructionToBeSentToExecutionWorkers)
@@ -1201,13 +1203,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) sendTestInstruction
 
 // Load the response variable that was previously sent back from Connector in another TestInstructionExecution
 func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariableToUseForAttribute(
-	dbTransaction pgx.Tx,
 	testInstruction *fenixExecutionWorkerGrpcApi.
 		ProcessTestInstructionExecutionReveredRequest_TestInstructionExecutionMessage,
 	testInstructionToBeSentToExecutionWorkers *processTestInstructionExecutionRequestAndResponseMessageContainer) (
 	tempTestInstructionExecutionUuid string,
 	tempTestInstructionExecutionVersion int,
-	tempTestInstructionAttributeUuid string,
 	responseValueFromPreviousTestInstructionExecution string,
 	err error) {
 
@@ -1229,6 +1229,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	var tempTestCaseExecutionVersion int
 	tempTestCaseExecutionUuid = testInstructionToBeSentToExecutionWorkers.testCaseExecutionUuid
 	tempTestCaseExecutionVersion = testInstructionToBeSentToExecutionWorkers.testCaseExecutionVersion
+
+	// Variables to respond with
+	tempTestInstructionExecutionUuid = testInstruction.TestInstructionExecutionUuid
+	tempTestInstructionExecutionVersion = int(testInstruction.TestInstructionExecutionVersion)
+
+	// Map to find out the attribute which TestInstruction
 
 	// Extract MatureTestInstructionUuid, from Attribute, to use in SQL
 	var potentialMatureTestInstructionUuidList string
@@ -1254,14 +1260,14 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	// *** Process TestInstructions ***
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "SELECT rvue.\"ResponseVariableValueAsString\", " +
-		"rvue.\"TestInstructionExecutionUuid\", rvue.\"TestInstructionExecutionVersion\", " +
-		"tiaue.\"TestInstructionAttributeUuid\" "
+		"rvue.\"TestInstructionExecutionUuid\", rvue.\"TestInstructionExecutionVersion\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"ResponseVariablesUnderExecution\" rvue, " +
 		"\"FenixExecution\".\"TestInstructionAttributesUnderExecution\" tiaue "
-	sqlToExecute = sqlToExecute + "WHERE rvue.\"TestCaseExecutionUuid\" = '" + tempTestCaseExecutionUuid + "' AND " +
+	sqlToExecute = sqlToExecute + "WHERE " +
+		"rvue.\"TestCaseExecutionUuid\" = '" + tempTestCaseExecutionUuid + "' AND " +
 		"rvue.\"TestCaseExecutionVersion\" = " + strconv.Itoa(tempTestCaseExecutionVersion) + " AND " +
-		"rvue.\"MatureTestInstructionUuid\" IN (" + potentialMatureTestInstructionUuidList + ") AND " +
-		"rvue.\"TestInstructionExecutionUuid\" = tiaue.\"TestInstructionExecutionUuid\" "
+		"rvue.\"MatureTestInstructionUuid\" IN (" + potentialMatureTestInstructionUuidList + ") "
+	//"rvue.\"TestInstructionExecutionUuid\" = tiaue.\"TestInstructionExecutionUuid\" "
 	sqlToExecute = sqlToExecute + "ORDER BY rvue.\"InsertedTimeStamp\" DESC "
 	sqlToExecute = sqlToExecute + "LIMIT 1; "
 
@@ -1270,7 +1276,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "eb59969b-d76c-46fd-9d54-f6fa53c28113",
 			"sqlToExecute": sqlToExecute,
-		}).Debug("SQL to be executed within 'loadNewTestInstructionToBeSentToExecutionWorkers'")
+		}).Debug("SQL to be executed within 'loadResponseVariableToUseForAttribute'")
 	}
 
 	// Query DB
@@ -1317,7 +1323,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 			"err": err,
 		}).Error("Unable to connect to database")
 
-		return "", 0, "", "", err
+		return "", 0, "", err
 
 	} else {
 
@@ -1329,6 +1335,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 	var foundRowRetries int
 	foundRowRetry = 1
 	foundRowRetries = 10
+
+	// temp variables
+	var tempTIEUuid string
+	var tempTIExecutionVersion int
 
 	for {
 
@@ -1342,7 +1352,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 				"sqlToExecute": sqlToExecute,
 			}).Error("Something went wrong when executing SQL")
 
-			return "", 0, "", "", err
+			return "", 0, "", err
 		}
 
 		// Extract data from DB result set
@@ -1352,9 +1362,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 
 			err = rows.Scan(
 				&responseValueFromPreviousTestInstructionExecution,
-				&tempTestInstructionExecutionUuid,
-				&tempTestInstructionExecutionVersion,
-				&tempTestInstructionAttributeUuid,
+				&tempTIEUuid,
+				&tempTIExecutionVersion,
 			)
 
 			if err != nil {
@@ -1365,7 +1374,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 					"sqlToExecute": sqlToExecute,
 				}).Error("Something went wrong when processing result from database")
 
-				return "", 0, "", "", err
+				return "", 0, "", err
 			}
 
 			foundRow = true
@@ -1403,7 +1412,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 					"foundRowRetry":                          foundRowRetry,
 				}).Error("Couldn't find any ResponseVariable row in database. Should never happen")
 
-				return "", 0, "", "", err
+				return "", 0, "", err
 			}
 
 			// Sleep for a short while and then continue look for ResponseVariable
@@ -1429,7 +1438,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadResponseVariabl
 
 	return tempTestInstructionExecutionUuid,
 		tempTestInstructionExecutionVersion,
-		tempTestInstructionAttributeUuid,
 		responseValueFromPreviousTestInstructionExecution,
 		err
 
@@ -1830,6 +1838,90 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 
 }
 
+// Copy Attribute to 'TestInstructionAttributesUnderExecutionChangeHistory' table
+func (executionEngine *TestInstructionExecutionEngineStruct) makeAttributeExecutionCopyInChangeHistoryInCloudDB(
+	dbTransaction pgx.Tx,
+	tempTestInstructionExecutionUuid string,
+	tempTestInstructionExecutionVersion int,
+	tempTestInstructionAttributeUuid string) (
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"id":                                  "af955b3d-a6a2-4d41-af37-e258426530d6",
+		"tempTestInstructionExecutionUuid":    tempTestInstructionExecutionUuid,
+		"tempTestInstructionExecutionVersion": tempTestInstructionExecutionVersion,
+		"tempTestInstructionAttributeUuid":    tempTestInstructionAttributeUuid,
+	}).Debug("Incoming 'makeAttributeExecutionCopyInChangeHistoryInCloudDB'")
+
+	defer common_config.Logger.WithFields(logrus.Fields{
+		"id": "a400a95d-ee60-40ba-8de5-45090d368cba",
+	}).Debug("Outgoing 'makeAttributeExecutionCopyInChangeHistoryInCloudDB'")
+
+	// Get a common dateTimeStamp to use
+	//currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "INSERT INTO \"FenixExecution\".\"TestInstructionAttributesUnderExecutionChangeHistory\" "
+
+	sqlToExecute = sqlToExecute + "SELECT * "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionAttributesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionUuid\" = '%s' AND ", tempTestInstructionExecutionUuid)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = %d AND ", tempTestInstructionExecutionVersion)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionAttributeUuid\" = '%s' ", tempTestInstructionAttributeUuid)
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "533b44ec-6c5e-4822-ba96-d50f9fbc624e",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'makeAttributeExecutionCopyInChangeHistoryInCloudDB'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "7f602464-9fa6-48a0-9b98-c21ef0cc9f1d",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	executionEngine.logger.WithFields(logrus.Fields{
+		"Id":                       "8cfd8ffd-4928-4ce7-ae79-3812e51d6b46",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// Secure that exact one row was affected
+	if comandTag.RowsAffected() != 1 {
+
+		executionEngine.logger.WithFields(logrus.Fields{
+			"Id":           "f0d46170-0846-44a1-8639-06b1684de67a",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Expected to have exact one row effected")
+
+		errorId := "fc40ae27-489e-42a3-a204-363f9b593f3a"
+
+		err = errors.New(fmt.Sprintf("expected to have exact one row effected [%s]", errorId))
+
+	}
+
+	return err
+
+}
+
 // Copy Attribute to 'TestInstructionAttributesUnderExecutionChangeHistory' table and add new version of Attribute that has attribute value change
 func (executionEngine *TestInstructionExecutionEngineStruct) makeAttributeExecutionCopyAndUpdateAttributeValueForTemplateInCloudDB(
 	dbTransaction pgx.Tx,
@@ -1943,6 +2035,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateAttributeValu
 		"tempAttributeValueAsString":          tempAttributeValueAsString,
 	}).Debug("Incoming 'updateAttributeValueForTemplateValueOrResponseValueInCloudDB'")
 
+	fmt.Println("tempTestInstructionExecutionUuid", tempTestInstructionExecutionUuid)
+	fmt.Println("tempTestInstructionExecutionVersion", tempTestInstructionExecutionVersion)
+	fmt.Println("tempTestInstructionAttributeUuid", tempTestInstructionAttributeUuid)
+	fmt.Println("tempAttributeValueAsString", tempAttributeValueAsString)
+
 	defer common_config.Logger.WithFields(logrus.Fields{
 		"id": "5f7b95d6-43cb-4a71-8522-a23b35af0925",
 	}).Debug("Outgoing 'updateAttributeValueForTemplateValueOrResponseValueInCloudDB'")
@@ -1976,7 +2073,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateAttributeValu
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionUuid\" = '%s' AND ", tempTestInstructionExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionExecutionVersion\" = %d AND ", tempTestInstructionExecutionVersion)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionAttributeUuid\" = '%s' ", tempTestInstructionAttributeUuid)
-	sqlToExecute = sqlToExecute + "ORDER BY \"UpdateTimeStamp\" DESC "
+	sqlToExecute = sqlToExecute + "ORDER BY \"UniqueId_New\" DESC "
 	sqlToExecute = sqlToExecute + "LIMIT 1) "
 
 	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestInstructionAttributesUnderExecutionChangeHistory\" "

@@ -504,6 +504,8 @@ type tempTestInstructionInTestCaseStruct struct {
 // Stores a slice of attributes to be stored in Cloud-DB
 type tempAttributesType []tempAttributeStruct
 type tempAttributeStruct struct {
+	testCaseExecutionUuid            string
+	testInstructionName              string
 	testInstructionExecutionUuid     string
 	testInstructionAttributeType     int
 	TestInstructionAttributeUuid     string
@@ -1273,7 +1275,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 			newTestInstructionExecutionUuid = uuidGenerator.New().String()
 
 			// Loop attributes for TestInstructions and add Map, to be saved in Cloud-DB (on other function)
-			var attributesSliceToStoreInDB tempAttributesType
+			var attributesSliceForTestInstructionToStoreInDB tempAttributesType
 
 			for _, attribute := range testInstruction.MatureTestInstructionInformation.TestInstructionAttributesList {
 
@@ -1284,6 +1286,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 
 				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_TEXTBOX:
 					attributeToStoreInDB = tempAttributeStruct{
+						testCaseExecutionUuid:            testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionUuid,
+						testInstructionName:              testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
 						testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
 						testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
 						TestInstructionAttributeUuid:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
@@ -1297,6 +1301,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 
 				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_COMBOBOX:
 					attributeToStoreInDB = tempAttributeStruct{
+						testCaseExecutionUuid:            testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionUuid,
+						testInstructionName:              testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
 						testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
 						testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
 						TestInstructionAttributeUuid:     attribute.BaseAttributeInformation.TestInstructionAttributeUuid,
@@ -1310,6 +1316,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 
 				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX:
 					attributeToStoreInDB = tempAttributeStruct{
+						testCaseExecutionUuid:        testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionUuid,
+						testInstructionName:          testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
 						testInstructionExecutionUuid: newTestInstructionExecutionUuid,
 						testInstructionAttributeType: int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
 						TestInstructionAttributeUuid: attribute.AttributeInformation.ResponseVariableComboBoxProperty.
@@ -1331,11 +1339,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 				}
 
 				// Add attribute to slice of attributes
-				attributesSliceToStoreInDB = append(attributesSliceToStoreInDB, attributeToStoreInDB)
+				attributesSliceForTestInstructionToStoreInDB = append(attributesSliceForTestInstructionToStoreInDB, attributeToStoreInDB)
 			}
 
 			// Store slice of attributes in response-map
-			testInstructionAttributesForInstructionExecutionUuidMap[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid] = attributesSliceToStoreInDB
+			testInstructionAttributesForInstructionExecutionUuidMap[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid] = attributesSliceForTestInstructionToStoreInDB
 
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.DomainUuid)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.DomainName)
@@ -1429,6 +1437,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 
 	var dataRowToBeInsertedMultiType []interface{}
 	var dataRowsToBeInsertedMultiType [][]interface{}
+	var allAttributesSlice tempAttributesType
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -1453,16 +1462,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeUuid)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeName)
 			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionExecutionVersion)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testCaseExecutionUuid)
+			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionName)
 
 			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
+			// Add attribute to list of all attributes
+			allAttributesSlice = append(allAttributesSlice, testInstructionsAttribute)
+
 		}
+
 	}
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionAttributesUnderExecution\" "
 	sqlToExecute = sqlToExecute + "(\"TestInstructionExecutionUuid\", \"TestInstructionAttributeType\", \"TestInstructionAttributeUuid\", " +
 		"\"TestInstructionAttributeName\", \"AttributeValueAsString\", \"AttributeValueUuid\", " +
-		"\"TestInstructionAttributeTypeUuid\", \"TestInstructionAttributeTypeName\", \"TestInstructionExecutionVersion\") "
+		"\"TestInstructionAttributeTypeUuid\", \"TestInstructionAttributeTypeName\", \"TestInstructionExecutionVersion\"," +
+		"\"TestCaseExecutionUuid\", \"TestInstructionName\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
@@ -1497,6 +1513,40 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 		"comandTag.RowsAffected()": comandTag.RowsAffected(),
 		"comandTag.String()":       comandTag.String(),
 	}).Debug("Return data for SQL executed in database")
+
+	// Make a copy of all Attributes and them in the History table for attributes
+	var (
+		tempTestInstructionExecutionUuid    string
+		tempTestInstructionExecutionVersion int
+		tempTestInstructionAttributeUuid    string
+	)
+
+	// Loop all attributes
+	for _, attribute := range allAttributesSlice {
+		tempTestInstructionExecutionUuid = attribute.testInstructionExecutionUuid
+		tempTestInstructionExecutionVersion = attribute.testInstructionExecutionVersion
+		tempTestInstructionAttributeUuid = attribute.TestInstructionAttributeUuid
+
+		// Add attributes to table for 'TestInstructionAttributesUnderExecution'
+		err = executionEngine.makeAttributeExecutionCopyInChangeHistoryInCloudDB(
+			dbTransaction,
+			tempTestInstructionExecutionUuid,
+			tempTestInstructionExecutionVersion,
+			tempTestInstructionAttributeUuid)
+
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"id":                                  "3a10288d-a138-43d3-8498-95bbc70fd730",
+				"error":                               err,
+				"tempTestInstructionExecutionUuid":    tempTestInstructionExecutionUuid,
+				"tempTestInstructionExecutionVersion": tempTestInstructionExecutionVersion,
+				"tempTestInstructionAttributeUuid":    tempTestInstructionAttributeUuid,
+			}).Error("Couldn't add TestInstructionAttributes to history table in CloudDB")
+
+			return err
+		}
+	}
 
 	// No errors occurred
 	return nil
