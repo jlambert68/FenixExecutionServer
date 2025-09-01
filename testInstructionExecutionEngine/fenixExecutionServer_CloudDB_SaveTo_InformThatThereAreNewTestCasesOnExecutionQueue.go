@@ -265,6 +265,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 
 	}
 
+	// Slice to hold all TestCasesPreview per TestSuite
+	var testCasesPreviewMapPerTestSuite map[string][]*fenixTestCaseBuilderServerGrpcApi.TestCasePreviewMessage
+	testCasesPreviewMapPerTestSuite = make(map[string][]*fenixTestCaseBuilderServerGrpcApi.TestCasePreviewMessage)
+	var existInMap bool
 	// Retrieve "TestCasePreview" and add to database row
 	for _, tempTestCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
 
@@ -276,7 +280,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 		if err != nil {
 
 			common_config.Logger.WithFields(logrus.Fields{
-				"id":    "cea6f97f-da6a-4eee-9d2e-eeb85d3d5e20",
+				"id":    "e0fb2bc6-7297-4d26-bb97-0940a3e9f885",
 				"error": err,
 			}).Error("Couldn't Load 'TestCasePreview'from CloudDB")
 
@@ -302,6 +306,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 			return ackNackResponse
 
 		}
+
+		// Add TestCasePreview to slice of preview for the specific TestSuiteUuid
+		_, existInMap = testCasesPreviewMapPerTestSuite[tempTestCaseExecutionQueueMessage.testSuiteUuid]
+		if existInMap == false {
+			testCasesPreviewMapPerTestSuite[tempTestCaseExecutionQueueMessage.testSuiteUuid] = make([]*fenixTestCaseBuilderServerGrpcApi.TestCasePreviewMessage, 0)
+		}
+		testCasesPreviewMapPerTestSuite[tempTestCaseExecutionQueueMessage.testSuiteUuid] = append(
+			testCasesPreviewMapPerTestSuite[tempTestCaseExecutionQueueMessage.testSuiteUuid],
+			testCasePreview)
 
 		// Add "TestCasePreview" to 'TestCasesExecutionsForListings'
 		err = executionEngine.addTestCasePreviewIntoDatabase(
@@ -339,6 +352,85 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 
 		}
 	}
+
+	// Save a TestSuiteExecution in Table 'TestSuitesExecutionsForListings'
+	var testCaseUsedForTestSuiteExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct
+	testCaseUsedForTestSuiteExecutionQueueMessages, err = executionEngine.saveTestSuiteExecutionToTestSuitesExecutionsForListingsSaveToCloudDB(
+		txn,
+		testCaseExecutionQueueMessages)
+
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "51194244-01f1-4c23-927d-7c47875eb915",
+			"error": err,
+		}).Error("Couldn't Save to 'TestSuitesExecutionsForListings' in CloudDB")
+
+		// Rollback any SQL transactions
+		txn.Rollback(context.Background())
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   "Problem when saving to database",
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
+				CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+
+	}
+
+	// Load all TestSuitePreView-data needed. For all TestSuites
+	var testSuitesPreview []*fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage
+	testSuitesPreview, err = executionEngine.loadAllTestSuitePreViews(
+		txn,
+		testCaseUsedForTestSuiteExecutionQueueMessages,
+		testCasesPreviewMapPerTestSuite)
+
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "870366e2-09c5-4d03-95e7-48d709c59876",
+			"error": err,
+		}).Error("Couldn't Load 'TestSuitePreViews' from CloudDB")
+
+		// Rollback any SQL transactions
+		txn.Rollback(context.Background())
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:    false,
+			Comments:   "Problem when Loading from database",
+			ErrorCodes: errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.
+				CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+
+	}
+
+	// Add TestSuitesPreview to database
+	err = executionEngine.addTestSuitePreviewIntoDatabase(
+		txn,
+		testSuitesPreview,
+		testCaseUsedForTestSuiteExecutionQueueMessages)
 
 	//Load all data around TestCase to be used for putting TestInstructions on the TestInstructionExecutionQueue
 	var allDataAroundAllTestCase []*tempTestInstructionInTestCaseStruct
@@ -576,13 +668,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 		return []*tempTestCaseExecutionQueueInformationStruct{}, err
 	}
 
-	var testCaseExecutionQueueMessage tempTestCaseExecutionQueueInformationStruct
-
 	// USed to secure that exactly one row was found
 	numberOfRowFromDB := 0
 
 	// Extract data from DB result set
 	for rows.Next() {
+
+		var testCaseExecutionQueueMessage tempTestCaseExecutionQueueInformationStruct
 
 		numberOfRowFromDB = numberOfRowFromDB + 1
 
@@ -832,6 +924,123 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestCasesExecut
 
 }
 
+// Save a TestSuiteExecution in Table 'TestSuitesExecutionsForListings'
+func (executionEngine *TestInstructionExecutionEngineStruct) saveTestSuiteExecutionToTestSuitesExecutionsForListingsSaveToCloudDB(
+	dbTransaction pgx.Tx,
+	testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (
+	testCaseUsedForTestSuiteExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct,
+	err error) {
+
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id": "6326006a-9ec0-4680-8cca-af0d8e4caf4f",
+	}).Debug("Entering: saveTestSuiteExecutionToTestSuitesExecutionsForListingsSaveToCloudDB()")
+
+	defer func() {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "9d20c8b3-01fc-4715-8141-64ab6c78e99b",
+		}).Debug("Exiting: saveTestSuiteExecutionToTestSuitesExecutionsForListingsSaveToCloudDB()")
+	}()
+
+	sqlToExecute := ""
+	var testCaseExecutions string
+
+	// No Message should give an error
+	if len(testCaseExecutionQueueMessages) == 0 {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id": "a85d81ed-fe26-439b-8397-6f8edf01ce73",
+		}).Debug("No transactions to process in 'saveTestSuiteExecutionToTestSuitesExecutionsForListingsSaveToCloudDB'. Shouldn't be like that!")
+
+		errorId := "ee37bb19-9c16-4dd5-8c53-3e1a087c7add"
+
+		err = errors.New(fmt.Sprintf("no transactions to process in 'saveTestSuiteExecutionToTestSuitesExecutionsForListingsSaveToCloudDB'. Shouldn't be like that. [ErrorId: %s]", errorId))
+
+		return nil, err
+	}
+
+	// Map for keep track of used TestSuiteExecutionUuid's
+	var usedTestSuiteExecutionUuidsMap map[string]bool
+	usedTestSuiteExecutionUuidsMap = make(map[string]bool)
+	var usedTestSuiteExecutionUuidKey string
+	var existInMap bool
+
+	for _, testCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
+
+		// Add Used TestSuiteExecutionUuid to map if not already there
+		usedTestSuiteExecutionUuidKey = testCaseExecutionQueueMessage.testSuiteExecutionUuid + strconv.
+			Itoa(testCaseExecutionQueueMessage.testSuiteExecutionVersion)
+
+		// Check if TestSuiteExecutionUuid is used, if so then go to next
+		_, existInMap = usedTestSuiteExecutionUuidsMap[usedTestSuiteExecutionUuidKey]
+		if existInMap == true {
+			continue
+		}
+
+		// Add the TestSuiteExecutionUuid to the map
+		usedTestSuiteExecutionUuidsMap[usedTestSuiteExecutionUuidKey] = true
+
+		if len(testCaseExecutions) == 0 {
+			// First TestCaseExecution
+			testCaseExecutions = fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = %d",
+				testCaseExecutionQueueMessage.testCaseExecutionUuid,
+				testCaseExecutionQueueMessage.testCaseExecutionVersion)
+
+		} else {
+			// There are already TestCaseExecutions
+			testCaseExecutions = testCaseExecutions + " OR "
+
+			testCaseExecutions = testCaseExecutions + fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = %d",
+				testCaseExecutionQueueMessage.testCaseExecutionUuid,
+				testCaseExecutionQueueMessage.testCaseExecutionVersion)
+
+		}
+
+		// Add TestCase to 'testCaseUsedForTestSuiteExecutionQueueMessages'
+		testCaseUsedForTestSuiteExecutionQueueMessages = append(testCaseUsedForTestSuiteExecutionQueueMessages, testCaseExecutionQueueMessage)
+	}
+
+	sqlToExecute = sqlToExecute + "INSERT INTO \"FenixExecution\".\"TestSuitesExecutionsForListings\" "
+	sqlToExecute = sqlToExecute + "SELECT * FROM \"FenixExecution\".\"TestCasesUnderExecution\" "
+	sqlToExecute = sqlToExecute + "WHERE " + testCaseExecutions
+	sqlToExecute = sqlToExecute + " "
+	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "47af69ef-e70f-40e3-9c97-781cf6824993",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'saveTestSuiteExecutionToTestSuitesExecutionsForListingsSaveToCloudDB'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "56986a35-e1c2-4a93-b21d-988af30fbfe9",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	// Log response from CloudDB
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":                       "1c5831f6-713d-4c5e-9b0b-400be5670f03",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// No errors occurred
+	return testCaseUsedForTestSuiteExecutionQueueMessages, nil
+
+}
+
 // Retrieve "TestCasePreview"
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCasePreview(
 	dbTransaction pgx.Tx,
@@ -930,7 +1139,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCasePreview
 	return &testCasePreview, err
 }
 
-// Add "TestCasePreview" and "ExecutionStatusPreviewValues" to 'TestCasesExecutionsForListings'
+// Add "TestCasePreview" 'TestCasesExecutionsForListings'
 func (executionEngine *TestInstructionExecutionEngineStruct) addTestCasePreviewIntoDatabase(
 	dbTransaction pgx.Tx,
 	testCaseExecutionQueueMessage *tempTestCaseExecutionQueueInformationStruct,
@@ -991,7 +1200,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestCasePreviewI
 	// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
 	if comandTag.RowsAffected() != 1 {
 		errorId := "b465295f-ebff-479f-8a13-42994212be7d"
-		err = errors.New(fmt.Sprintf("TestInstructionExecutionUuid '%s' with TestInstructionExecutionVersion '%d' is missing in Table: 'TestCasesExecutionsForListings' [ErroId: %s]",
+		err = errors.New(fmt.Sprintf("TestCaseExecutionUuid '%s' with TestCaseExecutionVersion '%d' is missing in Table: 'TestCasesExecutionsForListings' [ErroId: %s]",
 			testCaseExecutionQueueMessage.testCaseExecutionUuid,
 			testCaseExecutionQueueMessage.testCaseExecutionVersion,
 			errorId))
@@ -1002,6 +1211,114 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestCasePreviewI
 		}).Error(err.Error())
 
 		return err
+	}
+
+	// No errors occurred
+	return err
+
+}
+
+// Add "TestSuitePreview" to 'TestSuitesExecutionsForListings'
+func (executionEngine *TestInstructionExecutionEngineStruct) addTestSuitePreviewIntoDatabase(
+	dbTransaction pgx.Tx,
+	testSuitesPreview []*fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage,
+	testCaseUsedForTestSuiteExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (
+	err error) {
+
+	// If there are nothing to update then just exit
+	if testSuitesPreview == nil {
+		return nil
+	}
+
+	// Create a TestSuitePreViewMap, key TestSuiteUuid
+	var testSuitePreviewMap map[string]*fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage
+	testSuitePreviewMap = make(map[string]*fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage)
+	for _, testSuitePreview := range testSuitesPreview {
+		testSuitePreviewMap[testSuitePreview.TestSuitePreview.TestSuiteUuid] = testSuitePreview
+	}
+
+	// Create a reference between TestSuiteUuid and all possible TestSuiteExecutionUuid
+	var testSuiteUuidToTestSuiteExecutionsUuidMap map[string][]*tempTestCaseExecutionQueueInformationStruct
+	var existInMap bool
+	testSuiteUuidToTestSuiteExecutionsUuidMap = make(map[string][]*tempTestCaseExecutionQueueInformationStruct)
+	for _, testCaseUsedForTestSuiteExecutionQueueMessage := range testCaseUsedForTestSuiteExecutionQueueMessages {
+
+		_, existInMap = testSuiteUuidToTestSuiteExecutionsUuidMap[testCaseUsedForTestSuiteExecutionQueueMessage.testSuiteUuid]
+		if existInMap == false {
+			testSuiteUuidToTestSuiteExecutionsUuidMap[testCaseUsedForTestSuiteExecutionQueueMessage.testSuiteUuid] = make([]*tempTestCaseExecutionQueueInformationStruct, 0)
+		}
+
+		testSuiteUuidToTestSuiteExecutionsUuidMap[testCaseUsedForTestSuiteExecutionQueueMessage.testSuiteUuid] = append(
+			testSuiteUuidToTestSuiteExecutionsUuidMap[testCaseUsedForTestSuiteExecutionQueueMessage.testSuiteUuid],
+			testCaseUsedForTestSuiteExecutionQueueMessage)
+
+	}
+
+	// Loop all TestSuitePreview and process SQL towards database
+	for _, tempTestCaseExecutionQueueInformationMessage := range testSuiteUuidToTestSuiteExecutionsUuidMap {
+		for _, tempTestCaseExecutionQueueInformation := range tempTestCaseExecutionQueueInformationMessage {
+			testSuitePreviewAsJsonb := protojson.Format(testSuitePreviewMap[tempTestCaseExecutionQueueInformation.testSuiteUuid])
+
+			// Create Update Statement  TestCasesExecutionsForListings
+			sqlToExecute := ""
+			sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestSuitesExecutionsForListings\" "
+			sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
+			sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuitePreview\" = '%s' ",
+				testSuitePreviewAsJsonb)
+			sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestSuiteExecutionUuid\" = '%s' ",
+				tempTestCaseExecutionQueueInformation.testSuiteExecutionUuid)
+			sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
+			sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionVersion\" = %d ",
+				tempTestCaseExecutionQueueInformation.testSuiteExecutionVersion)
+			sqlToExecute = sqlToExecute + "; "
+
+			// Log SQL to be executed if Environment variable is true
+			if common_config.LogAllSQLs == true {
+				common_config.Logger.WithFields(logrus.Fields{
+					"Id":           "af0b852a-5b5a-4b70-aaf4-a6515fe29817",
+					"sqlToExecute": sqlToExecute,
+				}).Debug("SQL to be executed within 'addTestSuitePreviewIntoDatabase'")
+			}
+
+			// Execute Query CloudDB
+			comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+			if err != nil {
+				common_config.Logger.WithFields(logrus.Fields{
+					"Id":           "a6203bc4-3c75-4b42-9cd5-bbc4c52ddf79",
+					"sqlToExecute": sqlToExecute,
+				}).Error("Something went wrong when executing SQL")
+
+				return err
+			}
+
+			// Log response from CloudDB
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                       "02f93b43-c9e6-427d-9b40-3a297a733f85",
+				"comandTag.Insert()":       comandTag.Insert(),
+				"comandTag.Delete()":       comandTag.Delete(),
+				"comandTag.Select()":       comandTag.Select(),
+				"comandTag.Update()":       comandTag.Update(),
+				"comandTag.RowsAffected()": comandTag.RowsAffected(),
+				"comandTag.String()":       comandTag.String(),
+			}).Debug("Return data for SQL executed in database")
+
+			// If No(zero) rows were affected then TestInstructionExecutionUuid is missing in Table
+			if comandTag.RowsAffected() != 1 {
+				errorId := "a127c111-75f5-4e67-bb73-14de93e94cf8"
+				err = errors.New(fmt.Sprintf("TestSuiteExecutionUuid '%s' with TestSuiteExecutionVersion '%d' is missing in Table: 'TestSuitesExecutionsForListings' [ErroId: %s]",
+					tempTestCaseExecutionQueueInformation.testCaseExecutionUuid,
+					tempTestCaseExecutionQueueInformation.testCaseExecutionVersion,
+					errorId))
+
+				common_config.Logger.WithFields(logrus.Fields{
+					"Id":                       "32ee64d3-77ed-4919-a82a-782c68a219a0",
+					"comandTag.RowsAffected()": comandTag.RowsAffected(),
+				}).Error(err.Error())
+
+				return err
+			}
+		}
 	}
 
 	// No errors occurred
@@ -1529,6 +1846,504 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 
 	// No errors occurred
 	return nil
+
+}
+
+// Load all TestSuitePreView-data needed. For all TestSuites
+func (executionEngine *TestInstructionExecutionEngineStruct) loadAllTestSuitePreViews(
+	dbTransaction pgx.Tx,
+	testCaseUsedForTestSuiteExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct,
+	testCasesPreviewMapPerTestSuite map[string][]*fenixTestCaseBuilderServerGrpcApi.TestCasePreviewMessage) (
+	testSuitesPreview []*fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage,
+	err error) {
+
+	// Generate TestSuiteUuid-slice
+	var testSuitesUuidToLoad []string
+	for _, testCaseUsedForTestSuiteExecutionQueueMessage := range testCaseUsedForTestSuiteExecutionQueueMessages {
+		testSuitesUuidToLoad = append(testSuitesUuidToLoad, testCaseUsedForTestSuiteExecutionQueueMessage.testSuiteUuid)
+
+	}
+
+	// Load the TestSuite
+	var fullTestSuiteMessages []*fenixTestCaseBuilderServerGrpcApi.FullTestSuiteMessage
+	fullTestSuiteMessages, err = executionEngine.loadFullTestSuites(
+		dbTransaction,
+		testSuitesUuidToLoad)
+
+	// Error when retrieving TestSuites
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "4e3885e1-8500-4d6c-a69f-11872a975580",
+			"error": err,
+		}).Error("Got some problem when loading TestSuites from database")
+
+		return nil, err
+	}
+
+	// Loop all TestSuite and create TestSuite-previews for the TestSuites
+	for _, fullTestSuiteMessage := range fullTestSuiteMessages {
+
+		// Create TestSuite-preview and add to TestSuite-Object
+		// Create the 'TestSuitePreview'
+		var tempSelectedTestSuiteMetaDataValuesMap map[string]*fenixTestCaseBuilderServerGrpcApi.
+			TestSuitePreviewStructureMessage_SelectedTestSuiteMetaDataValueMessage
+		tempSelectedTestSuiteMetaDataValuesMap = make(map[string]*fenixTestCaseBuilderServerGrpcApi.
+			TestSuitePreviewStructureMessage_SelectedTestSuiteMetaDataValueMessage)
+
+		var tempTestSuitePreview *fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage
+		tempTestSuitePreview = &fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage{
+			TestSuitePreview: &fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewStructureMessage{
+				TestSuiteUuid:                 fullTestSuiteMessage.TestSuiteBasicInformation.GetTestSuiteUuid(),
+				TestSuiteName:                 fullTestSuiteMessage.TestSuiteBasicInformation.GetTestSuiteName(),
+				TestSuiteVersion:              strconv.Itoa(int(fullTestSuiteMessage.TestSuiteBasicInformation.GetTestSuiteVersion())),
+				DomainUuidThatOwnTheTestSuite: fullTestSuiteMessage.TestSuiteBasicInformation.GetDomainUuid(),
+				DomainNameThatOwnTheTestSuite: fullTestSuiteMessage.TestSuiteBasicInformation.GetDomainName(),
+				TestSuiteDescription:          fullTestSuiteMessage.GetTestSuiteBasicInformation().GetTestSuiteDescription(),
+				TestSuiteStructureObjects: &fenixTestCaseBuilderServerGrpcApi.
+					TestSuitePreviewStructureMessage_TestSuiteStructureObjectMessage{TestCasePreViews: testCasesPreviewMapPerTestSuite[fullTestSuiteMessage.TestSuiteBasicInformation.GetTestSuiteUuid()]},
+				LastSavedByUserOnComputer:          fullTestSuiteMessage.UpdatedByAndWhen.GetUserIdOnComputer(),
+				LastSavedByUserGCPAuthorization:    fullTestSuiteMessage.UpdatedByAndWhen.GetGCPAuthenticatedUser(),
+				LastSavedTimeStamp:                 fullTestSuiteMessage.UpdatedByAndWhen.GetUpdateTimeStamp(),
+				SelectedTestSuiteMetaDataValuesMap: tempSelectedTestSuiteMetaDataValuesMap,
+			},
+			TestSuitePreviewHash: "",
+		}
+
+		// Generate 'SelectedTestSuiteMetaDataValuesMap'
+		for _, tempMetaDataGroupMessagePtr := range fullTestSuiteMessage.TestSuiteMetaData.MetaDataGroupsMap {
+
+			// Get the 'MetaDataGroupMessage' from ptr
+			tempMetaDataGroupMessage := *tempMetaDataGroupMessagePtr
+
+			// Loop 'MetaDataInGroupMap'
+			for SelectedTestSuiteMetaDataValuesMap, tempMetaDataInGroupMessagePtr := range tempMetaDataGroupMessage.MetaDataInGroupMap {
+
+				switch tempMetaDataInGroupMessagePtr.GetSelectType() {
+
+				case fenixTestCaseBuilderServerGrpcApi.MetaDataSelectTypeEnum_MetaDataSelectType_SingleSelect:
+
+					// Create 'SelectedTestSuiteMetaDataValueMessage' to be stored in Map
+					var tempSelectedTestSuiteMetaDataValueMessage *fenixTestCaseBuilderServerGrpcApi.
+						TestSuitePreviewStructureMessage_SelectedTestSuiteMetaDataValueMessage
+
+					tempSelectedTestSuiteMetaDataValueMessage = &fenixTestCaseBuilderServerGrpcApi.
+						TestSuitePreviewStructureMessage_SelectedTestSuiteMetaDataValueMessage{
+						OwnerDomainUuid:   tempSelectedTestSuiteMetaDataValueMessage.GetOwnerDomainUuid(),
+						OwnerDomainName:   tempSelectedTestSuiteMetaDataValueMessage.GetOwnerDomainName(),
+						MetaDataGroupName: tempMetaDataInGroupMessagePtr.GetMetaDataGroupName(),
+						MetaDataName:      tempMetaDataInGroupMessagePtr.GetMetaDataName(),
+						MetaDataNameValue: tempMetaDataInGroupMessagePtr.GetSelectedMetaDataValueForSingleSelect(),
+						SelectType:        tempSelectedTestSuiteMetaDataValueMessage.GetSelectType(),
+						IsMandatory:       tempSelectedTestSuiteMetaDataValueMessage.GetIsMandatory(),
+					}
+
+					// Add value to map
+					tempSelectedTestSuiteMetaDataValuesMap[SelectedTestSuiteMetaDataValuesMap] = tempSelectedTestSuiteMetaDataValueMessage
+
+				case fenixTestCaseBuilderServerGrpcApi.MetaDataSelectTypeEnum_MetaDataSelectType_MultiSelect:
+
+					// Loop all selected values and add to map
+					for _, tempSelectedMetaDataValue := range tempMetaDataInGroupMessagePtr.GetSelectedMetaDataValuesForMultiSelect() {
+
+						// Create 'SelectedTestSuiteMetaDataValueMessage' to be stored in Map
+						var tempSelectedTestSuiteMetaDataValueMessage *fenixTestCaseBuilderServerGrpcApi.
+							TestSuitePreviewStructureMessage_SelectedTestSuiteMetaDataValueMessage
+
+						tempSelectedTestSuiteMetaDataValueMessage = &fenixTestCaseBuilderServerGrpcApi.
+							TestSuitePreviewStructureMessage_SelectedTestSuiteMetaDataValueMessage{
+							OwnerDomainUuid:   tempSelectedTestSuiteMetaDataValueMessage.GetOwnerDomainUuid(),
+							OwnerDomainName:   tempSelectedTestSuiteMetaDataValueMessage.GetOwnerDomainName(),
+							MetaDataGroupName: tempMetaDataInGroupMessagePtr.GetMetaDataGroupName(),
+							MetaDataName:      tempMetaDataInGroupMessagePtr.GetMetaDataName(),
+							MetaDataNameValue: tempSelectedMetaDataValue,
+							SelectType:        tempSelectedTestSuiteMetaDataValueMessage.GetSelectType(),
+							IsMandatory:       tempSelectedTestSuiteMetaDataValueMessage.GetIsMandatory(),
+						}
+
+						// Add value to map
+						tempSelectedTestSuiteMetaDataValuesMap[SelectedTestSuiteMetaDataValuesMap] = tempSelectedTestSuiteMetaDataValueMessage
+
+					}
+
+				default:
+					common_config.Logger.WithFields(logrus.Fields{
+						"Id":                   "6972f543-5fba-414e-b9d2-079a374d0f48",
+						"fullTestSuiteMessage": fullTestSuiteMessage,
+						"tempMetaDataInGroupMessagePtr.GetSelectType()": tempMetaDataInGroupMessagePtr.GetSelectType(),
+					}).Error("Unknown SelectType in 'MetaDataInGroupMap'")
+
+					errID := "e532e909-05a5-4642-90f0-f0fc33cffecb"
+					err = errors.New(fmt.Sprintf("Unknown SelectType in 'MetaDataInGroupMap', %d [ErrorId=%s]",
+						tempMetaDataInGroupMessagePtr.GetSelectType(), errID))
+
+					return nil, err
+
+				}
+			}
+		}
+
+		// Add 'tempSelectedTestSuiteMetaDataValuesMap' to 'tempTestSuitePreview'
+		tempTestSuitePreview.TestSuitePreview.SelectedTestSuiteMetaDataValuesMap = tempSelectedTestSuiteMetaDataValuesMap
+
+		// Calculate 'TestSuitePreviewHash'
+		var tempTestSuitePreviewHash string
+		tempJson := protojson.Format(tempTestSuitePreview)
+		tempTestSuitePreviewHash = common_config.HashSingleValue(tempJson)
+
+		tempTestSuitePreview.TestSuitePreviewHash = tempTestSuitePreviewHash
+
+		// Add TestSuite to slice of TestSuites
+		testSuitesPreview = append(testSuitesPreview, tempTestSuitePreview)
+
+	}
+
+	return testSuitesPreview, nil
+}
+
+// This date is used as delete date when the TestSuite is not deleted
+const testSuiteNotDeletedDate = "2068-11-18"
+
+// Load the TestSuite with all its data
+func (executionEngine *TestInstructionExecutionEngineStruct) loadFullTestSuites(
+	dbTransaction pgx.Tx,
+	testSuitesUuidToLoad []string) (
+	fullTestSuiteMessages []*fenixTestCaseBuilderServerGrpcApi.FullTestSuiteMessage,
+	err error) {
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "WITH uniquecounters AS ( "
+	sqlToExecute = sqlToExecute + "SELECT Distinct ON (\"TestSuiteUuid\")  \"UniqueCounter\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixBuilder\".\"TestSuites\" "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestSuiteUuid\" IN %s ", common_config.GenerateSQLINArray(testSuitesUuidToLoad))
+	sqlToExecute = sqlToExecute + "ORDER BY \"TestSuiteUuid\", \"UniqueCounter\" DESC "
+	sqlToExecute = sqlToExecute + ") "
+
+	sqlToExecute = sqlToExecute + "SELECT TS.\"DomainUuid\", da.\"domain_name\", TS.\"TestSuiteUuid\", TS.\"TestSuiteName\", " +
+		"TS.\"TestSuiteVersion\", TS.\"TestSuiteDescription\", TS.\"TestSuiteExecutionEnvironment\", TS.\"TestSuiteHash\", TS.\"DeleteTimestamp\", " +
+		"TS.\"InsertTimeStamp\", TS.\"InsertedByUserIdOnComputer\", TS.\"InsertedByGCPAuthenticatedUser\", " +
+		"TS.\"TestCasesInTestSuite\", TS.\"TestSuitePreview\", TS.\"TestSuiteMetaData\", TS.\"TestSuiteTestData\", " +
+		"TS.\"TestSuiteType\", TS.\"TestSuiteTypeName\", TS.\"TestSuiteImplementedFunctions\" "
+
+	sqlToExecute = sqlToExecute + "FROM \"FenixBuilder\".\"TestSuites\" TS, \"FenixDomainAdministration\".\"domains\" da  "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE TS.\"TestSuiteUuid\" IN %s ", common_config.GenerateSQLINArray(testSuitesUuidToLoad))
+	sqlToExecute = sqlToExecute + "AND "
+	sqlToExecute = sqlToExecute + "TS.\"UniqueCounter\" IN (SELECT * FROM uniquecounters) AND "
+	sqlToExecute = sqlToExecute + "TS.\"DeleteTimestamp\" > now() AND "
+	sqlToExecute = sqlToExecute + "TS.\"DomainUuid\" = da.\"domain_uuid\" "
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "f4d9fb06-b042-4bf4-8140-5dc3062cc60f",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadFullTestSuites'")
+	}
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "f1745336-7242-4131-bc89-832109dfc789",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, err
+	}
+
+	var (
+		tempDomainUuid                          string
+		tempDomainName                          string
+		tempTestSuiteUuid                       string
+		tempTestSuiteName                       string
+		tempTestSuiteDescription                string
+		tempTestSuiteExecutionEnvironment       string
+		tempTestSuiteVersion                    int
+		tempTestSuiteHash                       string
+		tempDeleteTimestampAsString             string
+		tempUpdatedByAndWhenAsString            string
+		tempInsertedByUserIdOnComputer          string
+		tempInsertedByGCPAuthenticatedUser      string
+		tempTestCasesInTestSuiteAsJson          string
+		tempTestSuitePreviewAsJson              string
+		tempTestSuiteMetaDataAsJson             string
+		tempTestSuiteTestDataAsJson             string
+		tempTestSuiteType                       int
+		tempTestSuiteTypeName                   string
+		tempTestSuiteImplementedFunctionsAsJson string
+
+		tempDeleteTimestampAsTimeStamp  time.Time
+		tempUpdatedByAndWhenAsTimeStamp time.Time
+
+		tempTestCasesInTestSuiteAsByteArray          []byte
+		tempTestSuitePreviewAsByteArray              []byte
+		tempTestSuiteMetaDataAsByteArray             []byte
+		tempTestSuiteTestDataAsByteArray             []byte
+		tempTestSuiteImplementedFunctionsAsByteArray []byte
+
+		tempTestCasesInTestSuiteAsGrpc          fenixTestCaseBuilderServerGrpcApi.TestCasesInTestSuiteMessage
+		tempTestSuitePreviewAsGrpc              fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage
+		tempTestSuiteMetaDataAsGrpc             fenixTestCaseBuilderServerGrpcApi.UserSpecifiedTestSuiteMetaDataMessage
+		tempTestSuiteTestDataAsGrpc             fenixTestCaseBuilderServerGrpcApi.UsersChosenTestDataForTestSuiteMessage
+		tempTestSuiteImplementedFunctionsAsGrpc map[int32]bool
+	)
+
+	// Extract data from DB result set
+	for rows.Next() {
+
+		err = rows.Scan(
+			&tempDomainUuid,
+			&tempDomainName,
+			&tempTestSuiteUuid,
+			&tempTestSuiteName,
+
+			&tempTestSuiteVersion,
+			&tempTestSuiteDescription,
+			&tempTestSuiteExecutionEnvironment,
+			&tempTestSuiteHash,
+			&tempDeleteTimestampAsTimeStamp,
+
+			&tempUpdatedByAndWhenAsTimeStamp,
+			&tempInsertedByUserIdOnComputer,
+			&tempInsertedByGCPAuthenticatedUser,
+
+			&tempTestCasesInTestSuiteAsJson,
+			&tempTestSuitePreviewAsJson,
+			&tempTestSuiteMetaDataAsJson,
+			&tempTestSuiteTestDataAsJson,
+
+			&tempTestSuiteType,
+			&tempTestSuiteTypeName,
+			&tempTestSuiteImplementedFunctionsAsJson,
+		)
+
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "7c3b623e-cac5-4cf2-99e3-2e3d7694d70c",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, err
+		}
+
+		// Format Dates
+		// Format The Delete Date into a string
+		tempDeleteTimestampAsString = tempDeleteTimestampAsTimeStamp.Format("2006-01-02")
+
+		// When the TestCase is not deleted then it uses a Delete date far away in the future. If so then clear the Date sent to TesterGui
+
+		if tempDeleteTimestampAsString == testSuiteNotDeletedDate {
+			tempDeleteTimestampAsString = ""
+		}
+
+		// Format Insert date
+		tempUpdatedByAndWhenAsString = tempUpdatedByAndWhenAsTimeStamp.String()
+
+		// Convert json-strings into byte-arrays
+		tempTestCasesInTestSuiteAsByteArray = []byte(tempTestCasesInTestSuiteAsJson)
+		tempTestSuitePreviewAsByteArray = []byte(tempTestSuitePreviewAsJson)
+		tempTestSuiteMetaDataAsByteArray = []byte(tempTestSuiteMetaDataAsJson)
+		tempTestSuiteTestDataAsByteArray = []byte(tempTestSuiteTestDataAsJson)
+		tempTestSuiteImplementedFunctionsAsByteArray = []byte(tempTestSuiteImplementedFunctionsAsJson)
+
+		// Convert json-byte-arrays into proto-messages
+		err = protojson.Unmarshal(tempTestCasesInTestSuiteAsByteArray, &tempTestCasesInTestSuiteAsGrpc)
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":    "2e73987c-1693-4673-b366-0b56efcfbc09",
+				"Error": err,
+			}).Error("Something went wrong when converting 'tempTestCasesInTestSuiteAsByteArray' into proto-message")
+
+			return nil, err
+		}
+
+		err = protojson.Unmarshal(tempTestSuitePreviewAsByteArray, &tempTestSuitePreviewAsGrpc)
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":    "9a4b309a-68af-49c9-8120-096e894788cd",
+				"Error": err,
+			}).Error("Something went wrong when converting 'tempTestSuitePreviewAsByteArray' into proto-message")
+
+			return nil, err
+		}
+
+		err = protojson.Unmarshal(tempTestSuiteMetaDataAsByteArray, &tempTestSuiteMetaDataAsGrpc)
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":    "4643c3d5-87bf-4a5f-a171-b01a9d3c0d4b",
+				"Error": err,
+			}).Error("Something went wrong when converting 'tempTestSuiteMetaDataAsByteArray' into proto-message")
+
+			return nil, err
+		}
+
+		err = protojson.Unmarshal(tempTestSuiteTestDataAsByteArray, &tempTestSuiteTestDataAsGrpc)
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":    "ef74050a-d52b-4282-a520-32f9ca1ceecf",
+				"Error": err,
+			}).Error("Something went wrong when converting 'tempTestSuiteTestDataAsByteArray' into proto-message")
+
+			return nil, err
+		}
+
+		tempTestSuiteImplementedFunctionsAsGrpc = make(map[int32]bool)
+		err = json.Unmarshal(tempTestSuiteImplementedFunctionsAsByteArray, &tempTestSuiteImplementedFunctionsAsGrpc)
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":    "2a737639-2fbc-470b-80bc-c09972c6768d",
+				"Error": err,
+			}).Error("Something went wrong when converting 'tempTestSuiteImplementedFunctionsAsByteArray' into proto-message")
+
+			return nil, err
+		}
+
+		// Add the different parts into full TestSuite-message
+		var fullTestSuiteMessage *fenixTestCaseBuilderServerGrpcApi.FullTestSuiteMessage
+		fullTestSuiteMessage = &fenixTestCaseBuilderServerGrpcApi.FullTestSuiteMessage{
+			TestSuiteBasicInformation: &fenixTestCaseBuilderServerGrpcApi.TestSuiteBasicInformationMessage{
+				DomainUuid:                    tempDomainUuid,
+				DomainName:                    tempDomainName,
+				TestSuiteUuid:                 tempTestSuiteUuid,
+				TestSuiteVersion:              uint32(tempTestSuiteVersion),
+				TestSuiteName:                 tempTestSuiteName,
+				TestSuiteDescription:          tempTestSuiteDescription,
+				TestSuiteExecutionEnvironment: tempTestSuiteExecutionEnvironment,
+			},
+			TestSuiteTestData:    &tempTestSuiteTestDataAsGrpc,
+			TestSuitePreview:     &tempTestSuitePreviewAsGrpc,
+			TestSuiteMetaData:    &tempTestSuiteMetaDataAsGrpc,
+			TestCasesInTestSuite: &tempTestCasesInTestSuiteAsGrpc,
+			DeletedDate:          tempDeleteTimestampAsString,
+			UpdatedByAndWhen: &fenixTestCaseBuilderServerGrpcApi.UpdatedByAndWhenMessage{
+				UserIdOnComputer:     tempInsertedByUserIdOnComputer,
+				GCPAuthenticatedUser: tempInsertedByGCPAuthenticatedUser,
+				UpdateTimeStamp:      tempUpdatedByAndWhenAsString,
+			},
+			TestSuiteType: &fenixTestCaseBuilderServerGrpcApi.TestSuiteTypeMessage{
+				TestSuiteType:     fenixTestCaseBuilderServerGrpcApi.TestSuiteTypeEnum(tempTestSuiteType),
+				TestSuiteTypeName: tempTestSuiteTypeName,
+			},
+			TestSuiteImplementedFunctionsMap: tempTestSuiteImplementedFunctionsAsGrpc,
+			MessageHash:                      tempTestSuiteHash,
+		}
+
+		fullTestSuiteMessages = append(fullTestSuiteMessages, fullTestSuiteMessage)
+
+	}
+
+	return fullTestSuiteMessages, err
+
+}
+
+// Add who created the TestSuite and when it was created
+func (executionEngine *TestInstructionExecutionEngineStruct) addTestSuiteCreator(
+	dbTransaction pgx.Tx,
+	testSuiteUuidToLoad string,
+	fullTestSuiteMessage *fenixTestCaseBuilderServerGrpcApi.FullTestSuiteMessage) (
+	err error) {
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT \"InsertTimeStamp\", \"InsertedByUserIdOnComputer\", \"InsertedByGCPAuthenticatedUser\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixBuilder\".\"TestSuites\" "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestSuiteUuid\" = '%s' ", testSuiteUuidToLoad)
+	sqlToExecute = sqlToExecute + "ORDER BY \"UniqueCounter\" ASC "
+	sqlToExecute = sqlToExecute + "LIMIT 1 "
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "e195cf4d-d9fc-444b-bfe8-65c4a666bfd5",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'addTestSuiteCreator'")
+	}
+
+	// Query DB
+	var ctx context.Context
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "95382e00-59e0-4082-be16-fe56bee992d0",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	var (
+		tempInsertTimeStampAsString    string
+		InsertedByUserIdOnComputer     string
+		InsertedByGCPAuthenticatedUser string
+
+		tempInsertTimeStampAsTimeStamp time.Time
+
+		numberOfRows int
+	)
+
+	// Extract data from DB result set
+	for rows.Next() {
+
+		err = rows.Scan(
+			&tempInsertTimeStampAsTimeStamp,
+			&InsertedByUserIdOnComputer,
+			&InsertedByGCPAuthenticatedUser,
+		)
+
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "1f5d50c8-d35a-4d87-be33-80f7e64f7a93",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error("Something went wrong when processing result from database")
+
+			return err
+		}
+
+		// Format Dates
+		// Format Insert date
+		tempInsertTimeStampAsString = tempInsertTimeStampAsTimeStamp.String()
+
+		// increase number of rows
+		numberOfRows = numberOfRows + 1
+	}
+
+	if numberOfRows != 1 {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "d1987560-3ea1-4081-baba-c9e3fc699553",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+			"numberOfRows": numberOfRows,
+		}).Error("Number of rows expected to be one, but was not.")
+
+		err = errors.New("number of rows expected to be one, but was not")
+
+		return err
+
+	}
+
+	// Update Created information
+	fullTestSuiteMessage.UpdatedByAndWhen.CreatedByComputerLogin = InsertedByUserIdOnComputer
+	fullTestSuiteMessage.UpdatedByAndWhen.CreatedByGcpLogin = InsertedByGCPAuthenticatedUser
+	fullTestSuiteMessage.UpdatedByAndWhen.CreatedDate = tempInsertTimeStampAsString
+
+	return err
 
 }
 
