@@ -965,6 +965,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestSuiteExecut
 
 	for _, testCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
 
+		// Only process when there is a proper TestSuiteUuid
+		if testCaseExecutionQueueMessage.testSuiteUuid == common_config.ZeroUuid {
+			continue
+		}
+
 		// Add Used TestSuiteExecutionUuid to map if not already there
 		usedTestSuiteExecutionUuidKey = testCaseExecutionQueueMessage.testSuiteExecutionUuid + strconv.
 			Itoa(testCaseExecutionQueueMessage.testSuiteExecutionVersion)
@@ -996,6 +1001,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestSuiteExecut
 
 		// Add TestCase to 'testCaseUsedForTestSuiteExecutionQueueMessages'
 		testCaseUsedForTestSuiteExecutionQueueMessages = append(testCaseUsedForTestSuiteExecutionQueueMessages, testCaseExecutionQueueMessage)
+	}
+
+	// If slice doesn't contain any data the just exist
+	if len(testCaseUsedForTestSuiteExecutionQueueMessages) == 0 {
+		return nil, err
 	}
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"FenixExecution\".\"TestSuitesExecutionsForListings\" "
@@ -1226,7 +1236,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestSuitePreview
 	err error) {
 
 	// If there are nothing to update then just exit
-	if testSuitesPreview == nil {
+	if testSuitesPreview == nil || len(testSuitesPreview) == 0 {
 		return nil
 	}
 
@@ -1864,6 +1874,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllTestSuitePre
 
 	}
 
+	if len(testCasesPreviewMapPerTestSuite) == 0 {
+		return testSuitesPreview, nil
+	}
+
 	// Load the TestSuite
 	var fullTestSuiteMessages []*fenixTestCaseBuilderServerGrpcApi.FullTestSuiteMessage
 	fullTestSuiteMessages, err = executionEngine.loadFullTestSuites(
@@ -1890,6 +1904,26 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllTestSuitePre
 		tempSelectedTestSuiteMetaDataValuesMap = make(map[string]*fenixTestCaseBuilderServerGrpcApi.
 			TestSuitePreviewStructureMessage_SelectedTestSuiteMetaDataValueMessage)
 
+		// Loop all 'tempTestCasePreviews' and convert to format used in TestSuitePreview
+		var testCasesInTestSuite []*fenixTestCaseBuilderServerGrpcApi.
+			TestSuitePreviewStructureMessage_TestCaseInTestSuiteMessage
+		for _, tempTestCasesInTestSuite := range fullTestSuiteMessage.GetTestCasesInTestSuite().TestCasesInTestSuite {
+
+			var testCaseInTestSuite *fenixTestCaseBuilderServerGrpcApi.
+				TestSuitePreviewStructureMessage_TestCaseInTestSuiteMessage
+			testCaseInTestSuite = &fenixTestCaseBuilderServerGrpcApi.
+				TestSuitePreviewStructureMessage_TestCaseInTestSuiteMessage{
+				DomainUuid:   tempTestCasesInTestSuite.GetDomainUuid(),
+				DomainName:   tempTestCasesInTestSuite.GetDomainName(),
+				TestCaseUuid: tempTestCasesInTestSuite.GetTestCaseUuid(),
+				TestCaseName: tempTestCasesInTestSuite.GetTestCaseName(),
+			}
+
+			// Add TestCasePreview-data to slice
+			testCasesInTestSuite = append(testCasesInTestSuite, testCaseInTestSuite)
+
+		}
+
 		var tempTestSuitePreview *fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage
 		tempTestSuitePreview = &fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewMessage{
 			TestSuitePreview: &fenixTestCaseBuilderServerGrpcApi.TestSuitePreviewStructureMessage{
@@ -1899,11 +1933,23 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadAllTestSuitePre
 				DomainUuidThatOwnTheTestSuite: fullTestSuiteMessage.TestSuiteBasicInformation.GetDomainUuid(),
 				DomainNameThatOwnTheTestSuite: fullTestSuiteMessage.TestSuiteBasicInformation.GetDomainName(),
 				TestSuiteDescription:          fullTestSuiteMessage.GetTestSuiteBasicInformation().GetTestSuiteDescription(),
-				TestSuiteStructureObjects: &fenixTestCaseBuilderServerGrpcApi.
-					TestSuitePreviewStructureMessage_TestSuiteStructureObjectMessage{TestCasePreViews: testCasesPreviewMapPerTestSuite[fullTestSuiteMessage.TestSuiteBasicInformation.GetTestSuiteUuid()]},
-				LastSavedByUserOnComputer:          fullTestSuiteMessage.UpdatedByAndWhen.GetUserIdOnComputer(),
-				LastSavedByUserGCPAuthorization:    fullTestSuiteMessage.UpdatedByAndWhen.GetGCPAuthenticatedUser(),
-				LastSavedTimeStamp:                 fullTestSuiteMessage.UpdatedByAndWhen.GetUpdateTimeStamp(),
+				TestCasesInTestSuite: &fenixTestCaseBuilderServerGrpcApi.
+					TestSuitePreviewStructureMessage_TestCasesInTestSuiteMessage{
+					TestCasesInTestSuite: testCasesInTestSuite,
+				},
+				CreatedByGcpLoginUser:           fullTestSuiteMessage.UpdatedByAndWhen.GetCreatedByGcpLogin(),
+				CreatedByComputerLoginUser:      fullTestSuiteMessage.UpdatedByAndWhen.GetCreatedByComputerLogin(),
+				CreatedDate:                     fullTestSuiteMessage.UpdatedByAndWhen.GetCreatedDate(),
+				LastSavedByUserOnComputer:       fullTestSuiteMessage.UpdatedByAndWhen.GetUserIdOnComputer(),
+				LastSavedByUserGCPAuthorization: fullTestSuiteMessage.UpdatedByAndWhen.GetGCPAuthenticatedUser(),
+				LastSavedTimeStamp:              fullTestSuiteMessage.UpdatedByAndWhen.GetUpdateTimeStamp(),
+				TestSuiteType: &fenixTestCaseBuilderServerGrpcApi.
+					TestSuitePreviewStructureMessage_TestSuiteTypeMessage{
+					TestSuiteType: fenixTestCaseBuilderServerGrpcApi.
+						TestSuitePreviewStructureMessage_TestSuiteTypeEnum(
+							fullTestSuiteMessage.GetTestSuiteType().GetTestSuiteType()),
+					TestSuiteTypeName: fullTestSuiteMessage.GetTestSuiteType().GetTestSuiteTypeName(),
+				},
 				SelectedTestSuiteMetaDataValuesMap: tempSelectedTestSuiteMetaDataValuesMap,
 			},
 			TestSuitePreviewHash: "",
@@ -2009,6 +2055,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadFullTestSuites(
 	testSuitesUuidToLoad []string) (
 	fullTestSuiteMessages []*fenixTestCaseBuilderServerGrpcApi.FullTestSuiteMessage,
 	err error) {
+
+	if testSuitesUuidToLoad == nil || len(testSuitesUuidToLoad) == 0 {
+		return fullTestSuiteMessages, nil
+	}
 
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "WITH uniquecounters AS ( "

@@ -200,8 +200,25 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 	// Loop all 'testCaseExecutionStatusMessages' and check for "End status"
 	for _, testCaseExecutionStatusMessage := range testCaseExecutionStatusMessages {
 
+		// Load TestCaseExecution-status
+		var testCaseExecutionStatus int32
+		var testSuiteExecutionUuid string
+		var testSuiteExecutionVersion uint32
+		testCaseExecutionStatus, testSuiteExecutionUuid, testSuiteExecutionVersion, err = executionEngine.
+			loadTestCaseExecutionStatus(txn, testCaseExecutionStatusMessage)
+
+		// Exit when there was a problem reading the database
+		if err != nil {
+			return err
+		}
+
 		// If TestCaseExecutionStatus is an "End status" then add all TestInstructionExecutions to table 'TestCasesExecutionsForListings'
-		if hasTestCaseAnEndStatus(int32(testCaseExecutionStatusMessage.TestCaseExecutionStatus)) == true {
+		if hasTestCaseAnEndStatus(testCaseExecutionStatus) == true {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                             "9d0317bb-13e1-412b-a054-328f34b66aed",
+				"testCaseExecutionStatusMessage": testCaseExecutionStatusMessage,
+			}).Debug("TestCaseExecutionStatus is an 'End status'")
 
 			var testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessage
 
@@ -214,20 +231,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 				return err
 			}
 
-			// Load TestCaseExecution-status
-			var testCaseExecutionStatus int32
-			testCaseExecutionStatus, err = executionEngine.
-				loadTestCaseExecutionStatus(txn, testCaseExecutionStatusMessage)
-
-			// Exit when there was a problem reading the database
-			if err != nil {
-				return err
-			}
-
 			// Update status for TestInstructions in table 'TestCasesExecutionsForListings'
 
 			// Add "ExecutionStatusPreviewValues" to 'TestCasesExecutionsForListings'
-			err = executionEngine.addExecutionStatusPreviewValuesIntoDatabase(
+			err = executionEngine.addTestCaseExecutionStatusPreviewValuesIntoDatabase(
 				txn,
 				testCaseExecutionStatusMessage,
 				testInstructionsExecutionStatusPreviewValuesMessage,
@@ -236,6 +243,44 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 			// Exit when there was a problem updating the database
 			if err != nil {
 				return err
+			}
+
+			// Update status for TestSuite in 'TestSuitesExecutionsForListings' when there is a correct TestSuiteUuid
+			if testSuiteExecutionUuid != common_config.ZeroUuid {
+
+				err = executionEngine.addTestSuiteExecutionStatusPreviewValuesIntoDatabase(
+					txn,
+					testCaseExecutionStatusMessage,
+					testCaseExecutionStatus,
+					testSuiteExecutionUuid,
+					testSuiteExecutionVersion)
+
+				// Exit when there was a problem updating the database
+				if err != nil {
+					return err
+				}
+			}
+
+		} else {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                             "0c59c694-8205-41e7-be7b-8124cb6e0544",
+				"testCaseExecutionStatusMessage": testCaseExecutionStatusMessage,
+			}).Debug("TestCaseExecutionStatus is not an 'End status'")
+
+			// Update status for TestSuite in 'TestSuitesExecutionsForListings' when there is a correct TestSuiteUuid
+			if testSuiteExecutionUuid != common_config.ZeroUuid {
+				err = executionEngine.addTestSuiteExecutionStatusPreviewValuesIntoDatabase(
+					txn,
+					testCaseExecutionStatusMessage,
+					testCaseExecutionStatus,
+					testSuiteExecutionUuid,
+					testSuiteExecutionVersion)
+
+				// Exit when there was a problem updating the database
+				if err != nil {
+					return err
+				}
 			}
 
 		}
@@ -414,7 +459,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 }
 
 // Transform TestInstructionExecutionStatus into correct prioritized TestCaseExecutionStatus
-func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus(testInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct) (testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstructionExecutionStatusIntoTestCaseExecutionStatus(
+	testInstructionExecutionStatusMessages []*loadTestInstructionExecutionStatusMessagesStruct) (
+	testCaseExecutionStatusMessages []*testCaseExecutionStatusStruct,
+	err error) {
 	// For each combination 'TestCaseExecutionUuid && TestCaseExecutionVersion' create correct TestCaseExecutionStatus
 	// Generate Map that decides what Status that 'overwrite' other status
 	// (1,  'TIE_INITIATED') -> NOT OK
@@ -1057,18 +1105,28 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 	dbTransaction pgx.Tx,
 	testCaseExecutionStatusMessages *testCaseExecutionStatusStruct) (
 	testCaseExecutionStatus int32,
+	testSuiteExecutionUuid string,
+	testSuiteExecutionVersion uint32,
 	err error) {
 
 	// Load 'ExecutionStatusPreviewValues'
 
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT TIUE.\"TestCaseExecutionStatus\" "
-	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestCasesUnderExecution\" TIUE "
+	sqlToExecute = sqlToExecute + "SELECT TCUE.\"TestCaseExecutionStatus\",  TCUE.\"TestSuiteExecutionUuid\", TCUE.\"TestSuiteExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestCasesUnderExecution\" TCUE "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionUuid\" = '%s' AND \"TestCaseExecutionVersion\" = %d ",
 		testCaseExecutionStatusMessages.TestCaseExecutionUuid,
 		testCaseExecutionStatusMessages.TestCaseExecutionVersion)
 	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "17b3d8c5-3e75-4ef4-8eb0-792b349d67a1",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadTestCaseExecutionStatus'")
+	}
 
 	// Query DB
 	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -1084,7 +1142,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
 
-		return 0, err
+		return 0, "", 0, err
 	}
 
 	// Number of rows
@@ -1098,6 +1156,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 
 		err := rows.Scan(
 			&testCaseExecutionStatus,
+			&testSuiteExecutionUuid,
+			&testSuiteExecutionVersion,
 		)
 
 		if err != nil {
@@ -1109,7 +1169,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 				"numberOfRowFromDB": numberOfRowFromDB,
 			}).Error("Something went wrong when processing result from database")
 
-			return 0, err
+			return 0, "", 0, err
 		}
 
 	}
@@ -1129,15 +1189,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 			"numberOfRowFromDB": numberOfRowFromDB,
 		}).Error("Something went wrong when processing result from database")
 
-		return 0, err
+		return 0, "", 0, err
 	}
 
-	return testCaseExecutionStatus, err
+	return testCaseExecutionStatus, testSuiteExecutionUuid, testSuiteExecutionVersion, err
 
 }
 
 // Add "ExecutionStatusPreviewValues" to 'TestCasesExecutionsForListings'
-func (executionEngine *TestInstructionExecutionEngineStruct) addExecutionStatusPreviewValuesIntoDatabase(
+func (executionEngine *TestInstructionExecutionEngineStruct) addTestCaseExecutionStatusPreviewValuesIntoDatabase(
 	dbTransaction pgx.Tx,
 	testCaseExecutionStatusMessages *testCaseExecutionStatusStruct,
 	testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.
@@ -1172,7 +1232,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addExecutionStatusP
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id":           "194603bd-9002-45a5-8e8e-147df7439887",
 			"sqlToExecute": sqlToExecute,
-		}).Debug("SQL to be executed within 'addExecutionStatusPreviewValuesIntoDatabase'")
+		}).Debug("SQL to be executed within 'addTestCaseExecutionStatusPreviewValuesIntoDatabase'")
 	}
 
 	// Execute Query CloudDB
@@ -1208,6 +1268,83 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addExecutionStatusP
 
 		common_config.Logger.WithFields(logrus.Fields{
 			"Id":                       "29a366f9-1b1a-4e51-b950-9e64089dc9a3",
+			"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		}).Error(err.Error())
+
+		return err
+	}
+
+	// No errors occurred
+	return err
+
+}
+
+// Add "TestSuiteExecutionStatus" to 'TestSuitesExecutionsForListings'
+func (executionEngine *TestInstructionExecutionEngineStruct) addTestSuiteExecutionStatusPreviewValuesIntoDatabase(
+	dbTransaction pgx.Tx,
+	testCaseExecutionStatusMessages *testCaseExecutionStatusStruct,
+	testCaseExecutionStatus int32,
+	testSuiteExecutionUuid string,
+	testSuiteExecutionVersion uint32) (
+	err error) {
+
+	// Create Update Statement TestSuitesExecutionsForListings
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestSuitesExecutionsForListings\" "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionStatus\" = '%d' ",
+		testCaseExecutionStatus)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestSuiteExecutionUuid\" = '%s' ",
+		testSuiteExecutionUuid)
+	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionVersion\" = %d ",
+		testSuiteExecutionVersion)
+	sqlToExecute = sqlToExecute + "AND "
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionStatus\" < '%d' ",
+		testCaseExecutionStatus)
+	sqlToExecute = sqlToExecute + "; "
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "194603bd-9002-45a5-8e8e-147df7439887",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'addTestSuiteExecutionStatusPreviewValuesIntoDatabase'")
+	}
+
+	// Execute Query CloudDB
+	comandTag, err := dbTransaction.Exec(context.Background(), sqlToExecute)
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "d1d61c20-304d-4451-9051-7f8f4321564f",
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return err
+	}
+
+	// Log response from CloudDB
+	common_config.Logger.WithFields(logrus.Fields{
+		"Id":                       "9f32ee29-812c-4c1c-a3c4-1c65ff98dd8d",
+		"comandTag.Insert()":       comandTag.Insert(),
+		"comandTag.Delete()":       comandTag.Delete(),
+		"comandTag.Select()":       comandTag.Select(),
+		"comandTag.Update()":       comandTag.Update(),
+		"comandTag.RowsAffected()": comandTag.RowsAffected(),
+		"comandTag.String()":       comandTag.String(),
+	}).Debug("Return data for SQL executed in database")
+
+	// If more than 2 rows were affected then there sis something wrong in Table
+	if comandTag.RowsAffected() > 1 {
+		errorId := "66b2b48b-e8de-4dfa-b206-36b944664aa1"
+		err = errors.New(fmt.Sprintf("TestSuiteExecutionUuid '%s' with TestSuiteExecutionVersion '%d' has more then 1 row in Table: 'TestSuitesExecutionsForListings' [ErroId: %s]",
+			testSuiteExecutionUuid,
+			testSuiteExecutionVersion,
+			errorId))
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":                       "a0847e2c-505c-48b6-8819-3b23db2dd670",
 			"comandTag.RowsAffected()": comandTag.RowsAffected(),
 		}).Error(err.Error())
 
