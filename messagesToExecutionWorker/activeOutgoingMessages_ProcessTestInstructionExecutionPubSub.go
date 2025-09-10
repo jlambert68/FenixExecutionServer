@@ -226,7 +226,7 @@ func (fenixExecutionWorkerObject *MessagesToExecutionWorkerServerObjectStruct) S
 
 			// ExecutionWorker couldn't handle gPRC call
 			common_config.Logger.WithFields(logrus.Fields{
-				"ID":                  "c104fc85-c6ca-4084-a756-409e53491bfe",
+				"ID":                  "2cbd30c7-bc1e-4941-8545-69b6794151b8",
 				"domainUuid":          domainUuid,
 				"Message from Worker": processTestInstructionExecutionResponse.AckNackResponse.Comments,
 			}).Error("Problem to do gRPC-call to FenixExecutionWorkerServer for 'SendProcessTestInstructionExecutionToExecutionWorkerServerPubSub'")

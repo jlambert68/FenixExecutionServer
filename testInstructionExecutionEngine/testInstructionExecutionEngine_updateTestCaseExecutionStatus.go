@@ -347,6 +347,8 @@ type testCaseExecutionStatusStruct struct {
 // used as type when getting number of TestInstructionExecutions on TestInstructionExecutionQueue
 type numberOfTestInstructionExecutionsOnQueueStruct struct {
 	numberOfTestInstructionExecutionsOnQueue int
+	TestCaseExecutionUuid                    string
+	TestCaseExecutionVersion                 int
 	TestInstructionExecutionUuid             string
 	TestInstructionExecutionVersion          int
 }
@@ -619,7 +621,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) transformTestInstru
 }
 
 // Load status for each TestInstructionExecution to be able to set correct status on the corresponding TestCaseExecutionUuid
-func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestInstructionExecutionsOnExecutionQueue(dbTransaction pgx.Tx, testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType, err error) {
+func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestInstructionExecutionsOnExecutionQueue(
+	dbTransaction pgx.Tx,
+	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
+	numberOfTestInstructionExecutionsOnExecutionQueueMap numberOfTestInstructionExecutionsOnQueueMapType, err error) {
 
 	// Initiate response map
 	numberOfTestInstructionExecutionsOnExecutionQueueMap = make(numberOfTestInstructionExecutionsOnQueueMapType)
@@ -654,11 +659,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 	}
 
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT COUNT(TIEQ.*), TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "SELECT COUNT(TIEQ.*), TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestCaseExecutionVersion\", TIEQ.\"TestInstructionExecutionUuid\", TIEQ.\"TestInstructionExecutionVersion\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
-	sqlToExecute = sqlToExecute + "GROUP BY TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "GROUP BY TIEQ.\"TestInstructionExecutionUuid\", TIEQ.\"TestInstructionExecutionUuid\" "
 	sqlToExecute = sqlToExecute + ";"
 
 	// Log SQL to be executed if Environment variable is true
@@ -693,6 +698,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 
 		err := rows.Scan(
 			&numberOfTestInstructionExecutionOnExecutionQueue.numberOfTestInstructionExecutionsOnQueue,
+			&numberOfTestInstructionExecutionOnExecutionQueue.TestCaseExecutionUuid,
+			&numberOfTestInstructionExecutionOnExecutionQueue.TestCaseExecutionVersion,
 			&numberOfTestInstructionExecutionOnExecutionQueue.TestInstructionExecutionUuid,
 			&numberOfTestInstructionExecutionOnExecutionQueue.TestInstructionExecutionVersion,
 		)
@@ -709,7 +716,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNumberOfTestIns
 		}
 
 		// Add TestInstructionExecutionStatus-message to map of messages
-		mapKey = numberOfTestInstructionExecutionOnExecutionQueue.TestInstructionExecutionUuid + strconv.Itoa(numberOfTestInstructionExecutionOnExecutionQueue.TestInstructionExecutionVersion)
+		mapKey = numberOfTestInstructionExecutionOnExecutionQueue.TestCaseExecutionUuid + strconv.Itoa(numberOfTestInstructionExecutionOnExecutionQueue.TestCaseExecutionVersion)
 		numberOfTestInstructionExecutionsOnExecutionQueueMap[mapKey] = &numberOfTestInstructionExecutionOnExecutionQueue
 
 	}
@@ -1290,18 +1297,35 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestSuiteExecuti
 
 	// Create Update Statement TestSuitesExecutionsForListings
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestSuitesExecutionsForListings\" "
+	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestSuitesExecutionsForListings\" ts "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionStatus\" = '%d' ",
 		testCaseExecutionStatus)
-	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestSuiteExecutionUuid\" = '%s' ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE ts.\"TestSuiteExecutionUuid\" = '%s' ",
 		testSuiteExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionVersion\" = %d ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("ts.\"TestSuiteExecutionVersion\" = %d ",
 		testSuiteExecutionVersion)
 	sqlToExecute = sqlToExecute + "AND "
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionStatus\" < '%d' ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("ts.\"TestSuiteExecutionStatus\" < '%d' ",
 		testCaseExecutionStatus)
+	sqlToExecute = sqlToExecute + "AND "
+
+	// Also check that there are no TestCaseExecutions on the queue for the TestSuite
+	sqlToExecute = sqlToExecute + "NOT EXISTS ( "
+	sqlToExecute = sqlToExecute + "SELECT 1 "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestCaseExecutionQueue\" tq "
+	sqlToExecute = sqlToExecute + "WHERE tq.\"TestSuiteExecutionUuid\" = ts.\"TestSuiteExecutionUuid\" "
+	sqlToExecute = sqlToExecute + "AND tq.\"TestSuiteExecutionVersion\" = ts.\"TestSuiteExecutionVersion\") "
+
+	// Also check that there are no TestCaseExecutions still executing for the TestSuite
+	sqlToExecute = sqlToExecute + "AND NOT EXISTS ( "
+	sqlToExecute = sqlToExecute + "SELECT 1 "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestCasesUnderExecution\" tue "
+	sqlToExecute = sqlToExecute + "WHERE tue.\"TestSuiteExecutionUuid\" = ts.\"TestSuiteExecutionUuid\" "
+	sqlToExecute = sqlToExecute + "AND tue.\"TestSuiteExecutionVersion\" = ts.\"TestSuiteExecutionVersion\" "
+	sqlToExecute = sqlToExecute + "AND tue.\"TestCaseExecutionStatus\" < '3') "
+
 	sqlToExecute = sqlToExecute + "; "
 
 	// Log SQL to be executed if Environment variable is true
@@ -1335,7 +1359,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestSuiteExecuti
 		"comandTag.String()":       comandTag.String(),
 	}).Debug("Return data for SQL executed in database")
 
-	// If more than 2 rows were affected then there sis something wrong in Table
+	// If more than 1 rows were affected then there sis something wrong in Table
 	if comandTag.RowsAffected() > 1 {
 		errorId := "66b2b48b-e8de-4dfa-b206-36b944664aa1"
 		err = errors.New(fmt.Sprintf("TestSuiteExecutionUuid '%s' with TestSuiteExecutionVersion '%d' has more then 1 row in Table: 'TestSuitesExecutionsForListings' [ErroId: %s]",

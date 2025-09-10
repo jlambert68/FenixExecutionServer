@@ -128,9 +128,10 @@ func (executionEngine *TestInstructionExecutionEngineStruct) moveTestInstruction
 
 	// Extract TestCaseExecutionQueue-messages to be added to data for ongoing Executions
 	testInstructionExecutionQueueMessages, err := executionEngine.loadTestInstructionExecutionQueueMessages(
-		txn, testCaseExecutionsToProcess) //(txn)
-	if err != nil {
+		txn,
+		testCaseExecutionsToProcess)
 
+	if err != nil {
 		return
 	}
 
@@ -230,7 +231,7 @@ type tempTestInstructionInTestCaseStruct struct {
 	uniqueCounter                    int
 }
 */
-// Load TestCaseExecutionQueue-Messages be able to populate the ongoing TestCaseExecutionUuid-table
+// Load TestInstructionExecutionQueue-Messages be able to populate the ongoing TestInstructionExecution-table
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionExecutionQueueMessages(
 	dbTransaction pgx.Tx,
 	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
@@ -284,7 +285,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
 	sqlToExecute = sqlToExecute + "AND "
-	sqlToExecute = sqlToExecute + "TIEQ.\"TestInstructionExecutionOrder\" =  (SELECT DISTINCT ON (TIEQ2.\"ExecutionPriority\", TIEQ2.\"TestCaseExecutionUuid\") TIEQ2.\"TestInstructionExecutionOrder\" "
+	sqlToExecute = sqlToExecute + "TIEQ.\"TestInstructionExecutionOrder\" IN  (SELECT DISTINCT ON (TIEQ2.\"ExecutionPriority\", TIEQ2.\"TestCaseExecutionUuid\") TIEQ2.\"TestInstructionExecutionOrder\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ2 "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionParsSecondPart

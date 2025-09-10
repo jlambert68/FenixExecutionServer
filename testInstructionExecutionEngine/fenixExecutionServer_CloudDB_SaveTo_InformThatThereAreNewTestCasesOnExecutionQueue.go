@@ -9,11 +9,13 @@ import (
 	"fmt"
 	uuidGenerator "github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+	"github.com/jinzhu/copier"
 	fenixExecutionServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixExecutionServer/fenixExecutionServerGrpcApi/go_grpc_api"
 	fenixTestCaseBuilderServerGrpcApi "github.com/jlambert68/FenixGrpcApi/FenixTestCaseBuilderServer/fenixTestCaseBuilderServerGrpcApi/go_grpc_api"
 	fenixSyncShared "github.com/jlambert68/FenixSyncShared"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/encoding/protojson"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -66,6 +68,15 @@ func (executionEngine *TestInstructionExecutionEngineStruct) PrepareInformThatTh
 func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB(
 	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
 	ackNackResponse *fenixExecutionServerGrpcApi.AckNackResponse) {
+
+	executionEngine.logger.WithFields(logrus.Fields{
+		"id":                          "fd730051-fff6-48c9-9d2b-a95ef6f4e7e3",
+		"testCaseExecutionsToProcess": testCaseExecutionsToProcess,
+	}).Debug("Incoming 'prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB'")
+
+	defer executionEngine.logger.WithFields(logrus.Fields{
+		"id": "4ce64176-06d9-49a7-957d-6e7e3eea3987",
+	}).Debug("Outgoing 'prepareInformThatThereAreNewTestCasesOnExecutionQueueSaveToCloudDB'")
 
 	// Begin SQL Transaction
 	txn, err := fenixSyncShared.DbPool.Begin(context.Background())
@@ -432,9 +443,38 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 		testSuitesPreview,
 		testCaseUsedForTestSuiteExecutionQueueMessages)
 
+	if err != nil {
+
+		common_config.Logger.WithFields(logrus.Fields{
+			"id":    "05b0ea54-4cde-4756-a2e4-9a37c0130bd2",
+			"error": err,
+		}).Error("Couldn't Add TestSuitePreview in CloudDB")
+
+		// Rollback any SQL transactions
+		txn.Rollback(context.Background())
+
+		// Set Error codes to return message
+		var errorCodes []fenixExecutionServerGrpcApi.ErrorCodesEnum
+		var errorCode fenixExecutionServerGrpcApi.ErrorCodesEnum
+
+		errorCode = fenixExecutionServerGrpcApi.ErrorCodesEnum_ERROR_DATABASE_PROBLEM
+		errorCodes = append(errorCodes, errorCode)
+
+		// Create Return message
+		ackNackResponse := &fenixExecutionServerGrpcApi.AckNackResponse{
+			AckNack:                      false,
+			Comments:                     "Problem when saving to database",
+			ErrorCodes:                   errorCodes,
+			ProtoFileVersionUsedByClient: fenixExecutionServerGrpcApi.CurrentFenixExecutionServerProtoFileVersionEnum(common_config.GetHighestFenixExecutionServerProtoFileVersion()),
+		}
+
+		return ackNackResponse
+
+	}
+
 	//Load all data around TestCase to be used for putting TestInstructions on the TestInstructionExecutionQueue
-	var allDataAroundAllTestCase []*tempTestInstructionInTestCaseStruct
-	allDataAroundAllTestCase, err = executionEngine.
+	var allDataAroundAllTestCasePerTestCaseExecution [][]*tempTestInstructionInTestCaseStruct
+	allDataAroundAllTestCasePerTestCaseExecution, err = executionEngine.
 		loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(
 			txn,
 			testCaseExecutionQueueMessages)
@@ -469,12 +509,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	}
 
 	// Add TestInstructions to TestInstructionsExecutionQueue
-	var testInstructionUuidTotestInstructionExecutionUuidMap map[string]tempAttributesType
-	testInstructionUuidTotestInstructionExecutionUuidMap, err = executionEngine.
+	var testInstructionUuidTotestInstructionExecutionUuidMapSlice []map[string]tempAttributesType
+	testInstructionUuidTotestInstructionExecutionUuidMapSlice, err = executionEngine.
 		SaveTestInstructionsToExecutionQueueSaveToCloudDB(
 			txn,
 			testCaseExecutionQueueMessages,
-			allDataAroundAllTestCase)
+			allDataAroundAllTestCasePerTestCaseExecution)
 
 	if err != nil {
 
@@ -509,7 +549,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	// Add attributes to table for 'TestInstructionAttributesUnderExecution'
 	err = executionEngine.saveTestInstructionAttributesUnderExecutionSaveToCloudDB(
 		txn,
-		testInstructionUuidTotestInstructionExecutionUuidMap)
+		testInstructionUuidTotestInstructionExecutionUuidMapSlice)
 
 	if err != nil {
 
@@ -591,6 +631,8 @@ type tempTestInstructionInTestCaseStruct struct {
 	testInstructionsAsJsonb          string
 	testInstructionContainersAsJsonb string
 	uniqueCounter                    int
+	testCaseExecutionUuid            string
+	testCaseExecutionVersion         int
 }
 
 // Stores a slice of attributes to be stored in Cloud-DB
@@ -1405,12 +1447,17 @@ func (executionEngine *TestInstructionExecutionEngineStruct) clearTestCasesExecu
 
 // Load all data around TestCase to bes used for putting TestInstructions on the TestInstructionExecutionQueue
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAndTestInstructionsAndTestInstructionContainersToBeAddedToExecutionQueueLoadFromCloudDB(
-	dbTransaction pgx.Tx, testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (
-	testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct, err error) {
+	dbTransaction pgx.Tx,
+	testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct) (
+	testInstructionsInTestCasesPerTestCaseExecution [][]*tempTestInstructionInTestCaseStruct,
+	err error) {
 
 	var testCasesUuidsToBeUsedInSQL []string
+	var testInstructionsInTestCasesMap map[string][]*tempTestInstructionInTestCaseStruct // Key = TestCaseUuid
+	var existInMap bool
+	testInstructionsInTestCasesMap = make(map[string][]*tempTestInstructionInTestCaseStruct)
 
-	// Loop over TestCaseExecutionQueue-messages and extract  "UniqueCounter"
+	// Loop over TestCaseExecutionQueue-messages and extract  "testCaseUuid"
 	for _, testCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
 		testCasesUuidsToBeUsedInSQL = append(testCasesUuidsToBeUsedInSQL, testCaseExecutionQueueMessage.testCaseUuid)
 	}
@@ -1447,7 +1494,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAn
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
 
-		return []*tempTestInstructionInTestCaseStruct{}, err
+		return [][]*tempTestInstructionInTestCaseStruct{}, err
 	}
 
 	// Extract data from DB result set
@@ -1475,15 +1522,81 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAn
 				"sqlToExecute": sqlToExecute,
 			}).Error("Something went wrong when processing result from database")
 
-			return []*tempTestInstructionInTestCaseStruct{}, err
+			return [][]*tempTestInstructionInTestCaseStruct{}, err
 		}
 
-		// Add Queue-message to slice of messages
-		testInstructionsInTestCases = append(testInstructionsInTestCases, &tempTestCaseModelAndTestInstructionsInTestCases)
+		// Add Queue-message to slice of messages for Correct TestCase
+		var tempTestInstructionsInTestCases []*tempTestInstructionInTestCaseStruct
+		tempTestInstructionsInTestCases, existInMap = testInstructionsInTestCasesMap[tempTestCaseModelAndTestInstructionsInTestCases.testCaseUuid]
+
+		if existInMap == true {
+			tempTestInstructionsInTestCases = append(tempTestInstructionsInTestCases, &tempTestCaseModelAndTestInstructionsInTestCases)
+		} else {
+			tempTestInstructionsInTestCases = make([]*tempTestInstructionInTestCaseStruct, 0)
+			tempTestInstructionsInTestCases = append(tempTestInstructionsInTestCases, &tempTestCaseModelAndTestInstructionsInTestCases)
+		}
+
+		// Add slice back to map
+		testInstructionsInTestCasesMap[tempTestCaseModelAndTestInstructionsInTestCases.testCaseUuid] = tempTestInstructionsInTestCases
 
 	}
 
-	return testInstructionsInTestCases, err
+	// Loop over TestCaseExecutionQueue-messages and to produce "testInstructionsInTestCasesPerTestCaseExecution"
+	for _, testCaseExecutionQueueMessage := range testCaseExecutionQueueMessages {
+
+		// Add Queue-message to slice of messages for Correct TestCase
+		var tempTestInstructionsInTestCases []*tempTestInstructionInTestCaseStruct
+		tempTestInstructionsInTestCases, existInMap = testInstructionsInTestCasesMap[testCaseExecutionQueueMessage.testCaseUuid]
+
+		// Deep copy of 'tempTestInstructionsInTestCases'
+		var tempTestInstructionsInTestCasesDeepCopy []*tempTestInstructionInTestCaseStruct
+		// Copy data from 'tempTestInstructionsInTestCases' to 'tempTestInstructionsInTestCasesDeepCopy' using deep copy
+		err = copier.CopyWithOption(&tempTestInstructionsInTestCasesDeepCopy, &tempTestInstructionsInTestCases, copier.Option{DeepCopy: true})
+		if err != nil {
+
+			errorID := "eef038fd-55e2-4067-b371-a5d9ab56ecbe"
+
+			errorMsg := fmt.Sprintf("error copying 'tempTestInstructionsInTestCases' using 'copier'. error = '%s' [ErrorID: %s]",
+				err.Error(),
+				errorID)
+
+			log.Fatalln(errorMsg)
+		}
+
+		// This should never happen
+		if existInMap == false {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":           "1871cc44-0702-469e-9352-dffdec4ecffe",
+				"Error":        err,
+				"sqlToExecute": sqlToExecute,
+			}).Error(fmt.Sprintf("TestCaseUuid=%s is missing in testInstructionsInTestCasesMap, should never happen ",
+				testCaseExecutionQueueMessage.testCaseUuid))
+
+			errorId := "2fc448f4-1160-40dc-971d-5f381ab6ab51"
+
+			err = errors.New(fmt.Sprintf("TestCaseUuid=%s is missing in testInstructionsInTestCasesMap, should never happen. [ErrorID=%s] ",
+				testCaseExecutionQueueMessage.testCaseUuid,
+				errorId))
+
+			return [][]*tempTestInstructionInTestCaseStruct{}, err
+		}
+
+		// Loop all TestInstructions and add TestCaseExecutionData
+		for tempTestInstructionsInTestCaseIndex, _ := range tempTestInstructionsInTestCasesDeepCopy {
+			tempTestInstructionsInTestCasesDeepCopy[tempTestInstructionsInTestCaseIndex].testCaseExecutionUuid = testCaseExecutionQueueMessage.testCaseExecutionUuid
+			tempTestInstructionsInTestCasesDeepCopy[tempTestInstructionsInTestCaseIndex].testCaseExecutionVersion = testCaseExecutionQueueMessage.testCaseExecutionVersion
+
+		}
+
+		// Convert into '[][]*tempTestInstructionInTestCaseStruct -slice'
+		testInstructionsInTestCasesPerTestCaseExecution = append(
+			testInstructionsInTestCasesPerTestCaseExecution,
+			tempTestInstructionsInTestCasesDeepCopy)
+
+	}
+
+	return testInstructionsInTestCasesPerTestCaseExecution, err
 
 }
 
@@ -1491,9 +1604,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseModelAn
 func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstructionsToExecutionQueueSaveToCloudDB(
 	dbTransaction pgx.Tx,
 	testCaseExecutionQueueMessages []*tempTestCaseExecutionQueueInformationStruct,
-	testInstructionsInTestCases []*tempTestInstructionInTestCaseStruct) (
-	testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType,
+	testInstructionsInTestCasesPerTestCaseExecution [][]*tempTestInstructionInTestCaseStruct) (
+	testInstructionAttributesForInstructionExecutionUuidMapSlice []map[string]tempAttributesType,
 	err error) {
+
+	testInstructionAttributesForInstructionExecutionUuidMapSlice = make([]map[string]tempAttributesType, 0)
 
 	// Get a common dateTimeStamp to use
 	currentDataTimeStamp := fenixSyncShared.GenerateDatetimeTimeStampForDB()
@@ -1501,9 +1616,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	var dataRowToBeInsertedMultiType []interface{}
 	var dataRowsToBeInsertedMultiType [][]interface{}
 	var newTestInstructionExecutionUuid string
-
-	//Initiate response-map
-	testInstructionAttributesForInstructionExecutionUuidMap = make(map[string]tempAttributesType)
 
 	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
 
@@ -1519,159 +1631,173 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	// Data to be inserted in the DB-table
 	dataRowsToBeInsertedMultiType = nil
 
-	for _, testInstructionsInTestCase := range testInstructionsInTestCases {
+	// Loop per TestCaseExecution
+	for _, testInstructionsInTestCasePerTestCaseExecution := range testInstructionsInTestCasesPerTestCaseExecution {
 
-		var testInstructions fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionsMessage
-		var testInstructionContainers fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainersMessage
-		var testCaseBasicInformationMessage fenixTestCaseBuilderServerGrpcApi.TestCaseBasicInformationMessage
+		//Initiate map used in response slice
+		var testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType
+		testInstructionAttributesForInstructionExecutionUuidMap = make(map[string]tempAttributesType)
 
-		// Convert json-objects into their gRPC-structs
-		err := protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructions)
-		if err != nil {
-			return testInstructionAttributesForInstructionExecutionUuidMap, err
-		}
-		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionContainersAsJsonb), &testInstructionContainers)
-		if err != nil {
-			return testInstructionAttributesForInstructionExecutionUuidMap, err
-		}
-		err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testCaseBasicInformationAsJsonb), &testCaseBasicInformationMessage)
-		if err != nil {
-			return testInstructionAttributesForInstructionExecutionUuidMap, err
-		}
+		// Loop per TestCase
+		for _, testInstructionsInTestCase := range testInstructionsInTestCasePerTestCaseExecution {
 
-		// Generate TestCaseElementModel-map
-		testCaseElementModelMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage) //map[testCaseUuid]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage
-		for _, testCaseModelElement := range testCaseBasicInformationMessage.TestCaseModel.TestCaseModelElements {
-			testCaseElementModelMap[testCaseModelElement.MatureElementUuid] = testCaseModelElement
-		}
+			var testInstructions fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionsMessage
+			var testInstructionContainers fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainersMessage
+			var testCaseBasicInformationMessage fenixTestCaseBuilderServerGrpcApi.TestCaseBasicInformationMessage
 
-		// Generate TestCaseTestInstruction-map
-		testInstructionContainerMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainersMessage_MatureTestInstructionContainerMessage)
-		for _, testInstructionContainer := range testInstructionContainers.MatureTestInstructionContainers {
-			testInstructionContainerMap[testInstructionContainer.MatureTestInstructionContainerInformation.
-				MatureTestInstructionContainerInformation.TestInstructionContainerMatureUuid] = testInstructionContainer
-		}
-
-		// Initiate map for TestInstructionExecution Order
-		testInstructionExecutionOrder := make(map[string]*testInstructionsRawExecutionOrderStruct) //map[matureTestInstructionUuid]*testInstructionsRawExecutionOrderStruct
-
-		err = executionEngine.testInstructionExecutionOrderCalculator(
-			testCaseBasicInformationMessage.TestCaseModel.FirstMatureElementUuid,
-			&testCaseElementModelMap,
-			&testInstructionExecutionOrder,
-			&testInstructionContainerMap)
-
-		if err != nil {
+			// Convert json-objects into their gRPC-structs
+			err := protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionsAsJsonb), &testInstructions)
 			if err != nil {
-				common_config.Logger.WithFields(logrus.Fields{
-					"Id":    "dbe7f121-1256-4bcf-883b-c6ee1bf85c4f",
-					"Error": err,
-				}).Error("Couldn't calculate Execution Order for TestInstructions")
-
-				return testInstructionAttributesForInstructionExecutionUuidMap, err
+				return testInstructionAttributesForInstructionExecutionUuidMapSlice, err
 			}
-		}
+			err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testInstructionContainersAsJsonb), &testInstructionContainers)
+			if err != nil {
+				return testInstructionAttributesForInstructionExecutionUuidMapSlice, err
+			}
+			err = protojson.Unmarshal([]byte(testInstructionsInTestCase.testCaseBasicInformationAsJsonb), &testCaseBasicInformationMessage)
+			if err != nil {
+				return testInstructionAttributesForInstructionExecutionUuidMapSlice, err
+			}
 
-		// Loop all TestInstructions in TestCase and add them
-		for _, testInstruction := range testInstructions.MatureTestInstructions {
+			// Generate TestCaseElementModel-map
+			testCaseElementModelMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage) //map[testCaseUuid]*fenixTestCaseBuilderServerGrpcApi.MatureTestCaseModelElementMessage
+			for _, testCaseModelElement := range testCaseBasicInformationMessage.TestCaseModel.TestCaseModelElements {
+				testCaseElementModelMap[testCaseModelElement.MatureElementUuid] = testCaseModelElement
+			}
 
-			dataRowToBeInsertedMultiType = nil
+			// Generate TestCaseTestInstruction-map
+			testInstructionContainerMap := make(map[string]*fenixTestCaseBuilderServerGrpcApi.MatureTestInstructionContainersMessage_MatureTestInstructionContainerMessage)
+			for _, testInstructionContainer := range testInstructionContainers.MatureTestInstructionContainers {
+				testInstructionContainerMap[testInstructionContainer.MatureTestInstructionContainerInformation.
+					MatureTestInstructionContainerInformation.TestInstructionContainerMatureUuid] = testInstructionContainer
+			}
 
-			// Generate the Execution-Uuid for the TestInstruction
-			newTestInstructionExecutionUuid = uuidGenerator.New().String()
+			// Initiate map for TestInstructionExecution Order
+			testInstructionExecutionOrder := make(map[string]*testInstructionsRawExecutionOrderStruct) //map[matureTestInstructionUuid]*testInstructionsRawExecutionOrderStruct
 
-			// Loop attributes for TestInstructions and add Map, to be saved in Cloud-DB (on other function)
-			var attributesSliceForTestInstructionToStoreInDB tempAttributesType
+			err = executionEngine.testInstructionExecutionOrderCalculator(
+				testCaseBasicInformationMessage.TestCaseModel.FirstMatureElementUuid,
+				&testCaseElementModelMap,
+				&testInstructionExecutionOrder,
+				&testInstructionContainerMap)
 
-			for _, attribute := range testInstruction.MatureTestInstructionInformation.TestInstructionAttributesList {
-
-				var attributeToStoreInDB tempAttributeStruct
-
-				// Switch type of attribute, e.g. TextBox, ComboBox and so on
-				switch attribute.BaseAttributeInformation.TestInstructionAttributeType {
-
-				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_TEXTBOX:
-					attributeToStoreInDB = tempAttributeStruct{
-						testCaseExecutionUuid:            testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionUuid,
-						testInstructionName:              testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
-						testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
-						testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
-						TestInstructionAttributeUuid:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
-						TestInstructionAttributeName:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoxName,
-						AttributeValueAsString:           attribute.AttributeInformation.InputTextBoxProperty.TextBoxAttributeValue,
-						AttributeValueUuid:               common_config.ZeroUuid,
-						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
-						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
-						testInstructionExecutionVersion:  1,
-					}
-
-				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_COMBOBOX:
-					attributeToStoreInDB = tempAttributeStruct{
-						testCaseExecutionUuid:            testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionUuid,
-						testInstructionName:              testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
-						testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
-						testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
-						TestInstructionAttributeUuid:     attribute.BaseAttributeInformation.TestInstructionAttributeUuid,
-						TestInstructionAttributeName:     attribute.BaseAttributeInformation.TestInstructionAttributeName,
-						AttributeValueAsString:           attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValue,
-						AttributeValueUuid:               attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValueUuid,
-						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
-						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
-						testInstructionExecutionVersion:  1,
-					}
-
-				case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX:
-					attributeToStoreInDB = tempAttributeStruct{
-						testCaseExecutionUuid:        testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionUuid,
-						testInstructionName:          testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
-						testInstructionExecutionUuid: newTestInstructionExecutionUuid,
-						testInstructionAttributeType: int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
-						TestInstructionAttributeUuid: attribute.AttributeInformation.ResponseVariableComboBoxProperty.
-							TestInstructionAttributeResponseVariableComboBoxUuid,
-						TestInstructionAttributeName: attribute.AttributeInformation.ResponseVariableComboBoxProperty.
-							TestInstructionAttributeResponseVariableComboBoxName,
-						AttributeValueAsString:           attribute.AttributeInformation.ResponseVariableComboBoxProperty.ComboBoxAttributeValueAsString,
-						AttributeValueUuid:               attribute.AttributeInformation.ResponseVariableComboBoxProperty.ChosenResponseVariableTypeUuid,
-						testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
-						testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
-						testInstructionExecutionVersion:  1,
-					}
-
-				default:
+			if err != nil {
+				if err != nil {
 					common_config.Logger.WithFields(logrus.Fields{
-						"Id": "f9c124ba-beb2-40c7-a1b3-52d5b9997b2b",
-						"attribute.BaseAttributeInformation.TestInstructionAttributeType": attribute.BaseAttributeInformation.TestInstructionAttributeType,
-					}).Fatalln("Unknown attribute type. Exiting")
+						"Id":    "dbe7f121-1256-4bcf-883b-c6ee1bf85c4f",
+						"Error": err,
+					}).Error("Couldn't calculate Execution Order for TestInstructions")
+
+					return testInstructionAttributesForInstructionExecutionUuidMapSlice, err
+				}
+			}
+
+			// Loop all TestInstructions in TestCase and add them
+			for _, testInstruction := range testInstructions.MatureTestInstructions {
+
+				dataRowToBeInsertedMultiType = nil
+
+				// Generate the Execution-Uuid for the TestInstruction
+				newTestInstructionExecutionUuid = uuidGenerator.New().String()
+
+				// Loop attributes for TestInstructions and add Map, to be saved in Cloud-DB (on other function)
+				var attributesSliceForTestInstructionToStoreInDB tempAttributesType
+
+				for _, attribute := range testInstruction.MatureTestInstructionInformation.TestInstructionAttributesList {
+
+					var attributeToStoreInDB tempAttributeStruct
+
+					// Switch type of attribute, e.g. TextBox, ComboBox and so on
+					switch attribute.BaseAttributeInformation.TestInstructionAttributeType {
+
+					case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_TEXTBOX:
+						attributeToStoreInDB = tempAttributeStruct{
+							testCaseExecutionUuid:            testInstructionsInTestCase.testCaseExecutionUuid,
+							testInstructionName:              testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
+							testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
+							testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
+							TestInstructionAttributeUuid:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoUuid,
+							TestInstructionAttributeName:     attribute.AttributeInformation.InputTextBoxProperty.TestInstructionAttributeInputTextBoxName,
+							AttributeValueAsString:           attribute.AttributeInformation.InputTextBoxProperty.TextBoxAttributeValue,
+							AttributeValueUuid:               common_config.ZeroUuid,
+							testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
+							testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
+							testInstructionExecutionVersion:  1,
+						}
+
+					case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_COMBOBOX:
+						attributeToStoreInDB = tempAttributeStruct{
+							testCaseExecutionUuid:            testInstructionsInTestCase.testCaseExecutionUuid,
+							testInstructionName:              testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
+							testInstructionExecutionUuid:     newTestInstructionExecutionUuid,
+							testInstructionAttributeType:     int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
+							TestInstructionAttributeUuid:     attribute.BaseAttributeInformation.TestInstructionAttributeUuid,
+							TestInstructionAttributeName:     attribute.BaseAttributeInformation.TestInstructionAttributeName,
+							AttributeValueAsString:           attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValue,
+							AttributeValueUuid:               attribute.AttributeInformation.InputComboBoxProperty.ComboBoxAttributeValueUuid,
+							testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
+							testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
+							testInstructionExecutionVersion:  1,
+						}
+
+					case fenixTestCaseBuilderServerGrpcApi.TestInstructionAttributeTypeEnum_RESPONSE_VARIABLE_COMBOBOX:
+						attributeToStoreInDB = tempAttributeStruct{
+							testCaseExecutionUuid:        testInstructionsInTestCase.testCaseExecutionUuid,
+							testInstructionName:          testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName,
+							testInstructionExecutionUuid: newTestInstructionExecutionUuid,
+							testInstructionAttributeType: int(attribute.BaseAttributeInformation.TestInstructionAttributeType),
+							TestInstructionAttributeUuid: attribute.AttributeInformation.ResponseVariableComboBoxProperty.
+								TestInstructionAttributeResponseVariableComboBoxUuid,
+							TestInstructionAttributeName: attribute.AttributeInformation.ResponseVariableComboBoxProperty.
+								TestInstructionAttributeResponseVariableComboBoxName,
+							AttributeValueAsString:           attribute.AttributeInformation.ResponseVariableComboBoxProperty.ComboBoxAttributeValueAsString,
+							AttributeValueUuid:               attribute.AttributeInformation.ResponseVariableComboBoxProperty.ChosenResponseVariableTypeUuid,
+							testInstructionAttributeTypeUuid: attribute.BaseAttributeInformation.TestInstructionAttributeTypeUuid,
+							testInstructionAttributeTypeName: attribute.BaseAttributeInformation.TestInstructionAttributeTypeName,
+							testInstructionExecutionVersion:  1,
+						}
+
+					default:
+						common_config.Logger.WithFields(logrus.Fields{
+							"Id": "f9c124ba-beb2-40c7-a1b3-52d5b9997b2b",
+							"attribute.BaseAttributeInformation.TestInstructionAttributeType": attribute.BaseAttributeInformation.TestInstructionAttributeType,
+						}).Fatalln("Unknown attribute type. Exiting")
+					}
+
+					// Add attribute to slice of attributes
+					attributesSliceForTestInstructionToStoreInDB = append(attributesSliceForTestInstructionToStoreInDB, attributeToStoreInDB)
 				}
 
-				// Add attribute to slice of attributes
-				attributesSliceForTestInstructionToStoreInDB = append(attributesSliceForTestInstructionToStoreInDB, attributeToStoreInDB)
+				// Store slice of attributes in response-map
+				testInstructionAttributesForInstructionExecutionUuidMap[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid] = attributesSliceForTestInstructionToStoreInDB
+
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.DomainUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.DomainName)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, newTestInstructionExecutionUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.MajorVersionNumber)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.MinorVersionNumber)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].executionPriority)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.testCaseExecutionUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testDataSetUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.testCaseExecutionVersion)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, 1) //TestInstructionExecutionVersion
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionOrder[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid].temporaryOrderNumber)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].executionStatusReportLevel)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.ExecutionDomainUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.ExecutionDomainName)
+
+				dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 			}
-
-			// Store slice of attributes in response-map
-			testInstructionAttributesForInstructionExecutionUuidMap[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid] = attributesSliceForTestInstructionToStoreInDB
-
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.DomainUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.DomainName)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, newTestInstructionExecutionUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalName)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.MajorVersionNumber)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.MinorVersionNumber)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, currentDataTimeStamp)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].executionPriority)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testDataSetUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].testCaseExecutionVersion)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, 1) //TestInstructionExecutionVersion
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionOrder[testInstruction.MatureTestInstructionInformation.MatureBasicTestInstructionInformation.TestInstructionMatureUuid].temporaryOrderNumber)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.TestInstructionOriginalUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].executionStatusReportLevel)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.ExecutionDomainUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.ExecutionDomainName)
-
-			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 		}
+
+		// Add map to slice
+		testInstructionAttributesForInstructionExecutionUuidMapSlice = append(
+			testInstructionAttributesForInstructionExecutionUuidMapSlice,
+			testInstructionAttributesForInstructionExecutionUuidMap)
 	}
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" "
@@ -1702,7 +1828,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 			"sqlToExecute": sqlToExecute,
 		}).Error("Something went wrong when executing SQL")
 
-		return testInstructionAttributesForInstructionExecutionUuidMap, err
+		return testInstructionAttributesForInstructionExecutionUuidMapSlice, err
 	}
 
 	// Log response from CloudDB
@@ -1717,19 +1843,19 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 	}).Debug("Return data for SQL executed in database")
 
 	// No errors occurred
-	return testInstructionAttributesForInstructionExecutionUuidMap, nil
+	return testInstructionAttributesForInstructionExecutionUuidMapSlice, nil
 
 }
 
 // Save the attributes for the TestInstructions waiting on Execution queue
 func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstructionAttributesUnderExecutionSaveToCloudDB(
 	dbTransaction pgx.Tx,
-	testInstructionAttributesForInstructionExecutionUuidMap map[string]tempAttributesType) (
+	testInstructionAttributesForInstructionExecutionUuidMapSlice []map[string]tempAttributesType) (
 	err error) {
 
 	common_config.Logger.WithFields(logrus.Fields{
 		"Id": "23993342-01dc-40b5-b3c0-b83d1d0b2eb7",
-		"testInstructionAttributesForInstructionExecutionUuidMap": testInstructionAttributesForInstructionExecutionUuidMap,
+		"testInstructionAttributesForInstructionExecutionUuidMapSlice": testInstructionAttributesForInstructionExecutionUuidMapSlice,
 	}).Debug("Entering: saveTestInstructionAttributesUnderExecutionSaveToCloudDB()")
 
 	defer func() {
@@ -1753,31 +1879,32 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 	// Data to be inserted in the DB-table
 	dataRowsToBeInsertedMultiType = nil
 
-	for _, testInstructionsAttributesPerTestInstructionExecutionUuid := range testInstructionAttributesForInstructionExecutionUuidMap {
+	for _, testInstructionAttributesForInstructionExecutionUuidMap := range testInstructionAttributesForInstructionExecutionUuidMapSlice {
 
-		for _, testInstructionsAttribute := range testInstructionsAttributesPerTestInstructionExecutionUuid {
+		for _, testInstructionsAttributesPerTestInstructionExecutionUuid := range testInstructionAttributesForInstructionExecutionUuidMap {
 
-			dataRowToBeInsertedMultiType = nil
+			for _, testInstructionsAttribute := range testInstructionsAttributesPerTestInstructionExecutionUuid {
 
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionExecutionUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeType)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.TestInstructionAttributeUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.TestInstructionAttributeName)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueAsString)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeName)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionExecutionVersion)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testCaseExecutionUuid)
-			dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionName)
+				dataRowToBeInsertedMultiType = nil
 
-			dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionExecutionUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeType)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.TestInstructionAttributeUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.TestInstructionAttributeName)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueAsString)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.AttributeValueUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionAttributeTypeName)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionExecutionVersion)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testCaseExecutionUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsAttribute.testInstructionName)
 
-			// Add attribute to list of all attributes
-			allAttributesSlice = append(allAttributesSlice, testInstructionsAttribute)
+				dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
+				// Add attribute to list of all attributes
+				allAttributesSlice = append(allAttributesSlice, testInstructionsAttribute)
+			}
 		}
-
 	}
 
 	sqlToExecute = sqlToExecute + "INSERT INTO \"" + usedDBSchema + "\".\"TestInstructionAttributesUnderExecution\" "

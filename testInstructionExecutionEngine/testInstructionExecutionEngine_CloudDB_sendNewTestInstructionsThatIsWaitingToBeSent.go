@@ -460,6 +460,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar string
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
 	for testCaseExecutionCounter, testCaseExecution := range testCaseExecutionsToProcess {
+
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar =
 			"(TIUE.\"TestCaseExecutionUuid\" = '" + testCaseExecution.TestCaseExecutionUuid + "' AND " +
 				"TIUE.\"TestCaseExecutionVersion\" = " + strconv.Itoa(int(testCaseExecution.TestCaseExecutionVersion)) + ") "
@@ -467,7 +468,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 		switch testCaseExecutionCounter {
 		case 0:
 			// When this is the first then we need to add 'AND before'
-			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars = "AND "
+			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars = "AND ("
 
 		default:
 			// When this is not the first then we need to add 'OR' after previous
@@ -478,7 +479,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadNewTestInstruct
 		// Add the WHERE-values
 		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars =
 			correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar
+	}
 
+	// Add the last ')'
+	if len(correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars) > 0 {
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars = correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars + ") "
 	}
 
 	// *** Process TestInstructions ***
