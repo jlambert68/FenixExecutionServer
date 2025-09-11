@@ -237,8 +237,6 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	testCaseExecutionsToProcess []ChannelCommandTestCaseExecutionStruct) (
 	testInstructionExecutionQueueInformation []*tempTestInstructionExecutionQueueInformationStruct, err error) {
 
-	usedDBSchema := "FenixExecution" // TODO should this env variable be used? fenixSyncShared.GetDBSchemaName()
-
 	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPar string
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars string
@@ -268,29 +266,76 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	// Create 2nd SQLs WHERE-values from first part
 	var correctTestCaseExecutionUuidAndTestCaseExecutionVersionParsSecondPart string
 	correctTestCaseExecutionUuidAndTestCaseExecutionVersionParsSecondPart = strings.ReplaceAll(
-		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars, "TIEQ", "TIEQ2")
+		correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars, "TIEQ", "TIUE")
 
 	/*
-		sqlToExecute := ""
-		sqlToExecute = sqlToExecute + "SELECT  DISTINCT ON (TIEQ.\"ExecutionPriority\", TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestInstructionExecutionOrder\") "
-		sqlToExecute = sqlToExecute + "TIEQ.* "
-		sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" TIEQ "
-		sqlToExecute = sqlToExecute + "WHERE "
-		sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
-		sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
+				sqlToExecute := ""
+				sqlToExecute = sqlToExecute + "SELECT  DISTINCT ON (TIEQ.\"ExecutionPriority\", TIEQ.\"TestCaseExecutionUuid\", TIEQ.\"TestInstructionExecutionOrder\") "
+				sqlToExecute = sqlToExecute + "TIEQ.* "
+				sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" TIEQ "
+				sqlToExecute = sqlToExecute + "WHERE "
+				sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
+				sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
+
+			sqlToExecute := ""
+			sqlToExecute = sqlToExecute + "SELECT TIEQ.* "
+			sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" TIEQ "
+			sqlToExecute = sqlToExecute + "WHERE "
+			sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
+			sqlToExecute = sqlToExecute + "AND "
+			sqlToExecute = sqlToExecute + "TIEQ.\"TestInstructionExecutionOrder\" IN  (SELECT DISTINCT ON (TIEQ2.\"ExecutionPriority\", TIEQ2.\"TestCaseExecutionUuid\") TIEQ2.\"TestInstructionExecutionOrder\" "
+			sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ2 "
+			sqlToExecute = sqlToExecute + "WHERE "
+			sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionParsSecondPart
+			sqlToExecute = sqlToExecute + "ORDER BY TIEQ2.\"ExecutionPriority\" ASC, TIEQ2.\"TestCaseExecutionUuid\" ASC, TIEQ2.\"TestInstructionExecutionOrder\" ASC, TIEQ2.\"QueueTimeStamp\" ASC) "
+			sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
+
+		x	SELECT DISTINCT ON (
+		x	    TIEQ."TestCaseExecutionUuid",
+		x	    TIEQ."TestCaseExecutionVersion"
+		x	    ) TIEQ.*
+		x	FROM "FenixExecution"."TestInstructionExecutionQueue" TIEQ
+		x	WHERE (TIEQ."TestCaseExecutionUuid" = '79c7aa60-823e-4a5d-b093-d15c01dc5bbe' AND TIEQ."TestCaseExecutionVersion" = 1) OR
+		x	    (TIEQ."TestCaseExecutionUuid" = '7e0810b8-2e33-47a7-bb4e-602ee2bbacdf' AND TIEQ."TestCaseExecutionVersion" = 1) OR
+		x	    (TIEQ."TestCaseExecutionUuid" = '651d239c-6bda-4721-90b9-c52ce637a1c8' AND TIEQ."TestCaseExecutionVersion" = 1) OR
+		x	    (TIEQ."TestCaseExecutionUuid" = 'f3c39b8c-52db-44c6-930b-6dfb35790cbb' AND TIEQ."TestCaseExecutionVersion" = 1) AND
+		x	    TIEQ."UniqueCounter" NOT IN (SELECT TIUE."UniqueCounter"
+		x	                             FROM "FenixExecution"."TestInstructionsUnderExecution" TIUE
+		x	                             WHERE (TIUE."TestCaseExecutionUuid" = '79c7aa60-823e-4a5d-b093-d15c01dc5bbe' AND TIUE."TestCaseExecutionVersion" = 1) OR
+		x	                                     (TIUE."TestCaseExecutionUuid" = '7e0810b8-2e33-47a7-bb4e-602ee2bbacdf' AND TIUE."TestCaseExecutionVersion" = 1) OR
+		x	                                     (TIUE."TestCaseExecutionUuid" = '651d239c-6bda-4721-90b9-c52ce637a1c8' AND TIUE."TestCaseExecutionVersion" = 1) OR
+		x	                                     (TIUE."TestCaseExecutionUuid" = 'f3c39b8c-52db-44c6-930b-6dfb35790cbb' AND TIUE."TestCaseExecutionVersion" = 1) AND
+		x	                                     TIUE."TestInstructionExecutionStatus" < 3)
+		x	ORDER BY
+		x	    TIEQ."TestCaseExecutionUuid",
+		x	    TIEQ."TestCaseExecutionVersion",
+		x	    TIEQ."TestInstructionExecutionOrder" ASC,
+		x	    TIEQ."QueueTimeStamp" ASC,
+		x	    TIEQ."UniqueCounter" ASC;
 	*/
+
 	sqlToExecute := ""
-	sqlToExecute = sqlToExecute + "SELECT TIEQ.* "
-	sqlToExecute = sqlToExecute + "FROM \"" + usedDBSchema + "\".\"TestInstructionExecutionQueue\" TIEQ "
+	sqlToExecute = sqlToExecute + "SELECT DISTINCT ON ( "
+	sqlToExecute = sqlToExecute + "TIEQ.\"TestCaseExecutionUuid\", "
+	sqlToExecute = sqlToExecute + "TIEQ.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + ") TIEQ.* "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionPars
 	sqlToExecute = sqlToExecute + "AND "
-	sqlToExecute = sqlToExecute + "TIEQ.\"TestInstructionExecutionOrder\" IN  (SELECT DISTINCT ON (TIEQ2.\"ExecutionPriority\", TIEQ2.\"TestCaseExecutionUuid\") TIEQ2.\"TestInstructionExecutionOrder\" "
-	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionExecutionQueue\" TIEQ2 "
+	sqlToExecute = sqlToExecute + "TIEQ.\"UniqueCounter\" NOT IN (SELECT TIUE.\"UniqueCounter\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + correctTestCaseExecutionUuidAndTestCaseExecutionVersionParsSecondPart
-	sqlToExecute = sqlToExecute + "ORDER BY TIEQ2.\"ExecutionPriority\" ASC, TIEQ2.\"TestCaseExecutionUuid\" ASC, TIEQ2.\"TestInstructionExecutionOrder\" ASC, TIEQ2.\"QueueTimeStamp\" ASC) "
-	sqlToExecute = sqlToExecute + "ORDER BY TIEQ.\"ExecutionPriority\" ASC, TIEQ.\"TestCaseExecutionUuid\" ASC, TIEQ.\"TestInstructionExecutionOrder\" ASC, TIEQ.\"QueueTimeStamp\" ASC; "
+	sqlToExecute = sqlToExecute + "AND "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\" < 3) "
+	sqlToExecute = sqlToExecute + "ORDER BY "
+	sqlToExecute = sqlToExecute + "TIEQ.\"TestCaseExecutionUuid\" ASC, "
+	sqlToExecute = sqlToExecute + "TIEQ.\"TestCaseExecutionVersion\" ASC, "
+	sqlToExecute = sqlToExecute + "TIEQ.\"TestInstructionExecutionOrder\" ASC, "
+	sqlToExecute = sqlToExecute + "TIEQ.\"QueueTimeStamp\" ASC, "
+	sqlToExecute = sqlToExecute + "TIEQ.\"UniqueCounter\" ASC; "
+	sqlToExecute = sqlToExecute + "; "
 
 	// Log SQL to be executed if Environment variable is true
 	if common_config.LogAllSQLs == true {
