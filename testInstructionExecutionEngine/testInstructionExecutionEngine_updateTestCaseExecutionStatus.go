@@ -1225,8 +1225,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestCaseExecutio
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionsExecutionStatusPreviewValues\" = '%s', ",
 		testInstructionsExecutionStatusPreviewValuesMessageAsJsonb)
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionStatus\" = '%d' ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCaseExecutionStatus\" = '%d', ",
 		testCaseExecutionStatus)
+	// If TestCaseExecutionStatus is an "End status" set true for Database column 'ExecutionHasFinished'
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionHasFinished\" = '%t' ",
+		hasTestCaseAnEndStatus(testCaseExecutionStatus))
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestCaseExecutionUuid\" = '%s' ",
 		testCaseExecutionStatusMessages.TestCaseExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
@@ -1299,8 +1302,11 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestSuiteExecuti
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestSuitesExecutionsForListings\" ts "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
-	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionStatus\" = '%d' ",
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestSuiteExecutionStatus\" = '%d', ",
 		testCaseExecutionStatus)
+	// If TestCaseExecutionStatus is an "End status" set true for Database column 'ExecutionHasFinished'
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"ExecutionHasFinished\" = '%t' ",
+		hasTestCaseAnEndStatus(testCaseExecutionStatus))
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE ts.\"TestSuiteExecutionUuid\" = '%s' ",
 		testSuiteExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
