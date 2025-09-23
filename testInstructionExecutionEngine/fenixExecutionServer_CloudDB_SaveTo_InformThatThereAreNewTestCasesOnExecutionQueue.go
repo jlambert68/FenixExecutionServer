@@ -509,8 +509,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	}
 
 	// Add TestInstructions to TestInstructionsExecutionQueue
-	var testInstructionUuidTotestInstructionExecutionUuidMapSlice []map[string]tempAttributesType
-	testInstructionUuidTotestInstructionExecutionUuidMapSlice, err = executionEngine.
+	var testInstructionUuidToTestInstructionExecutionUuidMapSlice []map[string]tempAttributesType
+	testInstructionUuidToTestInstructionExecutionUuidMapSlice, err = executionEngine.
 		SaveTestInstructionsToExecutionQueueSaveToCloudDB(
 			txn,
 			testCaseExecutionQueueMessages,
@@ -549,7 +549,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) prepareInformThatTh
 	// Add attributes to table for 'TestInstructionAttributesUnderExecution'
 	err = executionEngine.saveTestInstructionAttributesUnderExecutionSaveToCloudDB(
 		txn,
-		testInstructionUuidTotestInstructionExecutionUuidMapSlice)
+		testInstructionUuidToTestInstructionExecutionUuidMapSlice)
 
 	if err != nil {
 
