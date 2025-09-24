@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v4 v4.18.2
 	github.com/jinzhu/copier v0.4.0
-	github.com/jlambert68/FenixGrpcApi v0.0.0-20250924082832-e4b8d399aafb
+	github.com/jlambert68/FenixGrpcApi v0.0.0-20250924104934-c0598fce1136
 	github.com/jlambert68/FenixScriptEngine v0.0.0-20241104143504-8f37e95bc346
 	github.com/jlambert68/FenixStandardTestInstructionAdmin v0.0.0-20241025085754-ced7ee5586a6
 	github.com/jlambert68/FenixSyncShared v0.0.0-20240911064419-da3d922610cb
