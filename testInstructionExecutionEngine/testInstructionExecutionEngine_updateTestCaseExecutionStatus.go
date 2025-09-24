@@ -229,7 +229,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 				"testCaseExecutionStatusMessage": testCaseExecutionStatusMessage,
 			}).Debug("TestCaseExecutionStatus is an 'End status'")
 
-			var testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessage
+			var testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages
 			// Load all TestInstructionExecutions for TestCase
 			_, testInstructionsExecutionStatusPreviewValuesMessage, err = executionEngine.
 				loadTestInstructionsExecutionStatusPreviewValues(
@@ -284,19 +284,20 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 					_, existInMap = testSuiteExecutionUpdatedWithTestInstructionsExecutionStatusPreviewValuesMap[testSuiteExecutionUuid+strconv.Itoa(int(testSuiteExecutionVersion))]
 					if existInMap == false {
 
-						// Load all TestInstructionExecutions for TestSuiteExecution
-						var testInstructionsExecutionStatusPreviewValuesForTestSuiteExecution *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessage
-						_, testInstructionsExecutionStatusPreviewValuesForTestSuiteExecution, err = executionEngine.
-							loadTestInstructionsExecutionStatusPreviewValues(
-								txn,
-								baseSqlWhereOnTestSuiteExecutionUuid,
-								[]testCaseOrTestSuiteExecutionsForLoadTestCasesExecutionStatusStruct{
-									{
-										executionUuid:           testSuiteExecutionUuid,
-										executionVersion:        int32(testSuiteExecutionVersion),
-										testCaseExecutionStatus: 0,
-									},
-								})
+						// Load all "TestCaseExecutionPreview" and "TestInstructionsExecutionStatusPreview" for TestSuiteExecution
+						var testSuitesAllTestCasePreviewAsGrpcMessages *fenixExecutionServerGrpcApi.TestCasePreviews
+						var testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages
+						testSuitesAllTestCasePreviewAsGrpcMessages,
+							testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessage,
+							err = executionEngine.loadTestCaseExecutionAndTestInstructionsExecutionStatusPreviewValues(
+							txn,
+							[]testCaseOrTestSuiteExecutionsForLoadTestCasesExecutionStatusStruct{
+								{
+									executionUuid:           testSuiteExecutionUuid,
+									executionVersion:        int32(testSuiteExecutionVersion),
+									testCaseExecutionStatus: 0,
+								},
+							})
 
 						// Exit when there was a problem reading the database
 						if err != nil {
@@ -306,12 +307,13 @@ func (executionEngine *TestInstructionExecutionEngineStruct) updateStatusOnTestC
 						// Set that TestSuiteExecution is processed
 						testSuiteExecutionUpdatedWithTestInstructionsExecutionStatusPreviewValuesMap[testSuiteExecutionUuid+strconv.Itoa(int(testSuiteExecutionVersion))] = true
 
-						// Add TestInstructionsExecutionStatusPreviewValues to TestSuiteExecution in 'TestSuitesExecutionsForListings'
+						// Save all "TestCaseExecutionPreview" and "TestInstructionsExecutionStatusPreview" for TestSuiteExecution
 						err = executionEngine.addTestInstructionExecutionPreviewValuesInIntoDatabase(
 							txn,
 							testSuiteExecutionUuid,
 							testSuiteExecutionVersion,
-							testInstructionsExecutionStatusPreviewValuesForTestSuiteExecution)
+							testSuitesAllTestCasePreviewAsGrpcMessages,
+							testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessage)
 
 						// Exit when there was a problem writing to the database
 						if err != nil {
@@ -1274,7 +1276,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestCaseExecutio
 	dbTransaction pgx.Tx,
 	testCaseExecutionStatusMessages *testCaseExecutionStatusStruct,
 	testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.
-		TestInstructionsExecutionStatusPreviewValuesMessage,
+		TestInstructionsExecutionStatusPreviewValuesMessages,
 	testCaseExecutionStatus int32) (
 	err error) {
 
@@ -1360,26 +1362,31 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestInstructionE
 	dbTransaction pgx.Tx,
 	testSuiteExecutionUuid string,
 	testSuiteExecutionVersion uint32,
-	testInstructionsExecutionStatusPreviewValuesForTestSuiteExecution *fenixExecutionServerGrpcApi.
-		TestInstructionsExecutionStatusPreviewValuesMessage) (
+	testSuitesAllTestCasePreviewAsGrpcMessages *fenixExecutionServerGrpcApi.TestCasePreviews,
+	testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages) (
 	err error) {
 
 	// If there are nothing to update then just exit
-	if testInstructionsExecutionStatusPreviewValuesForTestSuiteExecution == nil {
+	if testSuitesAllTestCasePreviewAsGrpcMessages == nil && testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessage == nil {
 		return nil
 	}
 
-	testInstructionsExecutionStatusPreviewValuesMessageAsJsonb := protojson.Format(testInstructionsExecutionStatusPreviewValuesForTestSuiteExecution)
+	testSuitesAllTestCasePreviewAsGrpcMessagesAsJsonb := protojson.Format(testSuitesAllTestCasePreviewAsGrpcMessages)
+	testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessageAsJsonb := protojson.Format(testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessage)
 
 	// Clean and remove '\n' from the json-string
-	testInstructionsExecutionStatusPreviewValuesMessageAsJsonb = strings.ReplaceAll(testInstructionsExecutionStatusPreviewValuesMessageAsJsonb, "\n", "")
+	testSuitesAllTestCasePreviewAsGrpcMessagesAsJsonb = strings.ReplaceAll(
+		testSuitesAllTestCasePreviewAsGrpcMessagesAsJsonb, "\n", "")
+	testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessageAsJsonb = strings.ReplaceAll(testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessageAsJsonb, "\n", "")
 
 	// Create Update Statement TestSuitesExecutionsForListings
 	sqlToExecute := ""
 	sqlToExecute = sqlToExecute + "UPDATE \"FenixExecution\".\"TestSuitesExecutionsForListings\" "
 	sqlToExecute = sqlToExecute + fmt.Sprintf("SET ")
+	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestCasesPreview\" = '%s', ",
+		testSuitesAllTestCasePreviewAsGrpcMessagesAsJsonb)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("\"TestInstructionsExecutionStatusPreviewValues\" = '%s' ",
-		testInstructionsExecutionStatusPreviewValuesMessageAsJsonb)
+		testSuitesAllTestInstructionsExecutionStatusPreviewValuesMessageAsJsonb)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("WHERE \"TestSuiteExecutionUuid\" = '%s' ",
 		testSuiteExecutionUuid)
 	sqlToExecute = sqlToExecute + fmt.Sprintf("AND ")
@@ -1390,7 +1397,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestInstructionE
 	// Log SQL to be executed if Environment variable is true
 	if common_config.LogAllSQLs == true {
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "1d8a1509-c948-4511-82e1-ff8f3a926093",
+			"Id":           "a729f41c-f320-4cea-b4e6-60c079fe76ba",
 			"sqlToExecute": sqlToExecute,
 		}).Debug("SQL to be executed within 'addTestInstructionExecutionPreviewValuesInIntoDatabase'")
 	}
@@ -1560,13 +1567,18 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	dbTransaction pgx.Tx,
 	baseSqlWhereOnTestSuiteExecutionUuid baseSqlWhereOnExecutionUuidTypeType,
 	executionsForLoadTestCasesExecutionStatusSlice []testCaseOrTestSuiteExecutionsForLoadTestCasesExecutionStatusStruct) (
-	testInstructionsExecutionStatusPreviewValuesMap map[string][]*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage, // Key is 'TestCaseExecutionUuid' + 'TestCaseExecutionVersion'
-	testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessage,
+	testInstructionsExecutionStatusPreviewValuesMap map[string]*fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages, // Key is 'TestCaseExecutionUuid' + 'TestCaseExecutionVersion'
+	testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages,
 	err error) {
 
 	// Initiate response Map
-	testInstructionsExecutionStatusPreviewValuesMap = make(map[string][]*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage)
+	testInstructionsExecutionStatusPreviewValuesMap = make(map[string]*fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages)
 	var testInstructionsExecutionStatusPreviewValuesMapKey string
+
+	// Initiate 'testInstructionsExecutionStatusPreviewValuesMessage'
+	testInstructionsExecutionStatusPreviewValuesMessage = &fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages{
+		TestInstructionExecutionStatusPreviewValues: []*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage{},
+	}
 
 	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
 	var correctExecutionUuidAndExecutionVersionPars string
@@ -1682,13 +1694,12 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	var sentTimeStampAsTimeStamp time.Time
 	var testInstructionExecutionEndTimeStampAsTimeStamp time.Time
 	var nullableTestInstructionExecutionEndTimeStampAsTimeStamp sql.NullTime
-	var testCasePreviewAndExecutionStatusPreviewValuesForReturnSlice []*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage
 
 	// Extract data from DB result set
 	for rows.Next() {
 
 		var testCasePreviewAndExecutionStatusPreviewValue fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage
-		var testCasePreviewAndExecutionStatusPreviewValues []*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage
+		var testCasePreviewAndExecutionStatusPreviewValues *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages
 		numberOfRowFromDB = numberOfRowFromDB + 1
 
 		err := rows.Scan(
@@ -1738,28 +1749,182 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 		// Check if slice exist in Map
 		testCasePreviewAndExecutionStatusPreviewValues, existInMap = testInstructionsExecutionStatusPreviewValuesMap[testInstructionsExecutionStatusPreviewValuesMapKey]
 		if existInMap == false {
-			testCasePreviewAndExecutionStatusPreviewValues = []*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage{}
+			testCasePreviewAndExecutionStatusPreviewValues = &fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages{
+				TestInstructionExecutionStatusPreviewValues: []*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage{},
+			}
 		}
 
 		// Add value slice
-		testCasePreviewAndExecutionStatusPreviewValues = append(testCasePreviewAndExecutionStatusPreviewValues, &testCasePreviewAndExecutionStatusPreviewValue)
+		testCasePreviewAndExecutionStatusPreviewValues.TestInstructionExecutionStatusPreviewValues = append(
+			testCasePreviewAndExecutionStatusPreviewValues.TestInstructionExecutionStatusPreviewValues,
+			&testCasePreviewAndExecutionStatusPreviewValue)
 
 		// Add Slice 'back' to map
 		testInstructionsExecutionStatusPreviewValuesMap[testInstructionsExecutionStatusPreviewValuesMapKey] = testCasePreviewAndExecutionStatusPreviewValues
 
 		// Add values to be used for return slice
 		// Add value to slice of values
-		testCasePreviewAndExecutionStatusPreviewValuesForReturnSlice = append(
-			testCasePreviewAndExecutionStatusPreviewValuesForReturnSlice,
+		testInstructionsExecutionStatusPreviewValuesMessage.TestInstructionExecutionStatusPreviewValues = append(
+			testInstructionsExecutionStatusPreviewValuesMessage.TestInstructionExecutionStatusPreviewValues,
 			&testCasePreviewAndExecutionStatusPreviewValue)
 
 	}
 
-	// Create the return value for return slice
-	testInstructionsExecutionStatusPreviewValuesMessage = &fenixExecutionServerGrpcApi.
-		TestInstructionsExecutionStatusPreviewValuesMessage{
-		TestInstructionExecutionStatusPreviewValues: testCasePreviewAndExecutionStatusPreviewValuesForReturnSlice}
-
 	return testInstructionsExecutionStatusPreviewValuesMap, testInstructionsExecutionStatusPreviewValuesMessage, err
+
+}
+
+// Retrieve "TestCaseExecutionPreview" and "TestInstructionsExecutionStatusPreview" for all TestCasesExecutions and their TestInstructionExecutions
+func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecutionAndTestInstructionsExecutionStatusPreviewValues(
+	dbTransaction pgx.Tx,
+	testSuiteExecutionsForLoadTestCasesExecutionStatusGrpcMessages []testCaseOrTestSuiteExecutionsForLoadTestCasesExecutionStatusStruct) (
+	testCasePreviewAsGrpcMessages *fenixExecutionServerGrpcApi.TestCasePreviews,
+	testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages,
+	err error) {
+
+	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
+	var correctExecutionUuidAndExecutionVersionPars string
+
+	// Base SQL-Where on TestSuiteExecution
+	var correctTestSuiteExecutionUuidAndTestSuiteExecutionVersionPar string
+	for testSuiteExecutionCounter, testSuiteExecution := range testSuiteExecutionsForLoadTestCasesExecutionStatusGrpcMessages {
+		correctTestSuiteExecutionUuidAndTestSuiteExecutionVersionPar =
+			"(TCEL.\"TestSuiteExecutionUuid\" = '" + testSuiteExecution.executionUuid + "' AND " +
+				"TCEL.\"TestSuiteExecutionVersion\" = " + strconv.Itoa(int(testSuiteExecution.executionVersion)) + ") "
+
+		switch testSuiteExecutionCounter {
+		case 0:
+			// When this is the first then we need to add 'AND before'
+			// *NOT NEEDED* in this Query
+			//correctExecutionUuidAndExecutionVersionPars = "AND "
+
+		default:
+			// When this is not the first then we need to add 'OR' after previous
+			correctExecutionUuidAndExecutionVersionPars =
+				correctExecutionUuidAndExecutionVersionPars + "OR "
+		}
+
+		// Add the WHERE-values
+		correctExecutionUuidAndExecutionVersionPars =
+			correctExecutionUuidAndExecutionVersionPars + correctTestSuiteExecutionUuidAndTestSuiteExecutionVersionPar
+
+	}
+
+	// Load 'PreviewValues' for TestCasesExecutions and TestInstructionExecutions
+
+	sqlToExecute := ""
+	sqlToExecute = sqlToExecute + "SELECT TCEL.\"TestCasePreview\", TCEL.\"TestInstructionsExecutionStatusPreviewValues\" "
+	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestCasesExecutionsForListings\" TCEL "
+	sqlToExecute = sqlToExecute + "WHERE "
+	sqlToExecute = sqlToExecute + correctExecutionUuidAndExecutionVersionPars
+	sqlToExecute = sqlToExecute + ";"
+
+	// Query DB
+	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer timeOutCancel()
+
+	rows, err := dbTransaction.Query(ctx, sqlToExecute)
+	defer rows.Close()
+
+	if err != nil {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "aa215bcb-86cd-4171-af80-115861253cf4",
+			"Error":        err,
+			"sqlToExecute": sqlToExecute,
+		}).Error("Something went wrong when executing SQL")
+
+		return nil, nil, err
+	}
+
+	// Number of rows
+	var numberOfRowFromDB int32
+	numberOfRowFromDB = 0
+
+	var tempTestCasePreviewAsJsonString string
+	var tempTestInstructionsExecutionStatusPreviewValuesAsJsonString string
+	var tempTestCasePreviewStructureMessages *fenixExecutionServerGrpcApi.TestCasePreviews
+	var tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessages *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages
+
+	// Initiate 'tempTestCasePreviewStructureMessages'
+	tempTestCasePreviewStructureMessages = &fenixExecutionServerGrpcApi.TestCasePreviews{
+		TestCasePreviews: []*fenixExecutionServerGrpcApi.TestCasePreviewStructureMessage{},
+	}
+
+	// Initiate 'tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessages'
+	tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessages = &fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages{
+		TestInstructionExecutionStatusPreviewValues: []*fenixExecutionServerGrpcApi.TestInstructionExecutionStatusPreviewValueMessage{},
+	}
+
+	// Extract data from DB result set
+	for rows.Next() {
+
+		numberOfRowFromDB = numberOfRowFromDB + 1
+
+		err := rows.Scan(
+			&tempTestCasePreviewAsJsonString,
+			&tempTestInstructionsExecutionStatusPreviewValuesAsJsonString,
+		)
+
+		if err != nil {
+
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                "8ab8a4ba-a743-4705-a0b0-1ebae7f24063",
+				"Error":             err,
+				"sqlToExecute":      sqlToExecute,
+				"numberOfRowFromDB": numberOfRowFromDB,
+			}).Error("Something went wrong when processing result from database")
+
+			return nil, nil, err
+		}
+
+		// Convert TestCasePreview from json-string into a gRPC-message
+		var tempTestCasePreviewAsGrpcMessage fenixExecutionServerGrpcApi.TestCasePreview
+		err = protojson.Unmarshal([]byte(tempTestCasePreviewAsJsonString), &tempTestCasePreviewAsGrpcMessage)
+
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":                              "0e17a013-5755-4bc2-a7b1-78871168279a",
+				"Error":                           err,
+				"tempTestCasePreviewAsJsonString": tempTestCasePreviewAsJsonString,
+			}).Error("Something went wrong when converting 'tempTestCasePreviewAsJsonString' into proto-message")
+
+			// Drop this message and continue with next message
+			return nil, nil, err
+		}
+
+		// Add 'tempTestCasePreviewAsGrpcMessage' to slice
+		tempTestCasePreviewStructureMessages.TestCasePreviews = append(
+			tempTestCasePreviewStructureMessages.TestCasePreviews,
+			tempTestCasePreviewAsGrpcMessage.TestCasePreview)
+
+		// Convert TestInstructionsExecutionStatusPreviewValues from json-string into a gRPC-message
+		var tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessage fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages
+		err = protojson.Unmarshal([]byte(tempTestInstructionsExecutionStatusPreviewValuesAsJsonString), &tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessage)
+
+		if err != nil {
+			common_config.Logger.WithFields(logrus.Fields{
+				"Id":    "700f8b8d-247c-4160-aa3f-0d5ed55f1c84",
+				"Error": err,
+				"tempTestInstructionsExecutionStatusPreviewValuesAsJsonString": tempTestInstructionsExecutionStatusPreviewValuesAsJsonString,
+			}).Error("Something went wrong when converting 'tempTestInstructionsExecutionStatusPreviewValuesAsJsonString' into proto-message")
+
+			// Drop this message and continue with next message
+			return nil, nil, err
+		}
+
+		// Add 'tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessage' to slice
+		tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessages.TestInstructionExecutionStatusPreviewValues = append(
+			tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessages.TestInstructionExecutionStatusPreviewValues,
+			tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessage.TestInstructionExecutionStatusPreviewValues...)
+
+	}
+
+	// Create the return value for return object -
+	testCasePreviewAsGrpcMessages = tempTestCasePreviewStructureMessages
+
+	// Create the return value for return object -
+	testInstructionsExecutionStatusPreviewValuesMessage = tempTestInstructionsExecutionStatusPreviewValuesAsGrpcMessages
+
+	return testCasePreviewAsGrpcMessages, testInstructionsExecutionStatusPreviewValuesMessage, err
 
 }
