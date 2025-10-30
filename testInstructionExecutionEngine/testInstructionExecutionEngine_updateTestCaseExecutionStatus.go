@@ -1495,7 +1495,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) addTestSuiteExecuti
 	// Log SQL to be executed if Environment variable is true
 	if common_config.LogAllSQLs == true {
 		common_config.Logger.WithFields(logrus.Fields{
-			"Id":           "194603bd-9002-45a5-8e8e-147df7439887",
+			"Id":           "f5910d96-b416-456c-8bdc-e11f117cec18",
 			"sqlToExecute": sqlToExecute,
 		}).Debug("SQL to be executed within 'addTestSuiteExecutionStatusPreviewValuesIntoDatabase'")
 	}
@@ -1565,7 +1565,7 @@ const (
 // Retrieve "ExecutionStatusPreviewValues" for all TestInstructions for multi TestCaseExecutions
 func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstructionsExecutionStatusPreviewValues(
 	dbTransaction pgx.Tx,
-	baseSqlWhereOnTestSuiteExecutionUuid baseSqlWhereOnExecutionUuidTypeType,
+	baseSqlWhereOnTestSuiteExecutionUuidValue baseSqlWhereOnExecutionUuidTypeType,
 	executionsForLoadTestCasesExecutionStatusSlice []testCaseOrTestSuiteExecutionsForLoadTestCasesExecutionStatusStruct) (
 	testInstructionsExecutionStatusPreviewValuesMap map[string]*fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages, // Key is 'TestCaseExecutionUuid' + 'TestCaseExecutionVersion'
 	testInstructionsExecutionStatusPreviewValuesMessage *fenixExecutionServerGrpcApi.TestInstructionsExecutionStatusPreviewValuesMessages,
@@ -1582,7 +1582,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 
 	// Generate WHERE-values to only target correct 'TestCaseExecutionUuid' together with 'TestCaseExecutionVersion'
 	var correctExecutionUuidAndExecutionVersionPars string
-	switch baseSqlWhereOnTestSuiteExecutionUuid {
+	switch baseSqlWhereOnTestSuiteExecutionUuidValue {
 
 	case baseSqlWhereOnTestSuiteExecutionUuid:
 		// Base SQL-Where on TestSuiteExecution
@@ -1659,14 +1659,24 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 	sqlToExecute = sqlToExecute + "TIUE.\"MatureTestInstructionUuid\", TIUE.\"TestInstructionName\", "
 	sqlToExecute = sqlToExecute + "TIUE.\"SentTimeStamp\", TIUE.\"TestInstructionExecutionEndTimeStamp\", "
 	sqlToExecute = sqlToExecute + "TIUE.\"TestInstructionExecutionStatus\", "
-	sqlToExecute = sqlToExecute + "TIUE.\"ExecutionDomainUuid\", TIUE.\"ExecutionDomainName\" "
+	sqlToExecute = sqlToExecute + "TIUE.\"ExecutionDomainUuid\", TIUE.\"ExecutionDomainName\", "
+	sqlToExecute = sqlToExecute + "TIUE.\"TestCaseUuid\", TIUE.\"TestCaseVersion\", TIUE.\"TestCaseName\" "
 	sqlToExecute = sqlToExecute + "FROM \"FenixExecution\".\"TestInstructionsUnderExecution\" TIUE, " +
 		"\"FenixExecution\".\"TestCasesUnderExecution\" TCUE "
 	sqlToExecute = sqlToExecute + "WHERE "
 	sqlToExecute = sqlToExecute + "TIUE.\"TestCaseExecutionUuid\" = TCUE.\"TestCaseExecutionUuid\" AND " +
 		"TIUE.\"TestCaseExecutionVersion\" = TCUE.\"TestCaseExecutionVersion\" "
+	sqlToExecute = sqlToExecute + correctExecutionUuidAndExecutionVersionPars
 	sqlToExecute = sqlToExecute + "ORDER BY TIUE.\"SentTimeStamp\" ASC"
 	sqlToExecute = sqlToExecute + ";"
+
+	// Log SQL to be executed if Environment variable is true
+	if common_config.LogAllSQLs == true {
+		common_config.Logger.WithFields(logrus.Fields{
+			"Id":           "104bc872-b6b5-404f-b955-30263e7e79e6",
+			"sqlToExecute": sqlToExecute,
+		}).Debug("SQL to be executed within 'loadAllZombieTestCaseExecutionsOnExecutionQueue'")
+	}
 
 	// Query DB
 	ctx, timeOutCancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -1714,6 +1724,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			&testCasePreviewAndExecutionStatusPreviewValue.TestInstructionExecutionStatus,
 			&testCasePreviewAndExecutionStatusPreviewValue.ExecutionDomainUuid,
 			&testCasePreviewAndExecutionStatusPreviewValue.ExecutionDomainName,
+			&testCasePreviewAndExecutionStatusPreviewValue.TestCaseUuid,
+			&testCasePreviewAndExecutionStatusPreviewValue.TestCaseVersion,
+			&testCasePreviewAndExecutionStatusPreviewValue.TestCaseName,
 		)
 
 		if err != nil {
@@ -1868,7 +1881,7 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestCaseExecuti
 		if err != nil {
 
 			common_config.Logger.WithFields(logrus.Fields{
-				"Id":                "8ab8a4ba-a743-4705-a0b0-1ebae7f24063",
+				"Id":                "121907bf-6a69-4997-b7c4-4a2a0e1356f2",
 				"Error":             err,
 				"sqlToExecute":      sqlToExecute,
 				"numberOfRowFromDB": numberOfRowFromDB,

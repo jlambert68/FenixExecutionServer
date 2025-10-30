@@ -391,6 +391,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) loadTestInstruction
 			&tempTestInstructionExecutionQueueMessage.executionStatusReportLevel,
 			&tempTestInstructionExecutionQueueMessage.executionDomainUuid,
 			&tempTestInstructionExecutionQueueMessage.executionDomainName,
+			&tempTestInstructionExecutionQueueMessage.testCaseUuid,
+			&tempTestInstructionExecutionQueueMessage.testCaseVersion,
+			&tempTestInstructionExecutionQueueMessage.testCaseName,
 		)
 
 		if err != nil {
@@ -470,6 +473,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.executionStatusReportLevel)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.executionDomainUuid)
 		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.executionDomainName)
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.testCaseUuid)
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.testCaseVersion)
+		dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionExecutionQueueMessage.testCaseName)
 
 		dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 
@@ -480,7 +486,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) saveTestInstruction
 		"\"TestInstructionMajorVersionNumber\", \"TestInstructionMinorVersionNumber\", \"SentTimeStamp\", \"TestInstructionExecutionStatus\", \"ExecutionStatusUpdateTimeStamp\", " +
 		" \"TestDataSetUuid\", \"TestCaseExecutionUuid\", \"TestCaseExecutionVersion\", \"TestInstructionInstructionExecutionVersion\", \"TestInstructionExecutionOrder\", " +
 		"\"TestInstructionOriginalUuid\", \"TestInstructionExecutionHasFinished\", \"QueueTimeStamp\"," +
-		" \"ExecutionPriority\", \"ExecutionStatusReportLevel\", \"ExecutionDomainUuid\", \"ExecutionDomainName\")  "
+		" \"ExecutionPriority\", \"ExecutionStatusReportLevel\", \"ExecutionDomainUuid\", \"ExecutionDomainName\", " +
+		"\"TestCaseUuid\", \"TestCaseVersion\", \"TestCaseName\")  "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 

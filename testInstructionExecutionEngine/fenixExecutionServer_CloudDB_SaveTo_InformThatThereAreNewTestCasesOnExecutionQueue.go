@@ -616,6 +616,9 @@ type tempTestInstructionExecutionQueueInformationStruct struct {
 	uniqueCounter                     int
 	testInstructionOriginalUuid       string
 	executionStatusReportLevel        int
+	testCaseUuid                      string
+	testCaseVersion                   int
+	testCaseName                      string
 }
 
 // Struct to be used when extracting TestInstructions from TestCases
@@ -1789,6 +1792,9 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testCaseExecutionQueueMessagesMap[testInstructionsInTestCase.testCaseUuid].executionStatusReportLevel)
 				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.ExecutionDomainUuid)
 				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstruction.BasicTestInstructionInformation.NonEditableInformation.ExecutionDomainName)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.testCaseUuid)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.testCaseVersion)
+				dataRowToBeInsertedMultiType = append(dataRowToBeInsertedMultiType, testInstructionsInTestCase.testCaseName)
 
 				dataRowsToBeInsertedMultiType = append(dataRowsToBeInsertedMultiType, dataRowToBeInsertedMultiType)
 			}
@@ -1806,7 +1812,8 @@ func (executionEngine *TestInstructionExecutionEngineStruct) SaveTestInstruction
 		"\"TestInstructionMinorVersionNumber\", \"QueueTimeStamp\", \"ExecutionPriority\", \"TestCaseExecutionUuid\"," +
 		" \"TestDataSetUuid\", \"TestCaseExecutionVersion\", \"TestInstructionExecutionVersion\", " +
 		"\"TestInstructionExecutionOrder\", \"TestInstructionOriginalUuid\", \"ExecutionStatusReportLevel\", " +
-		"\"ExecutionDomainUuid\", \"ExecutionDomainName\" ) "
+		"\"ExecutionDomainUuid\", \"ExecutionDomainName\", " +
+		"\"TestCaseUuid\", \"TestCaseVersion\", \"TestCaseName\") "
 	sqlToExecute = sqlToExecute + common_config.GenerateSQLInsertValues(dataRowsToBeInsertedMultiType)
 	sqlToExecute = sqlToExecute + ";"
 
